@@ -7,6 +7,7 @@
 
 /* sil.c */
 
+
 /* logging level of all sil functions */
 #define SIL_QUIET   1
 #define SIL_FATAL   2
