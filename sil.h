@@ -14,7 +14,6 @@
 #define SIL_WARNING 4
 #define SIL_DEBUG   5
 
-
 /* general errors */
 #define SILERR_ALLOK         0 /* No error                            */
 #define SILERR_CANTOPENFILE  1 /* Can't open file                     */
