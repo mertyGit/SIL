@@ -184,10 +184,9 @@ static UINT code2sil(WPARAM wParam) {
 }
 
 
-void sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
+UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   unsigned char *image;
   unsigned error;
-  UINT ret;
   WNDCLASSW wc = {0};
   int cnt=0;
   RECT sz;
@@ -198,7 +197,7 @@ void sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   if (NULL==fb) {
     log_info("ERR: Can't create framebuffer for display");
     sil_setErr(SILERR_NOMEM);
-    return;
+    return SILERR_NOMEM;
   }
 
   MultiByteToWideChar(CP_ACP,0,title,-1,(LPWSTR)name,sizeof(name)-1);
@@ -225,7 +224,7 @@ void sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
     printf("ERROR: Can't create window (%d)\n",GetLastError());
     sil_setErr(SILERR_NOTINIT);
 
-    return;
+    return SILERR_NOTINIT;
   }
 
   ShowWindow(win.window, SW_NORMAL);
@@ -241,6 +240,7 @@ void sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   win.bitmapInfo->bmiColors[2].rgbBlue    = 0xff;
   GetWindowRect(win.window,&sz);
   AdjustWindowRect(&sz,WS_OVERLAPPEDWINDOW  & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,FALSE);
+  return SILERR_ALLOK;
 
 }
 

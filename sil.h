@@ -31,8 +31,9 @@ typedef struct _SILCONTEXT {
   
 } SILCONTEXT;
 
-UINT sil_initSIL(char *,BYTE );
+UINT sil_initSIL(UINT, UINT, char *, void *,char *,BYTE );
 void sil_setErr(UINT);
+void sil_destroySIL();
 UINT sil_getErr();
 const char *sil_err2Txt(UINT errorcode);
   
@@ -243,7 +244,7 @@ typedef struct _SILEVENT {
   BYTE modifiers;
 } SILEVENT;
 
-void sil_initDisplay(void *, UINT, UINT ,char *);
+UINT sil_initDisplay(void *, UINT, UINT ,char *);
 void sil_updateDisplay();
 void sil_destroyDisplay();
 UINT sil_getTypefromDisplay();

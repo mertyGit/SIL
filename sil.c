@@ -19,18 +19,22 @@ static SILCONTEXT st;
    initialize SIL context for library. It will be used to contain program 
    related stuff like logging parameters together
 
-   In: char *logname ; Filename of the logs. When "NULL" stdout will be used
-       flags         ; Flag(s) (use '|' to combine ) what to send to this log ; 
-                       LOG_INFO    (Errors, Warnings), "ERR:" and "WARN:"
-                       LOG_VERBOSE (other non-critical information), "INF:"
-                       LOG_DEBUG   (debugging info) "DBG:"
-                       no flags means no logging at all.
+   In: 
+       width,height   ; dimensions of window to create (or screen display)
+       char *title    ; Title to use for window (in windowed environments)
+       void *hInstance; Only for Windows/GDI; Windows instance handle from WinMain
+       char *logname  ; Filename of the logs. When "NULL" stdout will be used
+       flags          ; Flag(s) (use '|' to combine ) what to send to this log ; 
+                        LOG_INFO    (Errors, Warnings), "ERR:" and "WARN:"
+                        LOG_VERBOSE (other non-critical information), "INF:"
+                        LOG_DEBUG   (debugging info) "DBG:"
+                        no flags means no logging at all.
 
    Out: 0=OK, other=error
 
  *****************************************************************************/
 
-UINT sil_initSIL(char *logname, BYTE flags) {
+UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance,char *logname, BYTE flags) {
   UINT ret=0;
   UINT err=0;
 
@@ -40,8 +44,12 @@ UINT sil_initSIL(char *logname, BYTE flags) {
   if (err) {
     log_fatal("Can't initialize logging");
   }
+  if (SILERR_ALLOK!=sil_initDisplay(hInstance,width,height,title)) {
+    log_fatal("Can't initialize display");
+  }
 
-  log_info("INF: Initialized SIL");
+
+  log_info("INF: Initialized SIL, logging & display");
   return ret;
 }
 
@@ -116,4 +124,14 @@ const char * sil_err2Txt(UINT errorcode) {
       break;
   }
   return ret;
+}
+
+/*****************************************************************************
+  Close & cleanup SIL
+
+ *****************************************************************************/
+
+void sil_destroySIL() {
+  st.init=0;
+  sil_destroyDisplay();
 }

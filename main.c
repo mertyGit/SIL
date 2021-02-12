@@ -25,13 +25,12 @@ int main() {
   BYTE update=0;
   SILFONT font;
 
-  sil_initSIL(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
-  printf("sil_initDisplay...\n");
+  printf("sil_init...\n");
   #ifdef SIL_W32
-    sil_initDisplay(hInstance,1000,1000,"Testing SIL DISPLAY II");
+    sil_initSIL(1000,1000,"Testing SIL DISPLAY III",hInstance,NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
   #else
-    sil_initDisplay(NULL,1000,1000,"Testing SIL DISPLAY II");
+    sil_initSIL(1000,1000,"Testing SIL DISPLAY III",NULL,NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
   #endif
 
 
@@ -293,12 +292,12 @@ int main() {
     if (update) sil_updateDisplay();
   } while (se!=NULL && se->key!=SILKY_ESC);
 
-  printf("sil_destroyDisplay...\n");
-  sil_destroyDisplay();
 
   printf("sil_destroyFont...\n");
   sil_destroyFont(&font);
 
+  printf("sil_destroyDisplay...\n");
+  sil_destroySIL();
 
   printf("Bye now...\n");
 
