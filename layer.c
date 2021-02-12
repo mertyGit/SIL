@@ -13,6 +13,7 @@
 #include "sil.h"
 #include "log.h"
 
+
 /* head & tail of linked list of layers */
 static SILLYR *top=NULL;
 static SILLYR *bottom=NULL;
