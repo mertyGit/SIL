@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "sil.h"
+#include "log.h"
 
 
 /* X11 display variables only used here */
@@ -201,10 +202,6 @@ static void LayersToDisplay() {
 }
 
 
-static void panic(const char *msg) {
-	fprintf(stderr, "panic: %s\n", msg);
-	exit(EXIT_FAILURE);
-}
 
 /* Standard handlers for X11 window events & errors */
 
@@ -218,8 +215,8 @@ static int expose(XEvent *e) {
 
 	Status s = XGetGeometry(display, window, &root, &x, &y, &width, &height,
 			&border, &depth);
-	if (0==s)      panic("XGetGeometry Failed");
-  if (24!=depth) panic("Colordepth isn't 24 bits RGB");
+	if (0==s)      log_fatal("XGetGeometry Failed");
+  if (24!=depth) log_fatal("Colordepth isn't 24 bits RGB");
   sil_updateDisplay();
 	return 0;
 }
@@ -231,7 +228,7 @@ static int errorHandler(Display *d, XErrorEvent *e) {
 
 static int fatalHandler(Display *d) {
 	fprintf(stderr, "X11 fatal: display=%p\n", (void *)d);
-	panic("fatal X11 error");
+	log_fatal("fatal X11 error");
 	return 0;
 }
 
@@ -381,7 +378,7 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
 	return &se;
 }
 
-void sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
+UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
   display=NULL;
   ximage =NULL;
   UINT ret;
@@ -389,7 +386,8 @@ void sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
   fb=sil_initFB(width, height, SILTYPE_ARGB);
   if (NULL==fb) {
     log_info("ERR: Can't create framebuffer for display");
-    return;
+    sil_setErr(SILERR_NOTINIT);
+    return SILERR_NOTINIT;
   }
 
 
@@ -397,10 +395,10 @@ void sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
 	XSetIOErrorHandler(fatalHandler);
 
 	display = XOpenDisplay(NULL);
-	if (NULL==display) panic("cannot open display");
+	if (NULL==display) log_fatal("cannot open display");
 
 	XSizeHints *sizeHints = XAllocSizeHints();
-	if (NULL==sizeHints) panic("cannot allocate sizehints");
+	if (NULL==sizeHints) log_fatal("cannot allocate sizehints");
 
 
 	screen = DefaultScreen(display);
@@ -423,14 +421,15 @@ void sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
 	XMapRaised(display, window);
 
   visual=DefaultVisual(display,screen);
-
+  sil_setErr(SILERR_NOTINIT);
+  return SILERR_ALLOK;
 }
 
 void sil_updateDisplay() {
   GC gc;
 
   LayersToDisplay();
-	if (NULL==fb) panic("framebuffer not initialized");
+	if (NULL==fb) log_fatal("framebuffer not initialized");
   gc=XCreateGC(display, window, 0, &gcvalues);
   //printf("first pixels are: %d,%d,%d\n",fb.buf[0],fb.buf[1],fb.buf[2]);
   ximage = XCreateImage(display,visual,24,ZPixmap,0,(char *)fb->buf, fb->width,fb->height, 16,0);

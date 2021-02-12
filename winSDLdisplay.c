@@ -1,12 +1,13 @@
 #include <SDL2/SDL.h> 
 #include <stdio.h>
 #include "sil.h"
+#include "log.h"
 
 static SDL_Window *window=NULL;
 static SDL_Surface *surface;
 static SDL_Event event;
 static SDL_Renderer *renderer=NULL;
-static SILFB *scratch;
+static SILFB *scratch=NULL;
 static SILFB fb;
 static SILEVENT se;
 static UINT txt;
@@ -27,7 +28,7 @@ static void LayersToDisplay() {
   while (layer) {
     if (NULL==layer->texture) {
       /* no texture yet for this layer */
-      layer->texture=SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,layer->fb.width,layer->fb.height);
+      layer->texture=SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,layer->fb->width,layer->fb->height);
       if (NULL==layer->texture) {
         printf("Warning: can't create texture for layer: %s\n", SDL_GetError());
         continue;
@@ -41,18 +42,18 @@ static void LayersToDisplay() {
       layer->flags^=SILFLAG_ALPHACHANGED;
     }
     if (layer->flags&SILFLAG_INVISIBLE) continue;
-    if (layer->fb.changed) {
-      if (layer->fb.type==SILTYPE_ARGB) {
-        SDL_UpdateTexture(layer->texture,NULL,layer->fb.buf,(layer->fb.width)*4);
+    if (layer->fb->changed) {
+      if (layer->fb->type==SILTYPE_ARGB) {
+        SDL_UpdateTexture(layer->texture,NULL,layer->fb->buf,(layer->fb->width)*4);
       } else {
         /* not ARGB , convert it to ARGB                                         */
         /* use scratch buffer, but to do so, alter its width & height temporarly */
         scratchw=scratch->width;
         scratchh=scratch->height;
-        if (scratch->width>fb.width) scratch->width=fb.width;
-        if (scratch->height>fb.height) scratch->height=fb.height;
-        for (UINT x=0;x<scratch.width;x++) {
-          for (UINT y=0;y<scratch.height;y++) {
+        if (scratch->width>layer->fb->width) scratch->width=layer->fb->width;
+        if (scratch->height>layer->fb->height) scratch->height=layer->fb->height;
+        for (UINT x=0;x<scratch->width;x++) {
+          for (UINT y=0;y<scratch->height;y++) {
               sil_getPixelLayer(layer,x,y,&red,&green,&blue,&alpha);            
               sil_putPixelFB(scratch,x,y,red,green,blue,alpha);
           }
@@ -61,7 +62,7 @@ static void LayersToDisplay() {
         scratch->width=scratchw;
         scratch->height=scratchh;
       }
-      layer->fb.changed=0;
+      layer->fb->changed=0;
     }
     SR.x=layer->view.minx;
     SR.y=layer->view.miny;
@@ -77,12 +78,13 @@ static void LayersToDisplay() {
   
 }
 
-void sil_initDisplay(void *nop, UINT width, UINT height, char *title) {
+UINT sil_initDisplay(void *nop, UINT width, UINT height, char *title) {
   UINT err=0;
   window=SDL_CreateWindow(title,SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,width,height,0);
   if (NULL==window) {
     printf("ERROR: can't create window for display: %s\n",SDL_GetError());
-    return;
+    sil_setErr(SILERR_NOTINIT);
+    return SILERR_NOTINIT;
   }
 
   /* Since SDL creates a usable framebuffer on its own, its better to use that one directly */
@@ -96,16 +98,19 @@ void sil_initDisplay(void *nop, UINT width, UINT height, char *title) {
   scratch=sil_initFB(width,height,SILTYPE_ARGB);
   if (NULL==scratch) {
     log_info("ERR: Can't create scratch framebuffer for display");
-    return;
+    sil_setErr(SILERR_NOTINIT);
+    return SILERR_NOTINIT;
   }
 
   SDL_RaiseWindow(window);
   renderer=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED  );
   if (NULL==renderer) {
       printf("Could not create renderer: %s\n", SDL_GetError());
-      return;
+      sil_setErr(SILERR_NOTINIT);
+      return SILERR_NOTINIT;
   }
   SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
+  return SILERR_ALLOK;
 }
 
 void sil_updateDisplay() {
