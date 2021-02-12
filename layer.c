@@ -160,6 +160,13 @@ void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BY
   BYTE mixred,mixgreen,mixblue,mixalpha;
   float af,negaf;
 
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("blendPixelLayer on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   if (0==alpha) return; /* nothing to do */
   if (alpha<255) { 
     /* only calculate when its less then 100% opaque */
@@ -197,40 +204,102 @@ void sil_getPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE *red, BYTE *green, BY
   sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+  Manipulate flags for layers
+  SILFLAG_INVISIBLE Don't draw layer
+  SILFLAG_NOBLEND   Do not blend with existing colors
+
+  (SILFLAG_ALPHACHANGED is used internally)
+
+ *****************************************************************************/
+
 void sil_setFlagsLayer(SILLYR *layer,BYTE flags) {
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setFlags on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   layer->flags|=flags;
   sil_setErr(SILERR_ALLOK);
 }
 
 void sil_clearFlagsLayer(SILLYR *layer,BYTE flags) {
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("clearFlags on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   layer->flags^=flags;
   sil_setErr(SILERR_ALLOK);
 }
 
 UINT sil_checkFlagsLayer(SILLYR *layer,BYTE flags) {
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("checkFlags on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   sil_setErr(SILERR_ALLOK);
   if (layer->flags&flags) return 1;
   return 0;
 }
+
+
+/*****************************************************************************
+  Get bottom layer
+ *****************************************************************************/
 
 SILLYR *sil_getBottomLayer() {
   sil_setErr(SILERR_ALLOK);
   return bottom;
 }
 
+/*****************************************************************************
+  Get top most layer 
+ *****************************************************************************/
+
 SILLYR *sil_getTopLayer() {
   sil_setErr(SILERR_ALLOK);
   return top;
 }
 
+/*****************************************************************************
+  Remove layer
+ *****************************************************************************/
 void sil_destroyLayer(SILLYR *layer) {
   if ((layer)&&(layer->init)) {
     sil_destroyFB(layer->fb);
+    layer->init=0;
+    if (layer==bottom) {
+      bottom=layer->next;
+    } else {
+      layer->previous->next=layer->next;
+    }
+    free(layer);
+  } else {
+    log_warn("removing non-existing or non-initialized layer");
   }
   sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+  Set alpha blending for whole layer 
+  In: Layer context, alpha (0.0 ... 1.0) 1.0 is no transparency 
+ *****************************************************************************/
 void sil_setAlphaLayer(SILLYR *layer, float alpha) {
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setAlpha on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   if (alpha>1) alpha=1;
   if (alpha<=0) alpha=0;
   layer->alpha=alpha;
@@ -238,7 +307,21 @@ void sil_setAlphaLayer(SILLYR *layer, float alpha) {
   sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+  Set view of layer
+  Despite the dimensions and position of layer, it will only display pixels 
+  within this view. 
+  In: Layer context, x,y postion top left, x,y postion bottom right, relative
+      to top left position of layer itself
+ *****************************************************************************/
 void sil_setViewLayer(SILLYR *layer,UINT minx,UINT miny,UINT maxx,UINT maxy) {
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setView on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   if (minx>layer->fb->width) minx=layer->fb->width-1;
   if (maxx>layer->fb->width) maxx=layer->fb->width-1;
   if (miny>layer->fb->height) miny=layer->fb->height-1;
@@ -250,7 +333,18 @@ void sil_setViewLayer(SILLYR *layer,UINT minx,UINT miny,UINT maxx,UINT maxy) {
   sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+  Reset the view to display the whole layer
+  In: Layer context
+ *****************************************************************************/
 void sil_resetViewLayer(SILLYR *layer) {
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("resetView on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   layer->view.minx=0;
   layer->view.miny=0;
   layer->view.maxx=layer->fb->width;
@@ -258,11 +352,25 @@ void sil_resetViewLayer(SILLYR *layer) {
   sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+  Resize layer (used for cropping and turning) will create a temporary 
+  framebuffer
+
+  In: Layer context x,y top left, x,y bottom right, using the the top left 
+      position of the original layer as reference.
+ *****************************************************************************/
 UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT maxx,UINT maxy) {
   SILFB *tmpfb;
   BYTE red,green,blue,alpha;
   UINT err=0;
 
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("resetView on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   if (!layer->init) return SILERR_NOTINIT;
 
   /* no use to create 'negative' sizes... */
