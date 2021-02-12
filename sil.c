@@ -13,7 +13,6 @@
 
 static SILCONTEXT st;
 
-
 /*****************************************************************************
    initialize SIL context for library. It will be used to contain program 
    related stuff like logging parameters together
