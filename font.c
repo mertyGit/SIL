@@ -1,8 +1,30 @@
+/*
+
+   font.c CopyRight 2021 Remco Schellekens, see LICENSE for more details.
+
+   This file contains all functions for reading and using fonts in the "angelcode" format
+   (check https://www.angelcode.com/products/bmfont/doc/file_format.html ) 
+   Note: I don't implemented all options, fonts do have the following constrains:
+   - Only a single png file per font, extra will be ignored
+   - Its far from unicode ready
+   - Lines within font file may not exceed SILFONT_MAXWIDTH (or are chopped of)
+   - 
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include "lodepng.h"
 #include "sil.h"
+#include "log.h"
+
+/*****************************************************************************
+
+  Internal function, Initialize the font context
+
+ *****************************************************************************/
+
 
 static void initFont(SILFONT *font) {
   font->image=NULL;
@@ -29,7 +51,14 @@ static void initFont(SILFONT *font) {
 }
 
 
-/* Search for key in string, return value ( "key=value" ) */
+/*****************************************************************************
+
+  Internal function, get the value back for given (1st occurance) of key in 
+  given font. Expected a fully read line with spaces translated to tabs 
+  in font->line
+
+ *****************************************************************************/
+
 static char *strValue(SILFONT *font, char *key) {
   char *search=NULL;
   char *foundkey=NULL;
@@ -37,7 +66,18 @@ static char *strValue(SILFONT *font, char *key) {
   UINT cnt=0;
   BYTE state=0;
 
+#ifndef SIL_LIVEDANGEROUS
+  /* if font isn't initialized properly, get out */
+  if (NULL==font) {
+    log_warn("searching key/value in a non-initialized font");
+    sil_setErr(SILERR_NOTINIT);
+    return NULL;
+  }
+#endif
+  
   search=font->line;
+
+  /* scratch will be used as temporary buffer for holding value */
   memset(font->scratch,0,SILFONT_MAXWIDTH+1);
   while(state<4&&*search) {
     switch (state) {
@@ -50,15 +90,15 @@ static char *strValue(SILFONT *font, char *key) {
       case 1: /* looking for end of key, ending with '=' */
         if (*search=='=') {
           if (0==strncmp(foundkey,key,strlen(key))) {
-            /* thats the key we want */
+            /* thats the key we want  */
             state=2;
           } else {
-            /* search for next key */
+            /* nope, search further */
             state=0;
           }
         }
         break;
-      case 2: /* looking for begining of value */
+      case 2: /* Have key, so looking for begining of value */
         if (*search!='\t') {
           foundval=search;
           font->scratch[cnt++]=*search;
@@ -68,7 +108,7 @@ static char *strValue(SILFONT *font, char *key) {
           state=4;
         }
         break;
-      case 3: /* place end of string marker at end of value inside line */
+      case 3: /* read chars and place it in value until tab (or end) */
         if (*search=='\t') {
           state=4; /* end of value */
         }
@@ -78,13 +118,19 @@ static char *strValue(SILFONT *font, char *key) {
     search++;
   }
   if (font->scratch[0]) {
+    sil_setErr(SILERR_ALLOK);
     return font->scratch;
   } else {
+    sil_setErr(SILERR_WRONGFORMAT);
     return NULL;
   }
 }
 
-/* Return value part as int */
+/*****************************************************************************
+
+  Internal function : Return value in font->line for given key as int
+
+ *****************************************************************************/
 static int intValue(SILFONT *font, char *key) {
   int ret=0;
   char *p=NULL;
@@ -93,12 +139,28 @@ static int intValue(SILFONT *font, char *key) {
   if (p!=NULL) {
     ret=(int)strtol(p,NULL,10);
   }
+  sil_setErr(SILERR_ALLOK);
   return ret;
 }
 
 		
+/*****************************************************************************
+
+  Internal function : Check if section of font file is equal to given section 
+  returns 1 if it is , 0 if it isn't
+
+ *****************************************************************************/
 
 static BYTE isSection(SILFONT *font, char *section) {
+#ifndef SIL_LIVEDANGEROUS
+  /* if font isn't initialized properly, get out */
+  if (NULL==font) {
+    log_warn("looking for section in a non-initialized font");
+    sil_setErr(SILERR_NOTINIT);
+    return 0;
+  }
+#endif
+  sil_setErr(SILERR_ALLOK);
   if (0==strncmp(font->line,section,strlen(section))) {
     /* make sure keyword ends here; not triggering 'chars' when looking for 'char' */
     if (font->line[strlen(section)]=='\t') {
@@ -108,9 +170,15 @@ static BYTE isSection(SILFONT *font, char *section) {
   return 0;
 }
 
-UINT sil_loadFont(SILFONT *font, char *name) {
+/*****************************************************************************
+
+  Load font with given given filename
+  return NULL when fontfile can't be found or decoded
+
+ *****************************************************************************/
+SILFONT *sil_loadFont(char *name) {
   size_t len=0;
-  UINT err=0;
+  UINT err=SILERR_ALLOK;
   FILE *fp=NULL;
   signed int c=0;
   int cnt=0;
@@ -118,13 +186,23 @@ UINT sil_loadFont(SILFONT *font, char *name) {
   UINT kcnt=0;
   BYTE found,waschar,quote=0;
   char *file=NULL;
+  SILFONT *font;
 
+
+  font=calloc(1,sizeof(SILFONT));
+  if (NULL==font) {
+    log_info("ERR: Can't allocate memory for addLayer");
+    sil_setErr(SILERR_NOMEM);
+    return NULL;
+  }
   initFont(font); 
-
 
   /* Load font files */
   fp=fopen(name,"r");
   if (fp) {
+
+    /* readline line till newline/carriage return and replace all spaces */
+    /* (except those between quotes) with tabs                           */
     do {
       c=fgetc(fp);
       if (c=='"') {
@@ -174,7 +252,10 @@ UINT sil_loadFont(SILFONT *font, char *name) {
             ccnt++;
           } else {
             /* more char definitions then given in count on forehand */
-            return SILERR_WRONGFORMAT;
+            log_warn("File (%s) do have more character definitions then stated at beginning",name);
+            sil_setErr(SILERR_WRONGFORMAT);
+            free(font);
+            return NULL;
           }
         }
 
@@ -187,7 +268,10 @@ UINT sil_loadFont(SILFONT *font, char *name) {
             kcnt++;
           } else {
             /* more kerning definitions then given in count on forehand */
-            return SILERR_WRONGFORMAT;
+            log_warn("File (%s) do have more kerning definitions then stated at beginning",name);
+            sil_setErr(SILERR_WRONGFORMAT);
+            free(font);
+            return NULL;
           }
         }
 
@@ -215,6 +299,7 @@ UINT sil_loadFont(SILFONT *font, char *name) {
           if (file ) {
             err=lodepng_decode32_file(&font->image,&font->width,&font->height,file);
             if (err) {
+              log_err("Can't decode .png file (%s) : %d",file, err);
               switch (err) {
                 case 28:
                 case 29:
@@ -230,6 +315,7 @@ UINT sil_loadFont(SILFONT *font, char *name) {
                   err=SILERR_CANTDECODEPNG;
                   break;
               }
+              sil_setErr(SILERR_WRONGFORMAT);
             }
           }
           found=1;
@@ -275,30 +361,88 @@ UINT sil_loadFont(SILFONT *font, char *name) {
     } while(c!=EOF && 0==err) ;
     fclose(fp);
   } else {
+    log_err("Can't open given file (%s)",name);
     err=SILERR_CANTOPENFILE;
   }
-  return err;
+  if (SILERR_ALLOK!=err) {
+    sil_setErr(err);
+    /* throw away font if there was an error during decoding */
+    free(font);
+  }
+  return font;
 }
 
+/*****************************************************************************
+
+  get character definition of given id (charcode) within font. 
+  Will return NULL if not found. 
+  character definition is used to locate the character within the image file
+  and extra instruction how to draw it, like how many pixels to move the cursor
+  to the right and vertical offset
+
+ *****************************************************************************/
+
 SILFCHAR *sil_getCharFont(SILFONT *font, char c) {
+#ifndef SIL_LIVEDANGEROUS
+  /* if font isn't initialized properly, get out */
+  if ((NULL==font)||(NULL==font->image)) {
+    log_warn("retrieving charecter information from a non-initialized font");
+    sil_setErr(SILERR_NOTINIT);
+    return 0;
+  }
+#endif
   for (int i=0;i<(font->chars);i++) {
     if (font->cdefs[i].id==c) return &font->cdefs[i];
   }
   return NULL;
 }
 
+
+
+/*****************************************************************************
+
+  Find any kerning information in font related to combination of two chars.
+  Kerning is used to move characters closer to eachother if the outside boxes
+  can overlap without problems, for example, "W" and "A" in most fonts
+  Kerning can be disabled by using the SILTXT_NOKERNING flag when drawing text
+
+ *****************************************************************************/
 int sil_getKerningFont(SILFONT *font, char first, char second) {
+#ifndef SIL_LIVEDANGEROUS
+  /* if font isn't initialized properly, get out */
+  if ((NULL==font)||(NULL==font->image)) {
+    log_warn("retrieving kerning information from a non-initialized font");
+    sil_setErr(SILERR_NOTINIT);
+    return 0;
+  }
+#endif
   if ((0==first)||(0==second)) return 0;  /* kerning only usable between *two* existing chars... */
   for (int i=0;i<(font->kernings);i++) {
     if (((char)(font->kdefs[i].first)==first)&&((char)(font->kdefs[i].second)==second)) {
       return font->kdefs[i].amount;
     }
   }
+  sil_setErr(SILERR_ALLOK);
   return 0;
 }
 
+
+
+/*****************************************************************************
+
+  Get pixel values from fontimage from given x,y position (0,0 is topleft of image file)
+
+ *****************************************************************************/
 void sil_getPixelFont(SILFONT *font,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
   UINT pos=0;
+#ifndef SIL_LIVEDANGEROUS
+  /* if font isn't initialized properly, get out */
+  if ((NULL==font)||(NULL==font->image)) {
+    log_warn("retrieving pixels from a non-initialized font");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
 
   if ((x<font->width)&&(y<font->height)) { 
     pos=4*(x+y*(font->width));
@@ -307,19 +451,40 @@ void sil_getPixelFont(SILFONT *font,UINT x,UINT y, BYTE *red, BYTE *green, BYTE 
     *blue =font->image[pos+2];
     *alpha=font->image[pos+3];
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+
+  Set alpha factor of font (will be used against alpha values when drawing)
+
+ *****************************************************************************/
 void sil_setAlphaFont(SILFONT *font, float alpha) {
+#ifndef SIL_LIVEDANGEROUS
+  /* if font isn't initialized properly, get out */
+  if ((NULL==font)||(NULL==font->image)) {
+    log_warn("setting alpha in a non-initialized font");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   if (alpha>1) alpha=1;
   if (alpha<=0) alpha=0;
   font->alpha=alpha;
+  sil_setErr(SILERR_ALLOK);
 }
 
 
-/* purge font out of memory, clear contents */
+/*****************************************************************************
+
+   purge font out of memory
+
+ *****************************************************************************/
 void sil_destroyFont(SILFONT *font) {
-  if (font->image) free(font->image);
-  if (font->cdefs) free(font->cdefs);
-  if (font->kdefs) free(font->kdefs);
-  initFont(font);
+  if (font) {
+    if (font->image) free(font->image);
+    if (font->cdefs) free(font->cdefs);
+    if (font->kdefs) free(font->kdefs);
+    free(font);
+  }
 }

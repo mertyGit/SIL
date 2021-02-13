@@ -18,12 +18,11 @@ int main() {
   SILFB *fb=NULL;
   unsigned char r,g,b;
   SILEVENT *se=NULL;
-  SILLYR fonttest;
-  SILLYR *foreground,*background,*one,*two,*three,*test,*ontop,*both,*bothnoblend;
+  SILLYR *fonttest,*foreground,*background,*one,*two,*three,*test,*ontop,*both,*bothnoblend;
   UINT err;
   BYTE move=0;
   BYTE update=0;
-  SILFONT font;
+  SILFONT *font;
 
 
   printf("sil_init...\n");
@@ -167,45 +166,42 @@ int main() {
     return 16;
   }
 
-/*
   printf("sil_addLayer fonttest...\n");
-  err=sil_addLayer(&fonttest,500,200,50,710,0);
-  if (err) {
-    printf("ERROR: %d\n",err);
-    return 1;
+  fonttest=sil_addLayer(500,200,50,710,0);
+  if (NULL==fonttest) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 17;
   }
   printf("painting fonttest ...\n");
-  sil_paintLayer(&fonttest,180,40,40,255);
-  sil_applyFilterLayer(&fonttest,SILFLTR_BORDER);
+  sil_paintLayer(fonttest,180,40,40,255);
+  sil_applyFilterLayer(fonttest,SILFLTR_BORDER);
   
 
   printf("sil_loadFont...\n");
-  err=sil_loadFont(&font,"bahnschrift.fnt");
-  if (err) {
-    printf("ERROR: %d\n",err);
-    return 1;
+  font=sil_loadFont("bahnschrift.fnt");
+  if (NULL==font) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 18;
   }
 
   printf("sil_drawTextLayer with kerning and original color ...\n");
-  sil_drawTextLayer(&fonttest,&font,"The quick brown fox jumps over the lazy dog",5,5,SILTXT_KEEPCOLOR);
+  sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5,SILTXT_KEEPCOLOR);
 
-  sil_setAlphaFont(&font,0.5);
+  sil_setAlphaFont(font,0.5);
   printf("...and without kerning but with blending ...\n");
-  sil_drawTextLayer(&fonttest,&font,"The quick brown fox jumps over the lazy dog",5,5+font.base,SILTXT_NOKERNING|SILTXT_BLENDLAYER);
+  sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+(font->base),SILTXT_NOKERNING|SILTXT_BLENDLAYER);
 
   printf("...and with alpha set, no blending ..\n");
-  sil_drawTextLayer(&fonttest,&font,"The quick brown fox jumps over the lazy dog",5,5+2*font.base,0);
-  sil_setAlphaFont(&font,1.0);
+  sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+2*(font->base),0);
+  sil_setAlphaFont(font,1.0);
 
   printf("...and now with monospaced...\n");
-  sil_drawTextLayer(&fonttest,&font,"The Monospace 123456790",5,5+3*font.base,SILTXT_MONOSPACE);
+  sil_drawTextLayer(fonttest,font,"The Monospace 123456790",5,5+3*(font->base),SILTXT_MONOSPACE);
 
   sil_setForegroundColor(0,0,255,150);
   printf("...and now with blue color...\n");
-  sil_drawTextLayer(&fonttest,&font,"Lets turn BLUE",5,5+4*font.base,0);
+  sil_drawTextLayer(fonttest,font,"Lets turn BLUE",5,5+4*(font->base),0);
 
-
-*/
 
   printf("sil_updateDisplay...\n");
   sil_updateDisplay();
@@ -294,7 +290,7 @@ int main() {
 
 
   printf("sil_destroyFont...\n");
-  sil_destroyFont(&font);
+  sil_destroyFont(font);
 
   printf("sil_destroyDisplay...\n");
   sil_destroySIL();

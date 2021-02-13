@@ -242,7 +242,7 @@ UINT sil_checkFlagsLayer(SILLYR *layer,BYTE flags) {
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("checkFlags on layer that isn't initialized, or with uninitialized FB");
     sil_setErr(SILERR_NOTINIT);
-    return;
+    return SILERR_NOTINIT;
   }
 #endif
   sil_setErr(SILERR_ALLOK);
@@ -368,7 +368,7 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT maxx,UINT maxy) {
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("resetView on layer that isn't initialized, or with uninitialized FB");
     sil_setErr(SILERR_NOTINIT);
-    return;
+    return SILERR_NOTINIT;
   }
 #endif
   if (!layer->init) return SILERR_NOTINIT;

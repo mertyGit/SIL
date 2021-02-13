@@ -177,7 +177,7 @@ typedef struct _SILFONT {
   UINT mspace;
 } SILFONT;
 
-UINT sil_loadFont(SILFONT *, char *);
+SILFONT *sil_loadFont(char *);
 void sil_getPixelFont(SILFONT *,UINT,UINT,BYTE *,BYTE*, BYTE*, BYTE* );
 SILFCHAR *sil_getCharFont(SILFONT *, char);
 int sil_getKerningFont(SILFONT *, char, char);
