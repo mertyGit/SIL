@@ -21,10 +21,14 @@
    SILFLTR_DARKEN:         Substract 20% more white from all pixels
    SILFLTR_BORDER:         Draw a dotted border at the edges of the layer
    SILFLTR_AUTOCROPALPHA:  Autocrop layer based on pixels with zero alpha
+   SILFLTR_AUTOCROPFIRST:  Autocrop layer based on pixels that are the same 
+                           as first pixel topleft corner of image
    SILFLTR_BLUR:           Blur the layer (3x3 box blur)
    SILFLTR_GRAYSCALE:      Remove color from layer
+   SILFLTR_REVERSECOLOR:   Reverse colorspectrum 
    SILFLTR_FLIPX:          Flip layer over the X-axis
    SILFLTR_FLIPY:          Flip layer over the Y-axis
+   SILFLTR_ROTATECOLOR:    rotate colorchannels Red=Green,Green=Blue,Blue=Red
 
   
  Returns SILERR_ALLOK if all wend well, otherwise the errorcode
@@ -114,6 +118,26 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
       }
       break;
 
+    case SILFLTR_AUTOCROPFIRST:
+      minx=layer->fb->width-1;
+      miny=layer->fb->height-1;
+      maxx=0;
+      maxy=0;
+      sil_getPixelLayer(layer,0,0,&red2,&green2,&blue2,&alpha2); 
+      for (int x=0;x<layer->fb->width;x++) {
+        for (int y=0;y<layer->fb->height;y++) {
+          sil_getPixelLayer(layer,x,y,&red,&green,&blue,&alpha); 
+          if ((red2!=red)||(green2!=green)||(blue2!=blue)) {
+            if (x<minx) minx=x;
+            if (y<miny) miny=y;
+            if (maxx<x) maxx=x;
+            if (maxy<y) maxy=y;
+          } 
+        }
+      }
+      err=sil_resizeLayer(layer,minx,miny,maxx+1,maxy+1);
+      break;
+
     case SILFLTR_AUTOCROPALPHA:
       minx=layer->fb->width-1;
       miny=layer->fb->height-1;
@@ -132,6 +156,7 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
       }
       err=sil_resizeLayer(layer,minx,miny,maxx+1,maxy+1);
       break;
+
     case SILFLTR_FLIPX:
       for (int x=0;x<layer->fb->width;x++) {
         for (int y=0;y<(layer->fb->height)/2;y++) {
@@ -142,6 +167,7 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
         }
       }
       break;
+
     case SILFLTR_FLIPY:
       for (int x=0;x<(layer->fb->width)/2;x++) {
         for (int y=0;y<layer->fb->height;y++) {
@@ -152,6 +178,7 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
         }
       }
       break;
+
     case SILFLTR_GRAYSCALE:
       for (int x=0;x<layer->fb->width;x++) {
         for (int y=0;y<layer->fb->height;y++) {
@@ -163,6 +190,7 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
         }
       }
       break;
+
     case SILFLTR_REVERSECOLOR:
       for (int x=0;x<layer->fb->width;x++) {
         for (int y=0;y<layer->fb->height;y++) {
@@ -171,6 +199,16 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
         }
       }
       break;
+
+    case SILFLTR_ROTATECOLOR:
+      for (int x=0;x<layer->fb->width;x++) {
+        for (int y=0;y<layer->fb->height;y++) {
+          sil_getPixelLayer(layer,x,y,&red,&green,&blue,&alpha); 
+          sil_putPixelLayer(layer,x,y,green,blue,red,alpha); 
+        }
+      }
+      break;
+
     case SILFLTR_BLUR:
       /* for this, we need to create a seperate FB temporary */
 

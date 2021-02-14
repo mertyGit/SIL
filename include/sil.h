@@ -200,6 +200,7 @@ void sil_destroyFont(SILFONT *);
 #define SILFLTR_BORDER         8
 #define SILFLTR_DARKEN         9
 #define SILFLTR_LIGHTEN       10
+#define SILFLTR_ROTATECOLOR   11
 
 
 UINT sil_applyFilterLayer(SILLYR *, BYTE);
@@ -221,7 +222,7 @@ void sil_setBackgroundColor(BYTE,BYTE,BYTE,BYTE);
 void sil_getForegroundColor(BYTE *,BYTE *, BYTE *, BYTE *);
 void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 
-/* x11display.c  / w32display.c / lnxdisplay.c */
+/* x11display.c  / winSDLdisplay.c / winGDIdisplay.c / lnxdisplay.c */
 
 #define SILDISP_NOTHING     0
 #define SILDISP_QUIT        1

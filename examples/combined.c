@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <time.h>
-#include "lodepng.h"
 #ifdef SIL_W32
   #include <windows.h>
 #endif
@@ -15,7 +13,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 int main() {
 #endif
 
-  SILFB *fb=NULL;
   unsigned char r,g,b;
   SILEVENT *se=NULL;
   SILLYR *fonttest,*foreground,*background,*one,*two,*three,*test,*ontop,*both,*bothnoblend;
