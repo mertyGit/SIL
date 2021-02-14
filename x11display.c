@@ -1,3 +1,21 @@
+/*
+
+   x11display.c CopyRight 2021 Remco Schellekens, see LICENSE for more details.
+
+   This file contains all functions for displaying the layers on a X-Windows environment using standard
+   X11 library.
+   It will do so by using a framebuffer as source for a bitmap inside a fixed size window. Every time
+   framebuffer is changed, bitmap is replaced.
+
+   every "...display.c" file should have 5 functions
+   -sil_initDisplay        ; create initial display, called via initializing SIL
+   -sil_updateDisplay      ; update display, will check all layers updates display accordingly
+   -sil_destroyDisplay     ; remove display, called via destroying SIL
+   -sil_getEventDisplay    ; Wait or get first event ( mouse / keys or closing window )
+   -sil_getTypefromDisplay ; will return the "native" color type of the display
+
+*/
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
@@ -29,6 +47,12 @@ UINT sil_getTypefromDisplay() {
 }
 
 
+/*****************************************************************************
+
+  Ugly hack to prevent autorepeat maddness
+
+ *****************************************************************************/
+
 UINT was_it_auto_repeat(Display * d, XEvent * event, int current_type, int next_type){
   /*  Holding down a key will cause 'autorepeat' to send fake keyup/keydown events, but we want to ignore these: '*/
   if(event->type == current_type && XEventsQueued(d, QueuedAfterReading)){
@@ -39,6 +63,13 @@ UINT was_it_auto_repeat(Display * d, XEvent * event, int current_type, int next_
   return 0;
 }
 
+/*****************************************************************************
+
+  Internal function to get status of special keys (shift,menu,control,caps)
+  returns byte with bits set for given keys. Note: it doesn't distinguish
+  between keys on the right or left side of keyboard
+
+ *****************************************************************************/
 
 static BYTE modifiers2sil(UINT state) {
   BYTE ret=0;
@@ -48,6 +79,13 @@ static BYTE modifiers2sil(UINT state) {
   if (state&LockMask)    ret|=SILKM_CAPS;
   return ret;
 }
+
+/*****************************************************************************
+
+  Internal function to X-Windows virtual key codes to SIL keycodes
+  note that there will be no difference in left or right keys (ctrl,alt,shift)
+
+ *****************************************************************************/
 
 static UINT keycode2sil(UINT code) {
 
@@ -156,55 +194,11 @@ static UINT keycode2sil(UINT code) {
   return 0;
 }
 
+/*****************************************************************************
 
-static void LayersToDisplay() {
-  SILLYR *layer=sil_getBottomLayer();
-  BYTE red,green,blue,alpha;
-  BYTE mixred,mixgreen,mixblue,mixalpha;
-  UINT pos,pos2;
-  float af;
-  float negaf;
-  SILBOX rview;
-  int absx,absy;
+  Standard internal handlers for X11 window events & errors
 
-  sil_clearFB(fb);
-  while (layer) {
-    if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      for (int x=layer->view.minx; x<layer->view.maxx; x++) {
-        for (int y=layer->view.miny; y<layer->view.maxy; y++) {
-          int absx=x+layer->relx-layer->view.minx;
-          int absy=y+layer->rely-layer->view.miny;
-          int rx=x;
-          int ry=y;
-
-          /* prevent drawing outside borders of display */
-          if ((absx>=fb->width)||(absy>=fb->height)) continue;
-
-          sil_getPixelLayer(layer,rx,ry,&red,&green,&blue,&alpha);
-          if (0==alpha) continue; /* nothing to do if completely transparant */
-          alpha=alpha*layer->alpha;
-          if (255==alpha) {
-            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
-          } else {
-            sil_getPixelFB(fb,absx,absy,&mixred,&mixgreen,&mixblue,&mixalpha);
-            af=((float)alpha)/255;
-            negaf=1-af;
-            red=red*af+negaf*mixred;
-            green=green*af+negaf*mixgreen;
-            blue=blue*af+negaf*mixblue;
-            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
-          }
-        }
-      }
-    }
-    layer=layer->next;
-  }
-}
-
-
-
-/* Standard handlers for X11 window events & errors */
-
+ *****************************************************************************/
 static int expose(XEvent *e) {
 	Window root;
 	int x, y;
@@ -215,6 +209,7 @@ static int expose(XEvent *e) {
 
 	Status s = XGetGeometry(display, window, &root, &x, &y, &width, &height,
 			&border, &depth);
+  /* can't do nothing if parameters are wrong, just exit */
 	if (0==s)      log_fatal("XGetGeometry Failed");
   if (24!=depth) log_fatal("Colordepth isn't 24 bits RGB");
   sil_updateDisplay();
@@ -232,6 +227,33 @@ static int fatalHandler(Display *d) {
 	return 0;
 }
 
+/*****************************************************************************
+
+  Get event from display
+  depending on abilities to do so, setting "wait" on 1 will wait until event
+  comes (blocking) and setting to zero will only poll.
+
+  It will return a SILEVENT, containing:
+   * type (SILDISP... types, from key-up/down till mouse events)
+   * val => MOUSE_DOWN/UP: which button is pressed 1:left 2:middle 3:right
+            MOUSEWHEEL   : direction of wheel 1:up 2:down
+            KEY_DOWN/UP  : ascii value of key(-combination)
+
+   * x,y       => position of mouse at that time
+   * code      => 'native' keycode (in this case windows 'virtual keycode')
+   * key       => translated 'common' SIL keycode
+   * modifiers => byte with bits reflecting status of shift,alt,ctrl and caps
+
+   Note that keycodes are -trying to- refferring to the pressed key,
+   *not the ascii or unicode code that is printed on it *. To figure out if 'a'
+   or 'A' is typed , check for keycode 'a' + modifiers "Shift" or just get the
+   'val', where OS is trying to translate keycode to ascii.
+   (Actually, unicode, but I'm lazy and only want single-byte codes ... )
+
+   Warning: This code is ugly and support for keyboard events are shaky....
+
+ *****************************************************************************/
+
 SILEVENT *sil_getEventDisplay(BYTE wait) {
 	int stop= 0;
 	XEvent event;
@@ -240,6 +262,7 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
   int downkeys=0;
 
   do {
+    /* another ugly hack to check if keys are *realy* pressed */
     XQueryKeymap(display,keys_return);
     downkeys=0;
     for (int i=0;i<32;i++) 
@@ -304,7 +327,6 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
                break;
              case Button4:
              case Button5:
-             /* ignore "button up" of scrollwheel */
                se.type=SILDISP_NOTHING;
                break;
           }
@@ -377,11 +399,21 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
 	return &se;
 }
 
+/*****************************************************************************
+
+  Initialize Display (called by initSIL) ignoring first option, only needed
+  for windows/GDI
+  other options are width,height and title of window
+
+ *****************************************************************************/
+
+
 UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
   display=NULL;
   ximage =NULL;
   UINT ret;
-
+  
+  /* first, create a framebuffer where all layer will go to */
   fb=sil_initFB(width, height, SILTYPE_ARGB);
   if (NULL==fb) {
     log_info("ERR: Can't create framebuffer for display");
@@ -390,9 +422,11 @@ UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
   }
 
 
+  /* set handlers */
 	XSetErrorHandler(errorHandler);
 	XSetIOErrorHandler(fatalHandler);
 
+  /* connect to X11 server (make sure to set DISPLAY environment var ! )*/
 	display = XOpenDisplay(NULL);
 	if (NULL==display) log_fatal("cannot open display");
 
@@ -400,12 +434,15 @@ UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
 	if (NULL==sizeHints) log_fatal("cannot allocate sizehints");
 
 
+  /* just take first display */
 	screen = DefaultScreen(display);
 
+  /* create window */
 	window = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0,
     width, height, 5, WhitePixel(display, screen),
     BlackPixel(display, screen));
 
+  /* listen for delete messages (clicking on close window, or Xwindows stopping ) */
 	wm_delete_message = XInternAtom(display, "WM_DELETE_WINDOW", False);
 	XSetWMProtocols(display, window, &wm_delete_message, 1);
 
@@ -415,8 +452,12 @@ UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
 
 	Xutf8SetWMProperties(display,window,title,title,NULL,0,sizeHints,NULL,NULL);
 	XFree(sizeHints);
+
+  /* tell them we need keys,pointers & button events */
 	XSelectInput(display, window, ExposureMask | KeyPressMask | PointerMotionMask| ButtonPressMask | ButtonReleaseMask);
 	context = XCreateGC(display, window, 0, 0);
+
+  /* raise the window */
 	XMapRaised(display, window);
 
   visual=DefaultVisual(display,screen);
@@ -424,17 +465,36 @@ UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
   return SILERR_ALLOK;
 }
 
+/*****************************************************************************
+
+  Update Display
+
+ *****************************************************************************/
+
 void sil_updateDisplay() {
   GC gc;
 
-  LayersToDisplay();
 	if (NULL==fb) log_fatal("framebuffer not initialized");
+  LayersToFB(fb);
+  
+  /* create colormap */
   gc=XCreateGC(display, window, 0, &gcvalues);
-  //printf("first pixels are: %d,%d,%d\n",fb.buf[0],fb.buf[1],fb.buf[2]);
+
+  /* create image from framebuffer */
   ximage = XCreateImage(display,visual,24,ZPixmap,0,(char *)fb->buf, fb->width,fb->height, 16,0);
+
+  /* RGBA like intel platforms */
   ximage->byte_order=LSBFirst;
+
+  /* place image on screen */
   XPutImage(display,window,gc,ximage,0,0,0,0, fb->width, fb->height);
 }
+
+/*****************************************************************************
+
+  Destroy display information (called by destroy SIL, to cleanup everything )
+
+ *****************************************************************************/
 
 void sil_destroyDisplay() {
 	if (NULL != display) {

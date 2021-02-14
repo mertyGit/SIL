@@ -1,13 +1,11 @@
 /*
 
-   winGDIdisplay.c CopyRight 2021 Remco Schellekens, see LICENSE for more details.
+   winSDLdisplay.c CopyRight 2021 Remco Schellekens, see LICENSE for more details.
 
-   This file contains all functions for displaying the layers on a Windows environment, using standard
-   (non-hardware accelerated) GDI API.
-   It will do so by using a framebuffer as source for a bitmap inside a fixed size window. Every time
-   framebuffer is changed, bitmap is replaced.
-   This isn't the fastest method, however, it will come close to the usual "software framebuffer" use
-   on non-hardware accelerated platforms. If you want speed, use additional SDL one (winSDLdisplay.c)
+   This file contains all functions for displaying the layers on a Windows environment, using SDL
+   libary.
+   Every updated layer(-framebuffer) will be translated to an texture that can be loaded into
+   the gpu and mapped on eachother, using the power of hardware acceleration.
 
    every "...display.c" file should have 5 functions
    -sil_initDisplay        ; create initial display, called via initializing SIL
