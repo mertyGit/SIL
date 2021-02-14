@@ -1,3 +1,10 @@
+/*
+
+   log.c Copyright (c) 2021 Remco Schellekens, see LICENSE for more details
+   This file implements a stand-alone logging functionality which can be 
+   used for multiple c projects
+
+*/
 #include <sys/time.h>
 #include <time.h>
 #include <stdio.h>
@@ -10,13 +17,6 @@
 #include "log.h"
 
 
-/*
-
-   log.c Copyright (c) 2021 Remco Schellekens, see LICENSE for more details
-   This file implements a stand-alone logging functionality which can be 
-   used for multiple c projects
-
-*/
 
 
 /*****************************************************************************

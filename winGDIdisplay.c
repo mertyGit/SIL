@@ -1,3 +1,23 @@
+/*
+
+   winGDIdisplay.c CopyRight 2021 Remco Schellekens, see LICENSE for more details.
+
+   This file contains all functions for displaying the layers on a Windows environment, using standard
+   (non-hardware accelerated) GDI API.
+   It will do so by using a framebuffer as source for a bitmap inside a fixed size window. Every time 
+   framebuffer is changed, bitmap is replaced.
+   This isn't the fastest method, however, it will come close to the usual "software framebuffer" use
+   on non-hardware accelerated platforms. If you want speed, use additional SDL one (winSDLdisplay.c)
+
+   every "...display.c" file should have 5 functions
+   -sil_initDisplay        ; create initial display, called via initializing SIL
+   -sil_updateDisplay      ; update display, will check all layers updates display accordingly
+   -sil_destroyDisplay     ; remove display, called via destroying SIL
+   -sil_getEventDisplay    ; Wait or get first event ( mouse / keys or closing window )
+   -sil_getTypefromDisplay ; will return the "native" color type of the display
+
+*/
+
 #include <windows.h>
 #include <windowsx.h>
 #include <stdio.h>
@@ -12,63 +32,39 @@ typedef struct {
   BITMAPINFO  *bitmapInfo;
   unsigned int w;
   unsigned int h;
-} SWindowData_Win;
+} SIL_WINDOW_DATA;
 
-static SWindowData_Win win;
+static SIL_WINDOW_DATA win;
 static WCHAR name[1000];
 static SILFB *fb;
 static SILEVENT se;
 static HINSTANCE hInstance;
 
+/*****************************************************************************
 
-void LayersToDisplay() {
-  SILLYR *layer=sil_getBottomLayer();
-  BYTE red,green,blue,alpha;
-  BYTE mixred,mixgreen,mixblue,mixalpha;
-  UINT pos,pos2;
-  float af;
-  float negaf;
-  SILBOX rview;
-  int absx,absy;
+  retrieve color type from Display (SILTYPE... , see framebuffer.c for info)
+  Used as "default" when no type is given when creating framebuffer
+  Usually, it is the same type as the primary framebuffer the displayfuntions
+  are using
 
-  sil_clearFB(fb);
-  while (layer) {
-    if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      for (int x=layer->view.minx; x<layer->view.maxx; x++) {
-        for (int y=layer->view.miny; y<layer->view.maxy; y++) {
-          int absx=x+layer->relx-layer->view.minx;
-          int absy=y+layer->rely-layer->view.miny;
-          int rx=x;
-          int ry=y;
-
-          /* prevent drawing outside borders of display */
-          if ((absx>=fb->width)||(absy>=fb->height)) continue;
-
-          sil_getPixelLayer(layer,rx,ry,&red,&green,&blue,&alpha);
-          if (0==alpha) continue; /* nothing to do if completely transparant */
-          alpha=alpha*layer->alpha;
-          if (255==alpha) {
-            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
-          } else {
-            sil_getPixelFB(fb,absx,absy,&mixred,&mixgreen,&mixblue,&mixalpha);
-            af=((float)alpha)/255;
-            negaf=1-af;
-            red=red*af+negaf*mixred;
-            green=green*af+negaf*mixgreen;
-            blue=blue*af+negaf*mixblue;
-            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
-          }
-        }
-      }
-    }
-    layer=layer->next;
-  }
-}
-
+ *****************************************************************************/
 
 UINT sil_getTypefromDisplay() {
+  if (NULL==fb) {
+    log_warn("trying to get display color type from non-initialized display");
+    sil_setErr(SILERR_NOTINIT);
+    return 0;
+  }
   return fb->type;
 }
+
+/*****************************************************************************
+  
+  Internal function to get status of special keys (shift,menu,control,caps) 
+  returns byte with bits set for given keys. Note: it doesn't distinguish 
+  between keys on the right or left side of keyboard
+
+ *****************************************************************************/
 
 static BYTE modifiers2sil() {
   BYTE ret=0;
@@ -79,6 +75,11 @@ static BYTE modifiers2sil() {
   return ret;
 }
 
+/*****************************************************************************
+  
+  Internal function to map Windows virtual key codes to SIL keycodes
+
+ *****************************************************************************/
 static UINT code2sil(WPARAM wParam) {
   
   switch(wParam) {
@@ -171,7 +172,7 @@ static UINT code2sil(WPARAM wParam) {
     case VK_OEM_1:      return SILKY_SEMICOLON;
     case VK_OEM_PLUS:   return SILKY_PLUS;
     case VK_OEM_COMMA:  return SILKY_COMMA;
-    case 0xBD:          return SILKY_MINUS;
+    case VK_OEM_MINUS:  return SILKY_MINUS;
     case VK_OEM_PERIOD: return SILKY_PERIOD;
     case VK_OEM_2:      return SILKY_SLASH;
     case VK_OEM_3:      return SILKY_ACUTE;
@@ -184,6 +185,13 @@ static UINT code2sil(WPARAM wParam) {
 }
 
 
+/*****************************************************************************
+  
+  Initialize Display (called by initSIL) only for GDI, we need to have the "hIntance" 
+  of WinMain call (SDL can use its own, using flag DSL_MAIN_HANDLED)
+  other options are width,height and title of window
+
+ *****************************************************************************/
 UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   unsigned char *image;
   unsigned error;
@@ -191,8 +199,11 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   int cnt=0;
   RECT sz;
 
+  /* hI = HINSTANCE is returned by calling WinMain, therefore should be given to SIL */
   hInstance=(HINSTANCE) hI;
 
+  
+  /* this framebuffer will be dedicated for the window */
   fb=sil_initFB(width, height, SILTYPE_ARGB);
   if (NULL==fb) {
     log_info("ERR: Can't create framebuffer for display");
@@ -200,6 +211,7 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
     return SILERR_NOMEM;
   }
 
+  /* simple C-string to more unicode "widechar" string */
   MultiByteToWideChar(CP_ACP,0,title,-1,(LPWSTR)name,sizeof(name)-1);
 
   wc.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
@@ -209,15 +221,17 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   wc.lpfnWndProc   = WndProc;
   wc.hCursor       = LoadCursor(0, IDC_ARROW);
 
+  /* Set windows options */
   RegisterClassW(&wc);
 
+  /* and create the window */
   win.window=CreateWindowExW(
-    0,
-    wc.lpszClassName,wc.lpszClassName,
+    0,     /* WS_EX_... possibilities                          */
+    wc.lpszClassName,wc.lpszClassName, /* should be the same ? */
     WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
-    0,0,
+    0,0,   /* initial position of window (left upper corner)   */
     fb->width+6,fb->height+30,
-    0,0,0,0
+    NULL,NULL,NULL,NULL /* no hWndParent,hMenu,hInstance or lpParam to set */
   );
 
   if (NULL==win.window) {
@@ -227,14 +241,17 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
     return SILERR_NOTINIT;
   }
 
+  /* display window (nothing in it, yet) */
   ShowWindow(win.window, SW_NORMAL);
+
+  /* now create a bitmap that has the same colordepth and dimensions as our framebuffer    */
   win.bitmapInfo = (BITMAPINFO  *) calloc(1,sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) *3);
   win.bitmapInfo->bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
   win.bitmapInfo->bmiHeader.biPlanes      = 1;
   win.bitmapInfo->bmiHeader.biBitCount    = 32;
   win.bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
   win.bitmapInfo->bmiHeader.biWidth       = fb->width;
-  win.bitmapInfo->bmiHeader.biHeight      = -fb->height;
+  win.bitmapInfo->bmiHeader.biHeight      = -fb->height; /* yup, minus, from bottom to top */
   win.bitmapInfo->bmiColors[0].rgbRed     = 0xff;
   win.bitmapInfo->bmiColors[1].rgbGreen   = 0xff;
   win.bitmapInfo->bmiColors[2].rgbBlue    = 0xff;
@@ -244,29 +261,84 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
 
 }
 
+/*****************************************************************************
+  
+  Update Display
+
+ *****************************************************************************/
 void sil_updateDisplay() {
   HDC         hdc;
 
-  LayersToDisplay();
+  /* get all layerinformation into a single fb */
+  LayersToFB(fb);
+
+  /* get device context (GDI handle) */
   hdc = GetDC(win.window);
-  StretchDIBits(hdc, 0, 0, fb->width, fb->height, 0, 0, fb->width, fb->height, 
-    fb->buf, win.bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
-  ValidateRect(win.window,0);
+
+  /* now "stretch" the framebuffer over the earlier created bitmap */
+  /* since sizes are the same, there will be no scaling */
+  StretchDIBits(
+    hdc,                    /* GDI context                      */
+    0, 0,                   /* upper left corner of destination */
+    fb->width, fb->height,  /* width/height of destination      */
+    0, 0,                   /* upper left corner of source (FB) */
+    fb->width, fb->height,  /* width/height of source           */
+    fb->buf,                /* pointer source pixels            */
+    win.bitmapInfo,         /* pointer to window bitmap         */
+    DIB_RGB_COLORS,         /* use RGB values                   */
+    SRCCOPY                 /* just plain-old-copy              */
+  );
+  ValidateRect(win.window,NULL);
+
+  /* release device context (GDI handle) */
   ReleaseDC(win.window,hdc);
 }
 
+/*****************************************************************************
+  
+  Destroy display information (called by destroy SIL, to cleanup everything )
+
+ *****************************************************************************/
 void sil_destroyDisplay() { 
   if (fb->type) sil_destroyFB(fb);
 }
 
+/*****************************************************************************
+  
+  Get event from display
+  depending on abilities to do so, setting "wait" on 1 will wait until event 
+  comes (blocking) and setting to zero will only poll.
+  However, on Windows platform we only use blocking wait 
+  (TODO: using PeekMessage together with GetMessage to fix this )
+
+  It will return a SILEVENT, containing:
+   * type (SILDISP... types, from key-up/down till mouse events)
+   * val => MOUSE_DOWN/UP: which button is pressed 1:left 2:middle 3:right
+            MOUSEWHEEL   : direction of wheel 1:up 2:down
+            KEY_DOWN/UP  : ascii value of key(-combination)
+    
+   * x,y       => position of mouse at that time
+   * code      => 'native' keycode (in this case windows 'virtual keycode')
+   * key       => translated 'common' SIL keycode 
+   * modifiers => byte with bits reflecting status of shift,alt,ctrl and caps
+
+   Note that keycodes are -trying to- refferring to the pressed key, 
+   *not the ascii or unicode code that is printed on it *. To figure out if 'a'
+   or 'A' is typed , check for keycode 'a' + modifiers "Shift" or just get the
+   'val', where OS is trying to translate keycode to ascii.
+   (Actually, unicode, but I'm lazy and only want single-byte codes ... )
+
+ *****************************************************************************/
 SILEVENT *sil_getEventDisplay(BYTE wait) {
   MSG  msg;
 
   se.type=SILDISP_NOTHING;
   se.val=0;
-  se.val2=0;
   se.x=0;
   se.y=0;
+  se.code=0;
+  se.key=0;
+  se.modifiers=0;
   while ((SILDISP_NOTHING==se.type)&&(GetMessage(&msg, NULL, 0, 0))) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
@@ -275,6 +347,12 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
 }
 
 
+/*****************************************************************************
+  
+  Event handler called when window receives an event, indirectly via 
+  "DispatchMessage"
+
+ *****************************************************************************/
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   HDC         hdc;

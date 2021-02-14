@@ -15,6 +15,7 @@
 #include "log.h"
 #include "sil.h"
 
+
 /*****************************************************************************
   Initialize Framebuffer
   In: width & height of framebuffer + RGB format

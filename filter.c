@@ -1,17 +1,63 @@
+/*
+
+   filter.c CopyRight 2021 Remco Schellekens, see LICENSE for more details.
+
+   This file contains all functions for applying filters to layers
+   All filters are permanent and not reversable, in some cases a temporary
+   framebuffer has to be created, so might costs temporary memory
+
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "sil.h"
 #include "log.h"
 
+
+/*****************************************************************************
+  Applyfilter to given layer
+  filter can be :
+   SILFLTR_LIGHTEN:        Add 20% more white to all pixels
+   SILFLTR_DARKEN:         Substract 20% more white from all pixels
+   SILFLTR_BORDER:         Draw a dotted border at the edges of the layer
+   SILFLTR_AUTOCROPALPHA:  Autocrop layer based on pixels with zero alpha
+   SILFLTR_BLUR:           Blur the layer (3x3 box blur)
+   SILFLTR_GRAYSCALE:      Remove color from layer
+   SILFLTR_FLIPX:          Flip layer over the X-axis
+   SILFLTR_FLIPY:          Flip layer over the Y-axis
+
+  
+ Returns SILERR_ALLOK if all wend well, otherwise the errorcode
+
+ *****************************************************************************/
+
 UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
-  UINT err=0;
+  UINT err=SILERR_ALLOK;
   SILFB *dest;
   UINT cnt;
   int minx,miny,maxx,maxy;
   BYTE red,green,blue,alpha;
   UINT dred,dgreen,dblue,dalpha;
   BYTE red2,green2,blue2,alpha2;
-  if (!layer->init) return SILERR_NOTINIT;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(0==layer->init)) {
+    log_warn("Trying to applyFilter against non-existing or non-initialized layer");
+    sil_setErr(SILERR_NOTINIT);
+    return SILERR_NOTINIT;
+  }
+  if (NULL==layer->fb) {
+    log_warn("Trying to applyFilter against layer with no framebuffer");
+    sil_setErr(SILERR_NOTINIT);
+    return SILERR_NOTINIT;
+  }
+  if (0==layer->fb->size) {
+    log_warn("Trying to applyFilter against layer with zero size framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return SILERR_WRONGFORMAT;
+  }
+#endif
+
 
   switch(filter) {
     case SILFLTR_LIGHTEN:
@@ -126,7 +172,7 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
       }
       break;
     case SILFLTR_BLUR:
-      /* for this, we need to create a seperate FB in between */
+      /* for this, we need to create a seperate FB temporary */
 
       dest=sil_initFB(layer->fb->width,layer->fb->height,layer->fb->type);
       if (NULL==dest) {
@@ -227,5 +273,6 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
       layer->fb->buf=dest->buf;
       break;
   }
+  sil_setErr(err);
   return err;
 }

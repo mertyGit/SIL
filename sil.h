@@ -121,6 +121,8 @@ void sil_resetViewLayer(SILLYR *);
 UINT sil_resizeLayer(SILLYR *, UINT,UINT,UINT,UINT);
 void sil_moveLayer(SILLYR *,int, int);
 void sil_placeLayer(SILLYR *,UINT, UINT);
+SILLYR *sil_PNGtoNewLayer(char *,UINT,UINT);
+void LayersToFB(SILFB *);
 
 /* font.c */
 
@@ -212,7 +214,6 @@ UINT sil_applyFilterLayer(SILLYR *, BYTE);
 #define SILTXT_KEEPCOLOR        8
 
 UINT sil_PNGintoLayer(SILLYR *,char *, UINT,UINT);
-SILLYR *sil_PNGtoNewLayer(char *,UINT,UINT);
 void sil_paintLayer(SILLYR *,BYTE,BYTE,BYTE,BYTE);
 void sil_drawTextLayer(SILLYR *,SILFONT *, char *, UINT, UINT, BYTE);
 void sil_getBackgroundColor(BYTE *,BYTE *, BYTE *, BYTE *);
@@ -236,7 +237,6 @@ void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 typedef struct _SILEVENT {
   BYTE type;
   UINT val;
-  UINT val2;
   UINT x;
   UINT y;
   UINT code;

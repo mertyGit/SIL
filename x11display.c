@@ -256,7 +256,6 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
 
     se.type=SILDISP_NOTHING;
     se.val=0;
-    se.val2=0;
     se.x=0;
     se.y=0;
     while ((XPending(display) > 0)&&(!stop)) {

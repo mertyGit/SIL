@@ -132,6 +132,6 @@ const char * sil_err2Txt(UINT errorcode) {
  *****************************************************************************/
 
 void sil_destroySIL() {
-  st.init=0;
   sil_destroyDisplay();
+  st.init=0;
 }

@@ -406,3 +406,131 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT maxx,UINT maxy) {
   layer->view.maxy=tmpfb->height;
   return 0;
 }
+
+SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
+  SILLYR *layer=NULL;
+  BYTE *image =NULL;
+  UINT err=0;
+  UINT pos=0;
+  UINT width=0;
+  UINT height=0;
+  UINT maxwidth=0;
+  UINT maxheight=0;
+  BYTE red,green,blue,alpha;
+
+  /* load image in framebuffer */
+  err=lodepng_decode32_file(&image,&width,&height,filename);
+  if ((!err)&&((0==width)||(0==height))) {
+    /* doesn't make sense loading a PNG file with no height and/or width */
+    log_warn("'%s' appears to have unusual width x height (%d x %d)",filename,width,height);
+    err=666; /* will be handled later with err switch */
+  }
+
+  if (err) {
+    switch (err) {
+      case 28:
+      case 29:
+        /* wrong file presented as .png */
+        log_warn("'%s' is Not an .png file (%d)",filename,err);
+        err=SILERR_WRONGFORMAT;
+        break;
+      case 78:
+        /* common error, wrong filename */
+        log_warn("Can't open '%s' (%d)",filename,err);
+        err=SILERR_CANTOPENFILE;
+        break;
+      default:
+        /* something wrong with decoding png */
+        log_warn("Can't decode PNG file '%s' (%d)",filename,err);
+        err=SILERR_CANTDECODEPNG;
+        break;
+    }
+    sil_setErr(err);
+    if (image) free(image);
+    return NULL;
+  }
+  /* first create layer */
+  layer=sil_addLayer(width,height,x,y,SILTYPE_ABGR);
+  if (NULL==layer) {
+    log_warn("Can't create layer for loaded PNG file");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return NULL;
+  }
+
+  /* free the framebuffer memory */
+  if (!(( layer->fb) && (layer->fb->buf))) {
+    log_warn("Created layer for PNG has incorrect or missing framebuffer");
+    sil_setErr(SILERR_NOTINIT);
+    return NULL;
+  }
+  free(layer->fb->buf);
+
+  /* and swap the buf with the loaded image */
+  layer->fb->buf=image;
+
+  sil_setErr(SILERR_ALLOK);
+  return layer;
+}
+
+/*****************************************************************************
+
+  draw all layers, from bottom till top, into a single Framebuffer
+  Mostly used by display functions, updating display framebuffer,
+  However can be also be used for making screendumps, testing or generating
+  image .png files
+
+ *****************************************************************************/
+
+void LayersToFB(SILFB *fb) {
+  SILLYR *layer;
+  BYTE red,green,blue,alpha;
+  BYTE mixred,mixgreen,mixblue,mixalpha;
+  UINT pos,pos2;
+  float af;
+  float negaf;
+  SILBOX rview;
+  int absx,absy;
+
+#ifndef SIL_LIVEDANGEROUS
+  if (0==fb->size) {
+    log_warn("Trying to merge layers to uninitialized framebuffer");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  layer=sil_getBottomLayer();
+  sil_clearFB(fb);
+  while (layer) {
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      for (int x=layer->view.minx; x<layer->view.maxx; x++) {
+        for (int y=layer->view.miny; y<layer->view.maxy; y++) {
+          int absx=x+layer->relx-layer->view.minx;
+          int absy=y+layer->rely-layer->view.miny;
+          int rx=x;
+          int ry=y;
+
+          /* prevent drawing outside borders of display */
+          if ((absx>=fb->width)||(absy>=fb->height)) continue;
+
+          sil_getPixelLayer(layer,rx,ry,&red,&green,&blue,&alpha);
+          if (0==alpha) continue; /* nothing to do if completely transparant */
+          alpha=alpha*layer->alpha;
+          if (255==alpha) {
+            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
+          } else {
+            sil_getPixelFB(fb,absx,absy,&mixred,&mixgreen,&mixblue,&mixalpha);
+            af=((float)alpha)/255;
+            negaf=1-af;
+            red=red*af+negaf*mixred;
+            green=green*af+negaf*mixgreen;
+            blue=blue*af+negaf*mixblue;
+            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
+          }
+        }
+      }
+    }
+    layer=layer->next;
+  }
+}
+

@@ -211,7 +211,7 @@ int main() {
     se=sil_getEventDisplay(0);
     if (se->type==SILDISP_QUIT) break;
     if ((se!=NULL)&&(se->type!=SILDISP_NOTHING)) {
-      //printf("Got event type=%d,scancode=%d (%02x),key=%d,modifiers=%d,val=%d,val2=%d,x=%d,y=%d\n",se->type,se->code,se->code,se->key,se->modifiers,se->val,se->val2,se->x,se->y);
+      printf("Got event type=%d,scancode=%d (%02x),key=%d,modifiers=%d,val=%d,x=%d,y=%d\n",se->type,se->code,se->code,se->key,se->modifiers,se->val,se->x,se->y);
       if (se->type==SILDISP_KEY_DOWN) {
         update=1;
         switch(se->key) {
@@ -292,7 +292,7 @@ int main() {
   printf("sil_destroyFont...\n");
   sil_destroyFont(font);
 
-  printf("sil_destroyDisplay...\n");
+  printf("sil_destroySIL...\n");
   sil_destroySIL();
 
   printf("Bye now...\n");
