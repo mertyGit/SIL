@@ -132,6 +132,10 @@ int main() {
   sil_drawTextLayer(background,font,"crop first",x,y+100,0);
   x+=150;
 
+  lyr=sil_PNGtoNewLayer("starwhite.png",x,y);
+  sil_applyFilterLayer(lyr,SILFLTR_BLENDFIRST);
+  sil_drawTextLayer(background,font,"blend first",x,y+100,0);
+  x+=150;
 
 
 
