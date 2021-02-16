@@ -34,22 +34,31 @@ static SILCONTEXT st;
 
  *****************************************************************************/
 
-UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance,char *logname, BYTE flags) {
-  UINT ret=0;
+UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance) {
+  UINT ret=SILERR_ALLOK;
   UINT err=0;
 
   st.lasterr=0;
   st.init=1;
-  err=log_init(logname,flags);
+  err=log_init(NULL,0); 
   if (err) {
     log_fatal("Can't initialize logging");
   }
   if (SILERR_ALLOK!=sil_initDisplay(hInstance,width,height,title)) {
     log_fatal("Can't initialize display");
   }
+  return ret;
+}
 
+UINT sil_setLog(char *logname, BYTE flags) {
+  UINT ret=SILERR_ALLOK;
+  UINT err=0;
 
-  log_info("INF: Initialized SIL, logging & display");
+  err=log_init(logname,flags); /* just redo initialization */
+  if (err) {
+    log_fatal("Can't set logging");
+  }
+  log_verbose("SIL Log options set");
   return ret;
 }
 

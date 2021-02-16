@@ -31,7 +31,8 @@ typedef struct _SILCONTEXT {
   
 } SILCONTEXT;
 
-UINT sil_initSIL(UINT, UINT, char *, void *,char *,BYTE );
+UINT sil_initSIL(UINT, UINT, char *, void *);
+UINT sil_setLog(char *logname, BYTE flags);
 void sil_setErr(UINT);
 void sil_destroySIL();
 UINT sil_getErr();

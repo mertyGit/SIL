@@ -24,10 +24,11 @@ int main() {
 
   printf("sil_init...\n");
   #ifdef SIL_W32
-    sil_initSIL(1000,1000,"Testing SIL DISPLAY III",hInstance,NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
+    sil_initSIL(1000,1000,"Testing SIL DISPLAY III",hInstance);
   #else
-    sil_initSIL(1000,1000,"Testing SIL DISPLAY III",NULL,NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
+    sil_initSIL(1000,1000,"Testing SIL DISPLAY III",NULL);
   #endif
+  sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
 
   printf("sil_addLayer background...\n");

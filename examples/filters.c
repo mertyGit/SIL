@@ -26,10 +26,11 @@ int main() {
 
   printf("sil_init...\n");
   #ifdef SIL_W32
-    sil_initSIL(1000,1000,"Testing SIL Filters",hInstance,NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
+    sil_initSIL(1000,1000,"Testing SIL Filters",hInstance);
   #else
-    sil_initSIL(1000,1000,"Testing SIL Filters",NULL,NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
+    sil_initSIL(1000,1000,"Testing SIL Filters",NULL);
   #endif
+  sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
 
   font=sil_loadFont("bahnschrift.fnt");

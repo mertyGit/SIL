@@ -140,6 +140,7 @@ static void log_write(char *msg,char *prefix,char *postfix) {
 /*****************************************************************************
    Fatal; most cases memory problems, so dont create extra problems
    and we are not sure what can be done or closed; just stop program
+   fatal function can always be used, even without log initializations
 
  *****************************************************************************/
 void log_fatal(const char *msg) {
