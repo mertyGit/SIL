@@ -58,7 +58,7 @@ static void LayersToDisplay() {
   BYTE red,green,blue,alpha;
   BYTE red2,green2,blue2,alpha2;
 
-  SILLYR *layer=sil_getBottomLayer();
+  SILLYR *layer=sil_getBottom();
   SDL_RenderClear(renderer);
   /* loop from bottom to top layer */
   while (layer) {
@@ -443,7 +443,7 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
  *****************************************************************************/
 
 void sil_destroyDisplay() {
-  SILLYR *layer=sil_getBottomLayer();
+  SILLYR *layer=sil_getBottom();
   while(layer) {
     if (layer->texture) SDL_DestroyTexture(layer->texture);
     layer=layer->next;

@@ -85,6 +85,18 @@ void sil_destroyFB(SILFB *);
 #define SILFLAG_INVISIBLE      2
 #define SILFLAG_NOBLEND        4
 
+/* also used by display.c */
+typedef struct _SILEVENT {
+  BYTE type;
+  UINT val;
+  UINT x;
+  UINT y;
+  UINT code;
+  UINT key;
+  BYTE modifiers;
+} SILEVENT;
+
+
 typedef struct _SILBOX {
   UINT minx;
   UINT miny;
@@ -104,26 +116,34 @@ typedef struct _SILLYR {
   UINT rely;
   UINT id;
   void *texture;
+  UINT (*hover   )(struct _SILLYR *,SILEVENT *);
+  UINT (*click   )(struct _SILLYR *,SILEVENT *);
+  UINT (*keypress)(struct _SILLYR *,SILEVENT *);
+  UINT key;
+  BYTE modifiers;
 } SILLYR;
 
 SILLYR *sil_addLayer(UINT, UINT, UINT, UINT, BYTE);
 void sil_putPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
 void sil_blendPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
 void sil_getPixelLayer(SILLYR *, UINT, UINT, BYTE *, BYTE *, BYTE *, BYTE *);
-SILLYR *sil_getBottomLayer();
-SILLYR *sil_getTopLayer();
+SILLYR *sil_getBottom();
+SILLYR *sil_getTop();
 void sil_destroyLayer(SILLYR *);
 void sil_setFlagsLayer(SILLYR *,BYTE);
 void sil_clearFlagsLayer(SILLYR *,BYTE);
 UINT sil_checkFlagsLayer(SILLYR *,BYTE);
 void sil_setAlphaLayer(SILLYR *,float);
-void sil_setViewLayer(SILLYR *,UINT,UINT,UINT,UINT);
-void sil_resetViewLayer(SILLYR *);
+void sil_setView(SILLYR *,UINT,UINT,UINT,UINT);
+void sil_resetView(SILLYR *);
 UINT sil_resizeLayer(SILLYR *, UINT,UINT,UINT,UINT);
 void sil_moveLayer(SILLYR *,int, int);
 void sil_placeLayer(SILLYR *,UINT, UINT);
 SILLYR *sil_PNGtoNewLayer(char *,UINT,UINT);
 void LayersToFB(SILFB *);
+void sil_setKeypressHandler(SILLYR *,UINT, BYTE, UINT (*)(SILLYR *,SILEVENT *));
+void sil_setClickHandler(SILLYR *,UINT (*)(SILLYR *,SILEVENT *));
+void sil_setHoverHandler(SILLYR *,UINT (*)(SILLYR *,SILEVENT *));
 
 /* font.c */
 
@@ -202,6 +222,7 @@ void sil_destroyFont(SILFONT *);
 #define SILFLTR_DARKEN         9
 #define SILFLTR_LIGHTEN       10
 #define SILFLTR_ROTATECOLOR   11
+#define SILFLTR_BLENDFIRST    12
 
 
 UINT sil_applyFilterLayer(SILLYR *, BYTE);
@@ -235,16 +256,6 @@ void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 #define SILDISP_MOUSE_MOVE  7
 #define SILDISP_MOUSEWHEEL  8
 
-
-typedef struct _SILEVENT {
-  BYTE type;
-  UINT val;
-  UINT x;
-  UINT y;
-  UINT code;
-  UINT key;
-  BYTE modifiers;
-} SILEVENT;
 
 UINT sil_initDisplay(void *, UINT, UINT ,char *);
 void sil_updateDisplay();

@@ -80,8 +80,29 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   layer->texture=NULL;
   layer->init=1;
 
+  layer->hover=NULL;
+  layer->click=NULL;
+  layer->keypress=NULL;
+  layer->key=0;
+  layer->modifiers=0;
+
+
   sil_setErr(SILERR_ALLOK);
   return layer;
+}
+
+void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILLYR *,SILEVENT *)) {
+  layer->hover=hover;
+}
+
+void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILLYR *,SILEVENT *)) {
+  layer->click=click;
+}
+
+void sil_setKeypressHandler(SILLYR *layer, UINT key, BYTE modifiers, UINT (*keypress)(SILLYR *,SILEVENT *)) {
+  layer->keypress=keypress;
+  layer->key=key;
+  layer->modifiers=modifiers;
 }
 
 /*****************************************************************************
@@ -255,7 +276,7 @@ UINT sil_checkFlagsLayer(SILLYR *layer,BYTE flags) {
   Get bottom layer
  *****************************************************************************/
 
-SILLYR *sil_getBottomLayer() {
+SILLYR *sil_getBottom() {
   sil_setErr(SILERR_ALLOK);
   return bottom;
 }
@@ -264,7 +285,7 @@ SILLYR *sil_getBottomLayer() {
   Get top most layer 
  *****************************************************************************/
 
-SILLYR *sil_getTopLayer() {
+SILLYR *sil_getTop() {
   sil_setErr(SILERR_ALLOK);
   return top;
 }
@@ -314,7 +335,7 @@ void sil_setAlphaLayer(SILLYR *layer, float alpha) {
   In: Layer context, x,y postion top left, x,y postion bottom right, relative
       to top left position of layer itself
  *****************************************************************************/
-void sil_setViewLayer(SILLYR *layer,UINT minx,UINT miny,UINT maxx,UINT maxy) {
+void sil_setView(SILLYR *layer,UINT minx,UINT miny,UINT maxx,UINT maxy) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setView on layer that isn't initialized, or with uninitialized FB");
@@ -337,7 +358,7 @@ void sil_setViewLayer(SILLYR *layer,UINT minx,UINT miny,UINT maxx,UINT maxy) {
   Reset the view to display the whole layer
   In: Layer context
  *****************************************************************************/
-void sil_resetViewLayer(SILLYR *layer) {
+void sil_resetView(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("resetView on layer that isn't initialized, or with uninitialized FB");
@@ -499,7 +520,7 @@ void LayersToFB(SILFB *fb) {
   }
 #endif
 
-  layer=sil_getBottomLayer();
+  layer=sil_getBottom();
   sil_clearFB(fb);
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {

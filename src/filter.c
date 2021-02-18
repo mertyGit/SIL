@@ -29,6 +29,8 @@
    SILFLTR_FLIPX:          Flip layer over the X-axis
    SILFLTR_FLIPY:          Flip layer over the Y-axis
    SILFLTR_ROTATECOLOR:    rotate colorchannels Red=Green,Green=Blue,Blue=Red
+   SILFLTR_BLENDFIRST:     Every pixel, that is the same as the first pixel 
+                           in the topleft corner, will get alpha set to 0
 
   
  Returns SILERR_ALLOK if all wend well, otherwise the errorcode
@@ -155,6 +157,18 @@ UINT sil_applyFilterLayer(SILLYR *layer, BYTE filter) {
         }
       }
       err=sil_resizeLayer(layer,minx,miny,maxx+1,maxy+1);
+      break;
+
+    case SILFLTR_BLENDFIRST:
+      sil_getPixelLayer(layer,0,0,&red,&green,&blue,&alpha); 
+      for (int x=0;x<layer->fb->width;x++) {
+        for (int y=0;y<layer->fb->height;y++) {
+          sil_getPixelLayer(layer,x,y,&red2,&green2,&blue2,&alpha2); 
+          if ((green==green2)&&(red==red2)&&(blue==blue2)) {
+            sil_putPixelLayer(layer,x,y,red,green,blue,0); 
+          }
+        }
+      }
       break;
 
     case SILFLTR_FLIPX:

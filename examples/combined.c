@@ -7,6 +7,16 @@
 #include "sil.h"
 #include "log.h"
 
+static SILLYR *fonttest,*foreground,*background,*one,*two,*three,*test,*ontop,*both,*bothnoblend;
+
+UINT keyhandler(SILLYR *layer,SILEVENT *event) {
+  log_info("Pressed A");
+  if (layer==foreground) {
+    log_info("Is foreground !");
+  }
+  return 0;
+}
+
 #ifdef SIL_W32
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 #else
@@ -15,7 +25,6 @@ int main() {
 
   unsigned char r,g,b;
   SILEVENT *se=NULL;
-  SILLYR *fonttest,*foreground,*background,*one,*two,*three,*test,*ontop,*both,*bothnoblend;
   UINT err;
   BYTE move=0;
   BYTE update=0;
@@ -81,7 +90,7 @@ int main() {
   }
 
   printf("sil_setViewLayer test..\n");
-  sil_setViewLayer(test,1,1,test->fb->width-1,test->fb->height-1);
+  sil_setView(test,1,1,test->fb->width-1,test->fb->height-1);
 
 
   printf("sil_addLayer foreground...\n");
@@ -103,6 +112,8 @@ int main() {
 
   printf("sil_setAlphaLayer foreground...\n");
   sil_setAlphaLayer(foreground,0.9);
+
+  sil_setKeypressHandler(foreground,SILKY_A,0,&keyhandler);
 
   printf("sil_addLayer ontop...\n");
   ontop=sil_addLayer(256,256,50,450,0);
@@ -201,6 +212,7 @@ int main() {
   sil_drawTextLayer(fonttest,font,"Lets turn BLUE",5,5+4*(font->base),0);
 
 
+
   printf("sil_updateDisplay...\n");
   sil_updateDisplay();
 
@@ -254,6 +266,9 @@ int main() {
             break;
           case SILKY_G:
             sil_applyFilterLayer(foreground,SILFLTR_GRAYSCALE);
+            break;
+          case SILKY_A:
+            foreground->keypress(foreground,se);
             break;
         }
       } else {
