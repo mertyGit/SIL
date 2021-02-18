@@ -41,7 +41,7 @@ But...there are tons, and tons of libraries out there....one must be doing a muc
 * Single threaded, no dealings with race conditions, locking and handling multithreading on platforms that doesn't support it. Of course, you can make you own program multithreaded or even put the display/updating/events stuff inside a seperate thread.
 
 ### Disadvantages
-* It is not fast; It will be much faster in comparision with intepreted languages, but the choice of framebuffers-per-layer-with-multiple-colorspaces and updating whole screen everytime, makes it not suitable for high-speed games or video streaming/altering purposes.
+* It is not lightning fast; It will be much faster in comparision with intepreted languages, but the choice of framebuffers-per-layer-with-multiple-colorspaces and updating whole screen everytime, makes it not suitable for high-speed games or video streaming/altering purposes.
 * Texthandling; keyboard support en drawing text on layers is mostly written for shortkeys or entering configuration values, but not for writing long texts with scrollbars, cursors and so on. Although you can build on top of it, if you want to. 
 * Static size; Usually it is written to write directly to a display with given resolution. So no windowing rescaling / auto adjustments and scrollbars.
 * It is not written in  ....//Insert your own language here //.... . However, without doubt it isn't hard to integrate it with any language, since most languages do still use C(++)   libraries underneath. (and no, don't ask me for it...)
