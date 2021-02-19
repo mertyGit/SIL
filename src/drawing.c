@@ -20,8 +20,19 @@
 
  *****************************************************************************/
 
-static BYTE fg_red=255,fg_green=255,fg_blue=255,fg_alpha=255;
-static BYTE bg_red=0,bg_green=0,bg_blue=0,bg_alpha=0;
+
+typedef struct _GCOLOR {
+       BYTE fg_red;
+       BYTE fg_green;
+       BYTE fg_blue;
+       BYTE fg_alpha;
+       BYTE bg_red;
+       BYTE bg_green;
+       BYTE bg_blue;
+       BYTE bg_alpha;
+} GCOLOR;
+
+static GCOLOR gcolor={255,255,255,255,0,0,0,0};
 
 /*****************************************************************************
   getters & setters for those colors
@@ -29,31 +40,31 @@ static BYTE bg_red=0,bg_green=0,bg_blue=0,bg_alpha=0;
  *****************************************************************************/
 
 void sil_setBackgroundColor(BYTE red,BYTE green, BYTE blue, BYTE alpha) {
-  bg_red=red;
-  bg_green=green;
-  bg_blue=blue;
-  bg_alpha=alpha;
+  gcolor.bg_red=red;
+  gcolor.bg_green=green;
+  gcolor.bg_blue=blue;
+  gcolor.bg_alpha=alpha;
 }
 
 void sil_setForegroundColor(BYTE red,BYTE green, BYTE blue, BYTE alpha) {
-  fg_red=red;
-  fg_green=green;
-  fg_blue=blue;
-  fg_alpha=alpha;
+  gcolor.fg_red=red;
+  gcolor.fg_green=green;
+  gcolor.fg_blue=blue;
+  gcolor.fg_alpha=alpha;
 }
 
 void sil_getBackgroundColor(BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
-  *red=bg_red;
-  *green=bg_green;
-  *blue=bg_blue;
-  *alpha=bg_alpha;
+  *red=gcolor.bg_red;
+  *green=gcolor.bg_green;
+  *blue=gcolor.bg_blue;
+  *alpha=gcolor.bg_alpha;
 }
 
 void sil_getForegroundColor(BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
-  *red=fg_red;
-  *green=fg_green;
-  *blue=fg_blue;
-  *alpha=fg_alpha;
+  *red=gcolor.fg_red;
+  *green=gcolor.fg_green;
+  *blue=gcolor.fg_blue;
+  *alpha=gcolor.fg_alpha;
 }
 
 /*****************************************************************************
@@ -249,10 +260,10 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
         alpha=alpha*(font->alpha);
         if ((alpha>0) && (red+green+blue>0)) {
           if (!(flags&SILTXT_KEEPCOLOR)) {
-            red=((float)red/255)*fg_red;
-            green=((float)green/255)*fg_green;
-            blue=((float)blue/255)*fg_blue;
-            alpha=((float)alpha/255)*fg_alpha;
+            red=((float)red/255)*gcolor.fg_red;
+            green=((float)green/255)*gcolor.fg_green;
+            blue=((float)blue/255)*gcolor.fg_blue;
+            alpha=((float)alpha/255)*gcolor.fg_alpha;
           }
           if (flags&SILTXT_BLENDLAYER) {
             sil_blendPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,alpha);

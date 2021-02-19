@@ -9,10 +9,11 @@
 
 static SILLYR *fonttest,*foreground,*background,*one,*two,*three,*test,*ontop,*both,*bothnoblend;
 
-UINT keyhandler(SILLYR *layer,SILEVENT *event) {
+UINT keyhandler(SILEVENT *event) {
   log_info("Pressed A");
-  if (layer==foreground) {
+  if (event->layer==foreground) {
     log_info("Is foreground !");
+    sil_quitLoop();
   }
   return 0;
 }
@@ -113,7 +114,7 @@ int main() {
   printf("sil_setAlphaLayer foreground...\n");
   sil_setAlphaLayer(foreground,0.9);
 
-  sil_setKeypressHandler(foreground,SILKY_A,0,&keyhandler);
+  sil_setKeypressHandler(foreground,SILKY_A,0,keyhandler);
 
   printf("sil_addLayer ontop...\n");
   ontop=sil_addLayer(256,256,50,450,0);
@@ -216,6 +217,11 @@ int main() {
   printf("sil_updateDisplay...\n");
   sil_updateDisplay();
 
+  printf("sil_mainLoop...\n");
+  sil_mainLoop();
+
+  /*
+
   printf("sil_getEventDisplay...\n");
   do {
     se=sil_getEventDisplay(0);
@@ -268,7 +274,8 @@ int main() {
             sil_applyFilterLayer(foreground,SILFLTR_GRAYSCALE);
             break;
           case SILKY_A:
-            foreground->keypress(foreground,se);
+            se->layer=foreground;
+            foreground->keypress(se);
             break;
         }
       } else {
@@ -300,6 +307,7 @@ int main() {
     }
     if (update) sil_updateDisplay();
   } while (se!=NULL && se->key!=SILKY_ESC);
+  */
 
 
   printf("sil_destroyFont...\n");

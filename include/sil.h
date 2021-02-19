@@ -85,6 +85,7 @@ void sil_destroyFB(SILFB *);
 #define SILFLAG_INVISIBLE      2
 #define SILFLAG_NOBLEND        4
 
+
 /* also used by display.c */
 typedef struct _SILEVENT {
   BYTE type;
@@ -94,6 +95,7 @@ typedef struct _SILEVENT {
   UINT code;
   UINT key;
   BYTE modifiers;
+  struct _SILLYR *layer;
 } SILEVENT;
 
 
@@ -116,9 +118,9 @@ typedef struct _SILLYR {
   UINT rely;
   UINT id;
   void *texture;
-  UINT (*hover   )(struct _SILLYR *,SILEVENT *);
-  UINT (*click   )(struct _SILLYR *,SILEVENT *);
-  UINT (*keypress)(struct _SILLYR *,SILEVENT *);
+  UINT (*hover   )(SILEVENT *);
+  UINT (*click   )(SILEVENT *);
+  UINT (*keypress)(SILEVENT *);
   UINT key;
   BYTE modifiers;
 } SILLYR;
@@ -141,9 +143,12 @@ void sil_moveLayer(SILLYR *,int, int);
 void sil_placeLayer(SILLYR *,UINT, UINT);
 SILLYR *sil_PNGtoNewLayer(char *,UINT,UINT);
 void LayersToFB(SILFB *);
-void sil_setKeypressHandler(SILLYR *,UINT, BYTE, UINT (*)(SILLYR *,SILEVENT *));
-void sil_setClickHandler(SILLYR *,UINT (*)(SILLYR *,SILEVENT *));
-void sil_setHoverHandler(SILLYR *,UINT (*)(SILLYR *,SILEVENT *));
+void sil_setKeypressHandler(SILLYR *,UINT, BYTE, UINT (*)(SILEVENT *));
+void sil_setClickHandler(SILLYR *,UINT (*)(SILEVENT *));
+void sil_setHoverHandler(SILLYR *,UINT (*)(SILEVENT *));
+SILLYR *sil_findHighestClick(UINT,UINT);
+SILLYR *sil_findHighestHover(UINT,UINT);
+SILLYR *sil_findHighestKeyPress(UINT,BYTE);
 
 /* font.c */
 
@@ -255,6 +260,7 @@ void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 #define SILDISP_NOKEYS      6
 #define SILDISP_MOUSE_MOVE  7
 #define SILDISP_MOUSEWHEEL  8
+#define SILDISP_MOUSE_LEFT  9
 
 
 UINT sil_initDisplay(void *, UINT, UINT ,char *);
@@ -262,6 +268,8 @@ void sil_updateDisplay();
 void sil_destroyDisplay();
 UINT sil_getTypefromDisplay();
 SILEVENT *sil_getEventDisplay(BYTE);
+void sil_mainLoop();
+void sil_quitLoop();
 
 /* bitmasks for keymodifiers/special keys */
 #define SILKM_SHIFT  1
