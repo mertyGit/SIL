@@ -13,13 +13,15 @@
 #include "sil.h"
 #include "log.h"
 
+typedef struct _GLYR {
+  /* head & tail of linked list of layers */
+  SILLYR *top;
+  SILLYR *bottom;
+  UINT idcount;  /* unique identifiers for layers (not used at the moment) */
+} GLYR;
 
-/* head & tail of linked list of layers */
-static SILLYR *top=NULL;
-static SILLYR *bottom=NULL;
+static GLYR glyr={NULL,NULL,0}; /* holds all global variables used only within layers.c */
 
-/* unique identifiers for layers (not used at the moment) */
-static UINT idcount=1;
 
 /*****************************************************************************
   Create a layer and it it to linked list of layers on top
@@ -35,6 +37,7 @@ static UINT idcount=1;
 SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   SILLYR *layer=NULL;
   UINT err=0;
+
 
   layer=calloc(1,sizeof(SILLYR));
   if (NULL==layer) {
@@ -58,14 +61,14 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
 
   /* add layer to double linked list of layers */
   layer->next=NULL;
-  if (top) {
-    top->next=layer;
-    layer->previous=top;
+  if (glyr.top) {
+    glyr.top->next=layer;
+    layer->previous=glyr.top;
   } else {
-    bottom=layer;
+    glyr.bottom=layer;
     layer->previous=NULL;
   }
-  top=layer;
+  glyr.top=layer;
 
   /* set the other parameters */
   layer->view.minx=0;
@@ -76,7 +79,7 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   layer->rely=rely;
   layer->alpha=1;
   layer->flags=0;
-  layer->id=idcount++;
+  layer->id=glyr.idcount++;
   layer->texture=NULL;
   layer->init=1;
 
@@ -91,15 +94,15 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   return layer;
 }
 
-void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILLYR *,SILEVENT *)) {
+void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
   layer->hover=hover;
 }
 
-void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILLYR *,SILEVENT *)) {
+void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
   layer->click=click;
 }
 
-void sil_setKeypressHandler(SILLYR *layer, UINT key, BYTE modifiers, UINT (*keypress)(SILLYR *,SILEVENT *)) {
+void sil_setKeypressHandler(SILLYR *layer, UINT key, BYTE modifiers, UINT (*keypress)(SILEVENT *)) {
   layer->keypress=keypress;
   layer->key=key;
   layer->modifiers=modifiers;
@@ -278,7 +281,7 @@ UINT sil_checkFlagsLayer(SILLYR *layer,BYTE flags) {
 
 SILLYR *sil_getBottom() {
   sil_setErr(SILERR_ALLOK);
-  return bottom;
+  return glyr.bottom;
 }
 
 /*****************************************************************************
@@ -287,7 +290,7 @@ SILLYR *sil_getBottom() {
 
 SILLYR *sil_getTop() {
   sil_setErr(SILERR_ALLOK);
-  return top;
+  return glyr.top;
 }
 
 /*****************************************************************************
@@ -297,8 +300,8 @@ void sil_destroyLayer(SILLYR *layer) {
   if ((layer)&&(layer->init)) {
     sil_destroyFB(layer->fb);
     layer->init=0;
-    if (layer==bottom) {
-      bottom=layer->next;
+    if (layer==glyr.bottom) {
+      glyr.bottom=layer->next;
     } else {
       layer->previous->next=layer->next;
     }
@@ -555,3 +558,65 @@ void LayersToFB(SILFB *fb) {
   }
 }
 
+
+SILLYR *sil_findHighestClick(UINT x,UINT y) {
+  SILLYR *layer;
+
+  layer=sil_getTop();
+  while (layer) {
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      if ((NULL!=layer->click) &&
+          (x>=layer->view.minx) &&
+          (x<=layer->view.maxx) &&
+          (y>=layer->view.miny) &&
+          (y<=layer->view.maxy)) {
+        return layer;
+      }
+    }
+    layer=layer->previous;
+  }
+  return NULL;
+}
+
+SILLYR *sil_findHighestHover(UINT x,UINT y) {
+  SILLYR *layer;
+
+  layer=sil_getTop();
+  while (layer) {
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      if ((NULL!=layer->hover) &&
+          (x>=layer->view.minx) &&
+          (x<=layer->view.maxx) &&
+          (y>=layer->view.miny) &&
+          (y<=layer->view.maxy)) {
+        return layer;
+      }
+    }
+    layer=layer->previous;
+  }
+  return NULL;
+}
+
+
+SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
+  SILLYR *layer;
+
+  layer=sil_getTop();
+  while (layer) {
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      if (NULL!=layer->keypress) {
+        if ((layer->key)||(layer->modifiers)) {
+          /* layer has a keypress handler, but is it looking for this shortcut key ? */
+          if ((c==layer->key) && (modifiers==layer->modifiers)) {
+            return layer;
+          }
+        } else {
+          /* no key or modifier set, so its a "catch all" for all keyevents */
+          return layer;
+        }
+      }
+    }
+    layer=layer->previous;
+  }
+  return NULL;
+}
