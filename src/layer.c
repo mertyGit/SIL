@@ -70,7 +70,7 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   }
   glyr.top=layer;
 
-  /* set the other parameters */
+  /* set the other parameters to default */
   layer->view.minx=0;
   layer->view.miny=0;
   layer->view.maxx=width;
@@ -79,6 +79,7 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   layer->rely=rely;
   layer->alpha=1;
   layer->flags=0;
+  layer->internal=0;
   layer->id=glyr.idcount++;
   layer->texture=NULL;
   layer->init=1;
@@ -86,26 +87,62 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   layer->hover=NULL;
   layer->click=NULL;
   layer->keypress=NULL;
+  layer->drag=NULL;
   layer->key=0;
   layer->modifiers=0;
-
-
+  layer->prevx=0;
+  layer->prevy=0;
   sil_setErr(SILERR_ALLOK);
   return layer;
 }
 
 void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("setting handler on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   layer->hover=hover;
 }
 
 void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("setting handler on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
   layer->click=click;
 }
 
-void sil_setKeypressHandler(SILLYR *layer, UINT key, BYTE modifiers, UINT (*keypress)(SILEVENT *)) {
+void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT (*keypress)(SILEVENT *)) {
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("setting handler on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+  layer->internal&=~(SILKT_ONLYUP|SILKT_SINGLE);
+  layer->internal|=(flags&(SILKT_ONLYUP|SILKT_SINGLE));
   layer->keypress=keypress;
   layer->key=key;
   layer->modifiers=modifiers;
+}
+
+void sil_setDragHandler(SILLYR *layer, UINT (*drag)(SILEVENT *)) {
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("setting handler on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+  layer->drag=drag;
+  sil_setFlags(layer,SILFLAG_DRAGGABLE);
 }
 
 /*****************************************************************************
@@ -233,11 +270,10 @@ void sil_getPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE *red, BYTE *green, BY
   SILFLAG_INVISIBLE Don't draw layer
   SILFLAG_NOBLEND   Do not blend with existing colors
 
-  (SILFLAG_ALPHACHANGED is used internally)
 
  *****************************************************************************/
 
-void sil_setFlagsLayer(SILLYR *layer,BYTE flags) {
+void sil_setFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setFlags on layer that isn't initialized, or with uninitialized FB");
@@ -249,7 +285,7 @@ void sil_setFlagsLayer(SILLYR *layer,BYTE flags) {
   sil_setErr(SILERR_ALLOK);
 }
 
-void sil_clearFlagsLayer(SILLYR *layer,BYTE flags) {
+void sil_clearFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("clearFlags on layer that isn't initialized, or with uninitialized FB");
@@ -257,11 +293,11 @@ void sil_clearFlagsLayer(SILLYR *layer,BYTE flags) {
     return;
   }
 #endif
-  layer->flags^=flags;
+  layer->flags&=~flags;
   sil_setErr(SILERR_ALLOK);
 }
 
-UINT sil_checkFlagsLayer(SILLYR *layer,BYTE flags) {
+UINT sil_checkFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("checkFlags on layer that isn't initialized, or with uninitialized FB");
@@ -270,7 +306,7 @@ UINT sil_checkFlagsLayer(SILLYR *layer,BYTE flags) {
   }
 #endif
   sil_setErr(SILERR_ALLOK);
-  if (layer->flags&flags) return 1;
+  if ((layer->flags&flags)==flags) return 1;
   return 0;
 }
 
@@ -327,7 +363,7 @@ void sil_setAlphaLayer(SILLYR *layer, float alpha) {
   if (alpha>1) alpha=1;
   if (alpha<=0) alpha=0;
   layer->alpha=alpha;
-  layer->flags|=SILFLAG_ALPHACHANGED;
+  layer->internal|=SILFLAG_ALPHACHANGED;
   sil_setErr(SILERR_ALLOK);
 }
 
@@ -565,11 +601,11 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
   layer=sil_getTop();
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      if ((NULL!=layer->click) &&
-          (x>=layer->view.minx) &&
-          (x<=layer->view.maxx) &&
-          (y>=layer->view.miny) &&
-          (y<=layer->view.maxy)) {
+      if (((NULL!=layer->click)||(sil_checkFlags(layer,SILFLAG_DRAGGABLE))) &&
+          (x>=layer->relx+layer->view.minx) &&
+          (x<=layer->relx+layer->view.maxx) &&
+          (y>=layer->rely+layer->view.miny) &&
+          (y<=layer->rely+layer->view.maxy)) {
         return layer;
       }
     }
@@ -585,10 +621,10 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
       if ((NULL!=layer->hover) &&
-          (x>=layer->view.minx) &&
-          (x<=layer->view.maxx) &&
-          (y>=layer->view.miny) &&
-          (y<=layer->view.maxy)) {
+          (x>=layer->relx+layer->view.minx) &&
+          (x<=layer->relx+layer->view.maxx) &&
+          (y>=layer->rely+layer->view.miny) &&
+          (y<=layer->rely+layer->view.maxy)) {
         return layer;
       }
     }
@@ -603,17 +639,15 @@ SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
 
   layer=sil_getTop();
   while (layer) {
-    if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      if (NULL!=layer->keypress) {
-        if ((layer->key)||(layer->modifiers)) {
-          /* layer has a keypress handler, but is it looking for this shortcut key ? */
-          if ((c==layer->key) && (modifiers==layer->modifiers)) {
-            return layer;
-          }
-        } else {
-          /* no key or modifier set, so its a "catch all" for all keyevents */
+    if (NULL!=layer->keypress) {
+      if ((layer->key)||(layer->modifiers)) {
+        /* layer has a keypress handler, but is it looking for this shortcut key ? */
+        if ((c==layer->key) && (modifiers==layer->modifiers)) {
           return layer;
         }
+      } else {
+        /* no key or modifier set, so its a "catch all" for all keyevents */
+        return layer;
       }
     }
     layer=layer->previous;

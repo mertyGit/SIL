@@ -37,6 +37,8 @@ void sil_setErr(UINT);
 void sil_destroySIL();
 UINT sil_getErr();
 const char *sil_err2Txt(UINT errorcode);
+void sil_quitLoop();
+void sil_mainLoop();
   
 
 /* framebuffer.c */
@@ -81,10 +83,16 @@ void sil_destroyFB(SILFB *);
 
 /* bitmask for flags */
 
-#define SILFLAG_ALPHACHANGED   1
-#define SILFLAG_INVISIBLE      2
-#define SILFLAG_NOBLEND        4
+#define SILFLAG_INVISIBLE      1
+#define SILFLAG_NOBLEND        2
+#define SILFLAG_BUTTONDOWN     4
+#define SILFLAG_DRAGGABLE      8
 
+/* bitmask for internal */
+#define SILFLAG_ALPHACHANGED   1
+#define SILFLAG_KEYEVENT       2
+#define SILKT_SINGLE           4
+#define SILKT_ONLYUP           8
 
 /* also used by display.c */
 typedef struct _SILEVENT {
@@ -113,6 +121,7 @@ typedef struct _SILLYR {
   SILBOX view;
   BYTE init;
   BYTE flags;
+  BYTE internal;
   float alpha;
   UINT relx;
   UINT rely;
@@ -121,8 +130,11 @@ typedef struct _SILLYR {
   UINT (*hover   )(SILEVENT *);
   UINT (*click   )(SILEVENT *);
   UINT (*keypress)(SILEVENT *);
+  UINT (*drag    )(SILEVENT *);
   UINT key;
   BYTE modifiers;
+  UINT prevx;
+  UINT prevy;
 } SILLYR;
 
 SILLYR *sil_addLayer(UINT, UINT, UINT, UINT, BYTE);
@@ -132,9 +144,9 @@ void sil_getPixelLayer(SILLYR *, UINT, UINT, BYTE *, BYTE *, BYTE *, BYTE *);
 SILLYR *sil_getBottom();
 SILLYR *sil_getTop();
 void sil_destroyLayer(SILLYR *);
-void sil_setFlagsLayer(SILLYR *,BYTE);
-void sil_clearFlagsLayer(SILLYR *,BYTE);
-UINT sil_checkFlagsLayer(SILLYR *,BYTE);
+void sil_setFlags(SILLYR *,BYTE);
+void sil_clearFlags(SILLYR *,BYTE);
+UINT sil_checkFlags(SILLYR *,BYTE);
 void sil_setAlphaLayer(SILLYR *,float);
 void sil_setView(SILLYR *,UINT,UINT,UINT,UINT);
 void sil_resetView(SILLYR *);
@@ -143,9 +155,10 @@ void sil_moveLayer(SILLYR *,int, int);
 void sil_placeLayer(SILLYR *,UINT, UINT);
 SILLYR *sil_PNGtoNewLayer(char *,UINT,UINT);
 void LayersToFB(SILFB *);
-void sil_setKeypressHandler(SILLYR *,UINT, BYTE, UINT (*)(SILEVENT *));
+void sil_setKeyHandler(SILLYR *,UINT, BYTE, BYTE, UINT (*)(SILEVENT *));
 void sil_setClickHandler(SILLYR *,UINT (*)(SILEVENT *));
 void sil_setHoverHandler(SILLYR *,UINT (*)(SILEVENT *));
+void sil_setDragHandler(SILLYR *,UINT (*)(SILEVENT *));
 SILLYR *sil_findHighestClick(UINT,UINT);
 SILLYR *sil_findHighestHover(UINT,UINT);
 SILLYR *sil_findHighestKeyPress(UINT,BYTE);
@@ -251,16 +264,18 @@ void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 
 /* x11display.c  / winSDLdisplay.c / winGDIdisplay.c / lnxdisplay.c */
 
-#define SILDISP_NOTHING     0
-#define SILDISP_QUIT        1
-#define SILDISP_MOUSE_DOWN  2
-#define SILDISP_MOUSE_UP    3
-#define SILDISP_KEY_DOWN    4
-#define SILDISP_KEY_UP      5
-#define SILDISP_NOKEYS      6
-#define SILDISP_MOUSE_MOVE  7
-#define SILDISP_MOUSEWHEEL  8
-#define SILDISP_MOUSE_LEFT  9
+#define SILDISP_NOTHING      0
+#define SILDISP_QUIT         1
+#define SILDISP_MOUSE_DOWN   2
+#define SILDISP_MOUSE_UP     3
+#define SILDISP_KEY_DOWN     4
+#define SILDISP_KEY_UP       5
+#define SILDISP_NOKEYS       6
+#define SILDISP_MOUSE_MOVE   7
+#define SILDISP_MOUSEWHEEL   8
+#define SILDISP_MOUSE_LEFT   9
+#define SILDISP_MOUSE_ENTER 10
+#define SILDISP_MOUSE_DRAG  11
 
 
 UINT sil_initDisplay(void *, UINT, UINT ,char *);
@@ -268,8 +283,6 @@ void sil_updateDisplay();
 void sil_destroyDisplay();
 UINT sil_getTypefromDisplay();
 SILEVENT *sil_getEventDisplay(BYTE);
-void sil_mainLoop();
-void sil_quitLoop();
 
 /* bitmasks for keymodifiers/special keys */
 #define SILKM_SHIFT  1

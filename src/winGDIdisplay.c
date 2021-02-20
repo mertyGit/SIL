@@ -40,8 +40,6 @@ typedef struct _GDISP {
  SILFB *fb;
  SILEVENT se;
  HINSTANCE hInstance;
- SILLYR *ActiveLayer;
- BYTE quit;
 } GDISP;
 
 static GDISP gdisp;
@@ -205,9 +203,6 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   int cnt=0;
   RECT sz;
 
-  /* initialize global variables */
-  gdisp.ActiveLayer=NULL;
-  gdisp.quit=0;
 
   /* hI = HINSTANCE is returned by calling WinMain, therefore should be given to SIL */
   gdisp.hInstance=(HINSTANCE) hI;
@@ -319,7 +314,6 @@ void sil_destroyDisplay() {
   depending on abilities to do so, setting "wait" on 1 will wait until event 
   comes (blocking) and setting to zero will only poll.
   However, on Windows platform we only use blocking wait 
-  (TODO: using PeekMessage together with GetMessage to fix this )
 
   It will return a SILEVENT, containing:
    * type (SILDISP... types, from key-up/down till mouse events)
@@ -354,49 +348,6 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
     DispatchMessage(&msg);
   }
   return &gdisp.se;
-}
-
-void sil_quitLoop() {
-  gdisp.quit=1;
-  PostQuitMessage(0);
-}
-
-void sil_mainLoop() {
-  do {
-    sil_getEventDisplay(0);
-    switch (gdisp.se.type) {
-      case SILDISP_MOUSE_DOWN:
-      case SILDISP_MOUSE_UP:
-      case SILDISP_MOUSEWHEEL:
-        gdisp.se.layer=sil_findHighestClick(gdisp.se.x,gdisp.se.y);
-        if (gdisp.se.layer) {
-          if (gdisp.se.layer->click(&gdisp.se)) sil_updateDisplay();
-        }
-        break;
-
-      case SILDISP_MOUSE_MOVE:
-        gdisp.se.layer=sil_findHighestHover(gdisp.se.x,gdisp.se.y);
-        if (gdisp.se.layer) {
-          if (gdisp.ActiveLayer) {
-            if (gdisp.ActiveLayer->hover) {
-              gdisp.se.type=SILDISP_MOUSE_LEFT;
-              if (gdisp.ActiveLayer->hover(&gdisp.se)) sil_updateDisplay();
-            }
-            gdisp.ActiveLayer=gdisp.se.layer;
-            if (gdisp.se.layer->hover(&gdisp.se)) sil_updateDisplay();
-          }
-        }
-        break;
-
-      case SILDISP_KEY_DOWN:
-      case SILDISP_KEY_UP:
-        gdisp.se.layer=sil_findHighestKeyPress(gdisp.se.key, gdisp.se.modifiers);
-        if (gdisp.se.layer) {
-          if (gdisp.se.layer->keypress(&gdisp.se)) sil_updateDisplay();
-        }
-        break;
-    }
-  } while ((0==gdisp.quit)&&(SILDISP_QUIT!=gdisp.se.type));
 }
 
 

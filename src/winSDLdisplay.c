@@ -73,9 +73,9 @@ static void LayersToDisplay() {
     }
     /* normally, we would alter every alpha value when copying pixels to destination framebuffer    */
     /* however, we don't do framebuffer handling directly, so we have to override it some other way */
-    if (layer->flags&SILFLAG_ALPHACHANGED) {
+    if (layer->internal&SILFLAG_ALPHACHANGED) {
       SDL_SetTextureAlphaMod(layer->texture,(BYTE) (layer->alpha*255));
-      layer->flags^=SILFLAG_ALPHACHANGED;
+      layer->internal^=SILFLAG_ALPHACHANGED;
     }
     if (layer->flags&SILFLAG_INVISIBLE) continue;
     if (layer->fb->changed) {

@@ -13,6 +13,11 @@
 
 static SILCONTEXT st;
 
+typedef struct _GSIL {
+ SILLYR *ActiveLayer;
+ BYTE quit;
+} GSIL;
+static GSIL gsil;
 
 
 /*****************************************************************************
@@ -38,6 +43,11 @@ UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance) {
   UINT ret=SILERR_ALLOK;
   UINT err=0;
 
+  /* initialize global variables */
+  gsil.ActiveLayer=NULL;
+  gsil.quit=0;
+
+
   st.lasterr=0;
   st.init=1;
   err=log_init(NULL,0); 
@@ -61,6 +71,117 @@ UINT sil_setLog(char *logname, BYTE flags) {
   log_verbose("SIL Log options set");
   return ret;
 }
+
+void sil_quitLoop() {
+  gsil.quit=1;
+}
+
+void sil_mainLoop() {
+  SILLYR *tmp;
+  SILEVENT *se;
+  UINT destx,desty;
+
+  do {
+    se=sil_getEventDisplay(0);
+    if (NULL==se) break; /* should not happen */
+    switch (se->type) {
+      case SILDISP_MOUSE_UP:
+          if (gsil.ActiveLayer) sil_clearFlags(gsil.ActiveLayer,SILFLAG_BUTTONDOWN);
+      case SILDISP_MOUSE_DOWN:
+      case SILDISP_MOUSEWHEEL:
+        se->layer=sil_findHighestClick(se->x,se->y);
+        if (se->layer) {
+          gsil.ActiveLayer=se->layer;
+          se->x-=se->layer->relx;
+          se->y-=se->layer->rely;
+          if (SILDISP_MOUSE_UP==se->type) sil_clearFlags(gsil.ActiveLayer,SILFLAG_BUTTONDOWN);
+          if (SILDISP_MOUSE_DOWN==se->type) {
+            sil_setFlags(gsil.ActiveLayer,SILFLAG_BUTTONDOWN);
+            gsil.ActiveLayer->prevx=se->x;
+            gsil.ActiveLayer->prevy=se->y;
+          }
+          if (se->layer->click) {
+            if (se->layer->click(se)) sil_updateDisplay();
+          }
+        }
+        break;
+
+      case SILDISP_MOUSE_MOVE:
+        if ((gsil.ActiveLayer)&&(sil_checkFlags(gsil.ActiveLayer,SILFLAG_DRAGGABLE|SILFLAG_BUTTONDOWN))) {
+          /* if it is draggable and mousebutton is down, just move it */
+          se->x=(int)(se->x)-(int)gsil.ActiveLayer->prevx;
+          se->y=(int)(se->y)-(int)gsil.ActiveLayer->prevy;
+          if (gsil.ActiveLayer->drag) {
+            se->type=SILDISP_MOUSE_DRAG;
+            se->layer=gsil.ActiveLayer;
+            if (gsil.ActiveLayer->drag(se)) {
+              gsil.ActiveLayer->relx=se->x;
+              gsil.ActiveLayer->rely=se->y;
+              sil_updateDisplay();
+            }
+          } else {
+            gsil.ActiveLayer->relx=se->x;
+            gsil.ActiveLayer->rely=se->y;
+            sil_updateDisplay();
+          }
+        } else {
+          se->layer=sil_findHighestHover(se->x,se->y);
+          if ((gsil.ActiveLayer)&&(gsil.ActiveLayer!=se->layer)) {
+            /* even if mouse button is still pressed, if mousepointer isn't above layer */
+            /* it doesn't make sense to keep this flag up for the "old" layer           */
+            sil_clearFlags(gsil.ActiveLayer,SILFLAG_BUTTONDOWN);
+            if (gsil.ActiveLayer->hover) {
+              tmp=se->layer;
+              se->type=SILDISP_MOUSE_LEFT;
+              se->layer=gsil.ActiveLayer;
+              /* don't send LEFT event when old activelayer became invisible */
+              if (!sil_checkFlags(gsil.ActiveLayer,SILFLAG_INVISIBLE)) {
+                if (gsil.ActiveLayer->hover(se)) sil_updateDisplay();
+              }
+              se->layer=tmp;
+              gsil.ActiveLayer=NULL;
+            }
+          }
+          if (se->layer) {
+            se->x-=se->layer->relx;
+            se->y-=se->layer->rely;
+            if (gsil.ActiveLayer!=se->layer) {
+              se->type=SILDISP_MOUSE_ENTER;
+              if (se->layer->hover(se)) sil_updateDisplay();
+            }
+            se->type=SILDISP_MOUSE_MOVE;
+            gsil.ActiveLayer=se->layer;
+            if (se->layer->hover(se)) sil_updateDisplay();
+          }
+        }
+        break;
+
+      case SILDISP_KEY_DOWN:
+        se->layer=sil_findHighestKeyPress(se->key, se->modifiers);
+        if ((se->layer)&&(!((se->layer->internal) & SILKT_ONLYUP))) {
+          if ((se->layer->internal) & SILKT_SINGLE) {
+            if (0==(se->layer->internal&SILFLAG_KEYEVENT)) {
+              se->layer->internal|=SILFLAG_KEYEVENT;
+              if (se->layer->keypress(se)) sil_updateDisplay();
+            }
+          } else {
+            if (se->layer->keypress(se)) sil_updateDisplay();
+          }
+        }
+        break;
+      case SILDISP_KEY_UP:
+        se->layer=sil_findHighestKeyPress(se->key, se->modifiers);
+        if (se->layer) {
+          se->layer->internal&=~SILFLAG_KEYEVENT;
+          if (!((se->layer->internal) & SILKT_SINGLE)) {
+            if (se->layer->keypress(se)) sil_updateDisplay();
+          }
+        }
+        break;
+    }
+  } while ((0==gsil.quit)&&(SILDISP_QUIT!=se->type));
+}
+
 
 /*****************************************************************************
   Set errorcode, used internally to check on previous errors 

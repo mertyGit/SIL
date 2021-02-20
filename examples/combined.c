@@ -10,11 +10,53 @@
 static SILLYR *fonttest,*foreground,*background,*one,*two,*three,*test,*ontop,*both,*bothnoblend;
 
 UINT keyhandler(SILEVENT *event) {
-  log_info("Pressed A");
-  if (event->layer==foreground) {
-    log_info("Is foreground !");
-    sil_quitLoop();
+  switch(event->type) {
+    case SILDISP_KEY_DOWN:
+      switch(event->key) {
+        case SILKY_ESC:
+          sil_quitLoop();
+          break;
+        
+      }
+      break;
   }
+  return 0;
+}
+
+UINT togglevisible(SILEVENT *event) {
+  if (sil_checkFlags(event->layer,SILFLAG_INVISIBLE))
+    sil_clearFlags(event->layer,SILFLAG_INVISIBLE);
+  else 
+    sil_setFlags(event->layer,SILFLAG_INVISIBLE);
+  return 1;
+}
+
+UINT flipit(SILEVENT *event) {
+  if ((event->type==SILDISP_MOUSE_ENTER)||(event->type==SILDISP_MOUSE_LEFT)) {
+    sil_applyFilterLayer(event->layer,SILFLTR_FLIPX);
+    return 1;
+  } 
+  return 0;
+}
+
+
+UINT drag(SILEVENT *event) {
+  event->y=event->layer->rely;
+  return 1;
+}
+
+UINT rotateit(SILEVENT *event) {
+  if (event->type==SILDISP_MOUSE_DOWN) {
+    switch(event->val) {
+      case 1:
+        sil_applyFilterLayer(event->layer,SILFLTR_ROTATECOLOR);
+        break;
+      case 3:
+        sil_applyFilterLayer(event->layer,SILFLTR_REVERSECOLOR);
+        break;
+    }
+    return 1;
+  } 
   return 0;
 }
 
@@ -48,6 +90,10 @@ int main() {
     return 2;
   }
 
+  printf("setting catch all for key events...\n");
+  sil_setKeyHandler(background,0,0,0,keyhandler); 
+
+
   printf("sil_PNGintoLayer background...\n");
   err=sil_PNGintoLayer(background,"testimage.png",0,0);
   if (err) {
@@ -61,6 +107,7 @@ int main() {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 4;
   }
+  sil_setKeyHandler(one,SILKY_2,0,SILKT_SINGLE,togglevisible);
 
   printf("sil_applyFilterLayer darken on one\n");
   sil_applyFilterLayer(one,SILFLTR_DARKEN);
@@ -71,6 +118,7 @@ int main() {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 5;
   }
+  sil_setKeyHandler(two,SILKY_3,0,SILKT_SINGLE,togglevisible);
 
   printf("sil_applyFilterLayer lighten on two\n");
   sil_applyFilterLayer(two,SILFLTR_LIGHTEN);
@@ -82,6 +130,7 @@ int main() {
     return 6;
   }
   sil_applyFilterLayer(three,SILFLTR_BLUR);
+  sil_setKeyHandler(three,SILKY_4,0,SILKT_SINGLE,togglevisible);
 
   printf("sil_PNGtoNewLayer test..\n");
   test=sil_PNGtoNewLayer("testpic5.png",500,350);
@@ -89,6 +138,9 @@ int main() {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 7;
   }
+  sil_setKeyHandler(test,SILKY_5,0,SILKT_SINGLE,togglevisible);
+  sil_setHoverHandler(test,flipit);
+  sil_setClickHandler(test,rotateit);
 
   printf("sil_setViewLayer test..\n");
   sil_setView(test,1,1,test->fb->width-1,test->fb->height-1);
@@ -100,6 +152,8 @@ int main() {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 8;
   }
+  sil_setKeyHandler(foreground,SILKY_1,0,SILKT_SINGLE,togglevisible);
+  sil_setDragHandler(foreground,drag);
 
   printf("sil_PNGtoLayer foreground...\n");
   err=sil_PNGintoLayer(foreground,"testpic1.png",0,0);
@@ -114,7 +168,6 @@ int main() {
   printf("sil_setAlphaLayer foreground...\n");
   sil_setAlphaLayer(foreground,0.9);
 
-  sil_setKeypressHandler(foreground,SILKY_A,0,keyhandler);
 
   printf("sil_addLayer ontop...\n");
   ontop=sil_addLayer(256,256,50,450,0);
@@ -122,6 +175,7 @@ int main() {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 10;
   }
+  sil_setKeyHandler(ontop,SILKY_6,0,SILKT_SINGLE,togglevisible);
 
   printf("sil_putPixelLayer ontop...\n");
   for (int x=0;x<256;x++) {
@@ -140,6 +194,7 @@ int main() {
     return 11;
   }
   sil_applyFilterLayer(both,SILFLTR_BORDER);
+  sil_setKeyHandler(both,SILKY_7,0,SILKT_SINGLE,togglevisible);
 
   printf("sil_PNGtoLayer both left ...\n");
   err=sil_PNGintoLayer(both,"testpic6.png",0,0);
@@ -160,8 +215,9 @@ int main() {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 14;
   }
-  sil_setFlagsLayer(bothnoblend,SILFLAG_NOBLEND);
+  sil_setFlags(bothnoblend,SILFLAG_NOBLEND);
   sil_applyFilterLayer(bothnoblend,SILFLTR_BORDER);
+  sil_setKeyHandler(bothnoblend,SILKY_9,0,SILKT_SINGLE,togglevisible);
 
   printf("sil_PNGtoLayer bothnoblend left ...\n");
   err=sil_PNGintoLayer(bothnoblend,"testpic8.png",0,0);
@@ -185,6 +241,7 @@ int main() {
   printf("painting fonttest ...\n");
   sil_paintLayer(fonttest,180,40,40,255);
   sil_applyFilterLayer(fonttest,SILFLTR_BORDER);
+  sil_setKeyHandler(fonttest,SILKY_0,0,SILKT_SINGLE,togglevisible);
   
 
   printf("sil_loadFont...\n");
@@ -244,22 +301,22 @@ int main() {
             move|=8;
             break;
           case SILKY_1:
-            if (sil_checkFlagsLayer(background,SILFLAG_INVISIBLE))
-              sil_clearFlagsLayer(background,SILFLAG_INVISIBLE);
+            if (sil_checkFlags(background,SILFLAG_INVISIBLE))
+              sil_clearFlags(background,SILFLAG_INVISIBLE);
             else 
-              sil_setFlagsLayer(background,SILFLAG_INVISIBLE);
+              sil_setFlags(background,SILFLAG_INVISIBLE);
             break;
           case SILKY_2:
-            if (sil_checkFlagsLayer(foreground,SILFLAG_INVISIBLE))
-              sil_clearFlagsLayer(foreground,SILFLAG_INVISIBLE);
+            if (sil_checkFlags(foreground,SILFLAG_INVISIBLE))
+              sil_clearFlags(foreground,SILFLAG_INVISIBLE);
             else 
-              sil_setFlagsLayer(foreground,SILFLAG_INVISIBLE);
+              sil_setFlags(foreground,SILFLAG_INVISIBLE);
             break;
           case SILKY_3:
-            if (sil_checkFlagsLayer(ontop,SILFLAG_INVISIBLE))
-              sil_clearFlagsLayer(ontop,SILFLAG_INVISIBLE);
+            if (sil_checkFlags(ontop,SILFLAG_INVISIBLE))
+              sil_clearFlags(ontop,SILFLAG_INVISIBLE);
             else 
-              sil_setFlagsLayer(ontop,SILFLAG_INVISIBLE);
+              sil_setFlags(ontop,SILFLAG_INVISIBLE);
             break;
           case SILKY_R:
               sil_applyFilterLayer(foreground,SILFLTR_REVERSECOLOR);
