@@ -25,12 +25,6 @@
 #define SILERR_WRONGFORMAT   6 /* something wrong during decoding     */
 #define SILERR_NOTINIT       7 /* Paramaters that are not initialized */
 
-typedef struct _SILCONTEXT {
-  UINT lasterr;
-  UINT init;
-  
-} SILCONTEXT;
-
 UINT sil_initSIL(UINT, UINT, char *, void *);
 UINT sil_setLog(char *logname, BYTE flags);
 void sil_setErr(UINT);

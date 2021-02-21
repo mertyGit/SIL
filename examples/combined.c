@@ -41,7 +41,6 @@ UINT flipit(SILEVENT *event) {
 
 
 UINT drag(SILEVENT *event) {
-  event->y=event->layer->rely;
   return 1;
 }
 

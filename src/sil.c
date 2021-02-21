@@ -11,11 +11,12 @@
 #include "sil.h"
 #include "log.h"
 
-static SILCONTEXT st;
 
 typedef struct _GSIL {
  SILLYR *ActiveLayer;
  BYTE quit;
+ UINT lasterr;
+ UINT init;
 } GSIL;
 static GSIL gsil;
 
@@ -48,8 +49,8 @@ UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance) {
   gsil.quit=0;
 
 
-  st.lasterr=0;
-  st.init=1;
+  gsil.lasterr=0;
+  gsil.init=1;
   err=log_init(NULL,0); 
   if (err) {
     log_fatal("Can't initialize logging");
@@ -191,8 +192,8 @@ void sil_mainLoop() {
  *****************************************************************************/
 
 void sil_setErr(UINT errorcode) {
-  if (st.init) {
-    st.lasterr=errorcode;
+  if (gsil.init) {
+    gsil.lasterr=errorcode;
   } else {
     /* cant send it to log, because no SIL, no init of log */
     printf("WARN: SIL not initialized (yet), can't set errorcode\n");
@@ -206,9 +207,9 @@ void sil_setErr(UINT errorcode) {
 
  *****************************************************************************/
 
-UINT sil_getErr(SILCONTEXT *sil) {
-  if (st.init) {
-    return st.lasterr;
+UINT sil_getErr() {
+  if (gsil.init) {
+    return gsil.lasterr;
   } else {
     /* cant send it to log, because no SIL, no init of log */
     printf("WARN: SIL not initialized (yet), can't set errorcode\n");
@@ -263,5 +264,5 @@ const char * sil_err2Txt(UINT errorcode) {
 
 void sil_destroySIL() {
   sil_destroyDisplay();
-  st.init=0;
+  gsil.init=0;
 }
