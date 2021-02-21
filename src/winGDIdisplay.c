@@ -21,6 +21,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include "sil.h"
 #include "log.h"
 
@@ -40,6 +41,7 @@ typedef struct _GDISP {
  SILFB *fb;
  SILEVENT se;
  HINSTANCE hInstance;
+ struct timeval lasttimer;
 } GDISP;
 
 static GDISP gdisp;
@@ -351,6 +353,16 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
 }
 
 
+void sil_setTimerDisplay(UINT amount) {
+  gettimeofday(&gdisp.lasttimer,NULL);
+  SetTimer(gdisp.win.window, 666, amount, (TIMERPROC) NULL);
+}
+
+void sil_stopTimerDisplay() {
+  KillTimer(gdisp.win.window, 666);
+}
+
+
 /*****************************************************************************
   
   Event handler called when window receives an event, indirectly via 
@@ -362,9 +374,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   HDC         hdc;
   BYTE kstate[256];
   WCHAR  kbuf[5];
+  struct timeval tv;
 
   
   switch(msg) {
+    case WM_TIMER:
+      gdisp.se.type=SILDISP_TIMER;
+      gdisp.se.code=wParam;
+      gettimeofday(&tv,NULL);
+      gdisp.se.val=(tv.tv_sec-gdisp.lasttimer.tv_sec)*1000+(tv.tv_usec-gdisp.lasttimer.tv_usec)/1000;
+      gettimeofday(&gdisp.lasttimer,NULL);
+      break;
 
     case WM_PAINT:
       hdc = GetDC(gdisp.win.window);

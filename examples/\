@@ -40,8 +40,8 @@ UINT flipit(SILEVENT *event) {
 }
 
 UINT tick(SILEVENT *event) {
-  log_verbose("GOT tick:%d",event->val);
-  return 0;
+  log_mark("GOT tick");
+  return 1;
 }
 
 UINT drag(SILEVENT *event) {
@@ -272,11 +272,9 @@ int main() {
   printf("...and now with blue color...\n");
   sil_drawTextLayer(fonttest,font,"Lets turn BLUE",5,5+4*(font->base),0);
 
-  printf("sil_setTimerHandler...\n");
-  sil_setTimerHandler(tick);
 
   printf("sil_setTimeval...\n");
-  sil_setTimeval(1000); /* every 1000 msec = every second */
+  sil_setTimeval(10000); /* every 10,000 msec = every 10 sec */
 
 
   printf("sil_updateDisplay...\n");

@@ -17,6 +17,8 @@ typedef struct _GSIL {
  BYTE quit;
  UINT lasterr;
  UINT init;
+ UINT (*timer)(SILEVENT *);
+ UINT amount;
 } GSIL;
 static GSIL gsil;
 
@@ -86,6 +88,10 @@ void sil_mainLoop() {
     se=sil_getEventDisplay(0);
     if (NULL==se) break; /* should not happen */
     switch (se->type) {
+      case SILDISP_TIMER:
+        gsil.amount=0;
+        if (gsil.timer) gsil.timer(se);
+        break;
       case SILDISP_MOUSE_UP:
           if (gsil.ActiveLayer) sil_clearFlags(gsil.ActiveLayer,SILFLAG_BUTTONDOWN);
       case SILDISP_MOUSE_DOWN:
@@ -258,6 +264,35 @@ const char * sil_err2Txt(UINT errorcode) {
 }
 
 /*****************************************************************************
+  Functions to set timer handler and to set timer value (set to zero when timer
+  expires !)
+
+ *****************************************************************************/
+
+
+void sil_setTimerHandler(UINT (*timer)(SILEVENT *)) {
+  if (!(gsil.init)) return;
+  if ((gsil.timer)&&(NULL==timer)) {
+    /* removing handler, so remove timer */
+    sil_stopTimerDisplay();
+  }
+  gsil.timer=timer;
+}
+
+void sil_setTimeval(UINT amount) {
+  if (!(gsil.init)) return;
+  gsil.amount=amount;
+  sil_setTimerDisplay(amount);
+  if (0==amount) sil_stopTimerDisplay();
+}
+
+UINT sil_getTimeval() {
+  if (!(gsil.init)) return 0;
+  return gsil.amount;
+}
+
+
+/*****************************************************************************
   Close & cleanup SIL
 
  *****************************************************************************/
@@ -266,3 +301,4 @@ void sil_destroySIL() {
   sil_destroyDisplay();
   gsil.init=0;
 }
+

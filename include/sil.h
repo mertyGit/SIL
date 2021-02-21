@@ -33,6 +33,8 @@ UINT sil_getErr();
 const char *sil_err2Txt(UINT errorcode);
 void sil_quitLoop();
 void sil_mainLoop();
+void sil_setTimeval(UINT);
+UINT sil_getTimeval();
   
 
 /* framebuffer.c */
@@ -130,6 +132,9 @@ typedef struct _SILLYR {
   UINT prevx;
   UINT prevy;
 } SILLYR;
+
+/* this one is in sil.c, not layer.c */
+void sil_setTimerHandler(UINT (*)(SILEVENT *));
 
 SILLYR *sil_addLayer(UINT, UINT, UINT, UINT, BYTE);
 void sil_putPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
@@ -270,6 +275,8 @@ void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 #define SILDISP_MOUSE_LEFT   9
 #define SILDISP_MOUSE_ENTER 10
 #define SILDISP_MOUSE_DRAG  11
+#define SILDISP_TIMER       12
+
 
 
 UINT sil_initDisplay(void *, UINT, UINT ,char *);
@@ -277,6 +284,8 @@ void sil_updateDisplay();
 void sil_destroyDisplay();
 UINT sil_getTypefromDisplay();
 SILEVENT *sil_getEventDisplay(BYTE);
+void sil_setTimerDisplay(UINT);
+void sil_stopTimerDisplay();
 
 /* bitmasks for keymodifiers/special keys */
 #define SILKM_SHIFT  1
