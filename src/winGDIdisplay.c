@@ -35,6 +35,8 @@ typedef struct {
   unsigned int h;
 } SIL_WINDOW_DATA;
 
+
+
 typedef struct _GDISP {
  SIL_WINDOW_DATA win;
  WCHAR name[1000];
@@ -42,6 +44,8 @@ typedef struct _GDISP {
  SILEVENT se;
  HINSTANCE hInstance;
  struct timeval lasttimer;
+ HCURSOR cursor;
+ BYTE ctype;
 } GDISP;
 
 static GDISP gdisp;
@@ -228,6 +232,9 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   wc.lpfnWndProc   = WndProc;
   wc.hCursor       = LoadCursor(0, IDC_ARROW);
 
+  /* since we set it to arrow in the class, use it as default for sil_setCursor */
+  gdisp.ctype=SILCUR_ARROW;
+
   /* Set windows options */
   RegisterClassW(&wc);
 
@@ -360,6 +367,33 @@ void sil_setTimerDisplay(UINT amount) {
 
 void sil_stopTimerDisplay() {
   KillTimer(gdisp.win.window, 666);
+}
+
+void sil_setCursor(BYTE type) {
+  /* only load if cursor has been changed */
+  if ((type!=gdisp.ctype)||(type!=SILCUR_ARROW)) {
+    switch(type) {
+      case SILCUR_ARROW:
+        gdisp.cursor=LoadCursor(NULL,IDC_ARROW);
+        break;
+      case SILCUR_HAND:
+        gdisp.cursor=LoadCursor(NULL,IDC_HAND);
+        break;
+      case SILCUR_HELP:
+        gdisp.cursor=LoadCursor(NULL,IDC_HELP);
+        break;
+      case SILCUR_NO:
+        gdisp.cursor=LoadCursor(NULL,IDC_NO);
+        break;
+      case SILCUR_IBEAM:
+        gdisp.cursor=LoadCursor(NULL,IDC_IBEAM);
+        break;
+    }
+    if (gdisp.cursor) {
+      SetCursor(gdisp.cursor);
+      gdisp.ctype=type;
+    }
+  }
 }
 
 

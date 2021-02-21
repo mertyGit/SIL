@@ -286,12 +286,21 @@ UINT sil_getTypefromDisplay();
 SILEVENT *sil_getEventDisplay(BYTE);
 void sil_setTimerDisplay(UINT);
 void sil_stopTimerDisplay();
+void sil_setCursor(BYTE);
 
 /* bitmasks for keymodifiers/special keys */
 #define SILKM_SHIFT  1
 #define SILKM_ALT    2
 #define SILKM_CTRL   4
 #define SILKM_CAPS   8
+
+/* mouse cursor types */
+#define SILCUR_HAND  1
+#define SILCUR_ARROW 2
+#define SILCUR_WAIT  3
+#define SILCUR_HELP  4
+#define SILCUR_NO    5
+#define SILCUR_IBEAM 6
 
 /* keycodes */
 #define SILKY_BACK          1

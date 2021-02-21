@@ -40,7 +40,7 @@ UINT flipit(SILEVENT *event) {
 }
 
 UINT tick(SILEVENT *event) {
-  log_verbose("GOT tick:%d",event->val);
+  //log_verbose("GOT tick:%d",event->val);
   return 0;
 }
 

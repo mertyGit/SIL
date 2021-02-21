@@ -98,6 +98,7 @@ void sil_mainLoop() {
       case SILDISP_MOUSEWHEEL:
         se->layer=sil_findHighestClick(se->x,se->y);
         if (se->layer) {
+          sil_setCursor(SILCUR_HAND);
           gsil.ActiveLayer=se->layer;
           se->x-=se->layer->relx;
           se->y-=se->layer->rely;
@@ -110,11 +111,15 @@ void sil_mainLoop() {
           if (se->layer->click) {
             if (se->layer->click(se)) sil_updateDisplay();
           }
+        } else {
+          sil_setCursor(SILCUR_ARROW);
         }
         break;
 
       case SILDISP_MOUSE_MOVE:
+        /* Set mouse pointer if it has click or draggable */
         if ((gsil.ActiveLayer)&&(sil_checkFlags(gsil.ActiveLayer,SILFLAG_DRAGGABLE|SILFLAG_BUTTONDOWN))) {
+          sil_setCursor(SILCUR_HAND);
           /* if it is draggable and mousebutton is down, just move it */
           se->x=(int)(se->x)-(int)gsil.ActiveLayer->prevx;
           se->y=(int)(se->y)-(int)gsil.ActiveLayer->prevy;
@@ -127,11 +132,17 @@ void sil_mainLoop() {
               sil_updateDisplay();
             }
           } else {
+            /* no draghandler defined, just drag it */
             gsil.ActiveLayer->relx=se->x;
             gsil.ActiveLayer->rely=se->y;
             sil_updateDisplay();
           }
         } else {
+          if (sil_findHighestClick(se->x,se->y)) { 
+            sil_setCursor(SILCUR_HAND);
+          } else {
+            sil_setCursor(SILCUR_ARROW);
+          }
           se->layer=sil_findHighestHover(se->x,se->y);
           if ((gsil.ActiveLayer)&&(gsil.ActiveLayer!=se->layer)) {
             /* even if mouse button is still pressed, if mousepointer isn't above layer */
