@@ -227,22 +227,17 @@ void sil_destroyFont(SILFONT *);
 
 /* filter.c */
 
-/* filters */
-#define SILFLTR_AUTOCROPALPHA  1
-#define SILFLTR_AUTOCROPFIRST  2
-#define SILFLTR_BLUR           3
-#define SILFLTR_GRAYSCALE      4
-#define SILFLTR_FLIPX          5
-#define SILFLTR_FLIPY          6
-#define SILFLTR_REVERSECOLOR   7
-#define SILFLTR_BORDER         8
-#define SILFLTR_DARKEN         9
-#define SILFLTR_LIGHTEN       10
-#define SILFLTR_ROTATECOLOR   11
-#define SILFLTR_BLENDFIRST    12
-
-
-UINT sil_applyFilterLayer(SILLYR *, BYTE);
+UINT sil_cropAlphaFilter(SILLYR *);
+UINT sil_cropFirstpixelFilter(SILLYR *);
+UINT sil_brightnessFilter(SILLYR *, int);
+UINT sil_blurFilter(SILLYR *);
+UINT sil_borderFilter(SILLYR *);
+UINT sil_alphaFirstpixelFilter(SILLYR *);
+UINT sil_flipxFilter(SILLYR *);
+UINT sil_flipyFilter(SILLYR *);
+UINT sil_rotateColorFilter(SILLYR *);
+UINT sil_reverseColorFilter(SILLYR *);
+UINT sil_grayFilter(SILLYR *);
 
 /* drawing.c */
 

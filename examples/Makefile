@@ -38,4 +38,4 @@ x11: clean
 	$(MAKE) -C ../examples/ PROG=filters  DEST=$@
 
 clean: 
-	rm -rf ../examples/*.exe ../examples/*.obj ../examples/*.o ../examples/combined ../examples/filters
+	rm -rf ../examples/*.exe ../examples/*.o ../examples/combined ../examples/filters

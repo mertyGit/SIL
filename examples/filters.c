@@ -43,27 +43,27 @@ int main() {
 
   lyr=sil_PNGtoNewLayer("testpic2.png",x,y);
   sil_drawTextLayer(background,font,"grayscale",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_GRAYSCALE);
+  sil_grayFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic3.png",x,y);
   sil_drawTextLayer(background,font,"flip-x",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_FLIPX);
+  sil_flipxFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic4.png",x,y);
   sil_drawTextLayer(background,font,"flip-y",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_FLIPY);
+  sil_flipyFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic5.png",x,y);
   sil_drawTextLayer(background,font,"reverse color",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_REVERSECOLOR);
+  sil_reverseColorFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic6.png",x,y);
   sil_drawTextLayer(background,font,"blur",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_BLUR);
+  sil_blurFilter(lyr);
 
   /* --- */
 
@@ -71,36 +71,34 @@ int main() {
   x=50;
 
   lyr=sil_PNGtoNewLayer("testpic7.png",x,y);
-  sil_drawTextLayer(background,font,"ligthen",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_LIGHTEN);
+  sil_drawTextLayer(background,font,"bright. +50",x,y+100,0);
+  sil_brightnessFilter(lyr,50);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic8.png",x,y);
-  sil_drawTextLayer(background,font,"ligthen x 2",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_LIGHTEN);
-  sil_applyFilterLayer(lyr,SILFLTR_LIGHTEN);
+  sil_drawTextLayer(background,font,"bright. +100",x,y+100,0);
+  sil_brightnessFilter(lyr,100);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic9.png",x,y);
-  sil_drawTextLayer(background,font,"darken",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_DARKEN);
+  sil_drawTextLayer(background,font,"bright -50",x,y+100,0);
+  sil_brightnessFilter(lyr,-50);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic10.png",x,y);
-  sil_drawTextLayer(background,font,"darken x 2",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_DARKEN);
-  sil_applyFilterLayer(lyr,SILFLTR_DARKEN);
+  sil_drawTextLayer(background,font,"bright -100",x,y+100,0);
+  sil_brightnessFilter(lyr,-100);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic11.png",x,y);
   sil_drawTextLayer(background,font,"rotate color",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_ROTATECOLOR);
+  sil_rotateColorFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("testpic12.png",x,y);
   sil_drawTextLayer(background,font,"rotate color x 2",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_ROTATECOLOR);
-  sil_applyFilterLayer(lyr,SILFLTR_ROTATECOLOR);
+  sil_rotateColorFilter(lyr);
+  sil_rotateColorFilter(lyr);
   x+=150;
 
   /* --- */
@@ -109,18 +107,18 @@ int main() {
   x=50;
   lyr=sil_PNGtoNewLayer("star.png",x,y);
   sil_drawTextLayer(background,font,"border",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_BORDER);
+  sil_borderFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("star.png",x,y);
   sil_drawTextLayer(background,font,"crop alpha",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_AUTOCROPALPHA);
+  sil_cropAlphaFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("star.png",x,y);
   sil_drawTextLayer(background,font,"+border",x,y+100,0);
-  sil_applyFilterLayer(lyr,SILFLTR_AUTOCROPALPHA);
-  sil_applyFilterLayer(lyr,SILFLTR_BORDER);
+  sil_cropAlphaFilter(lyr);
+  sil_borderFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("starwhite.png",x,y);
@@ -128,13 +126,13 @@ int main() {
   x+=150;
 
   lyr=sil_PNGtoNewLayer("starwhite.png",x,y);
-  sil_applyFilterLayer(lyr,SILFLTR_AUTOCROPFIRST);
-  sil_drawTextLayer(background,font,"crop first",x,y+100,0);
+  sil_drawTextLayer(background,font,"crop first pix",x,y+100,0);
+  sil_cropFirstpixelFilter(lyr);
   x+=150;
 
   lyr=sil_PNGtoNewLayer("starwhite.png",x,y);
-  sil_applyFilterLayer(lyr,SILFLTR_BLENDFIRST);
-  sil_drawTextLayer(background,font,"blend first",x,y+100,0);
+  sil_drawTextLayer(background,font,"alpha first pix",x,y+100,0);
+  sil_alphaFirstpixelFilter(lyr);
   x+=150;
 
 
