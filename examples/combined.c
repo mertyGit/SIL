@@ -39,6 +39,18 @@ UINT flipit(SILEVENT *event) {
   return 0;
 }
 
+UINT showme(SILEVENT *event) {
+  if (event->type==SILDISP_MOUSE_LEFT) {
+    sil_setView(event->layer,20,20,60,60);
+    return 1;
+  }
+  if (event->type==SILDISP_MOUSE_ENTER) {
+    sil_resetView(event->layer);
+    return 1;
+  }
+  return 0;
+}
+
 UINT tick(SILEVENT *event) {
   //log_verbose("GOT tick:%d",event->val);
   return 0;
@@ -146,7 +158,7 @@ int main() {
   sil_setClickHandler(test,rotateit);
 
   printf("sil_setViewLayer test..\n");
-  sil_setView(test,1,1,test->fb->width-1,test->fb->height-1);
+  sil_setView(test,1,1,98,98);
 
 
   printf("sil_addLayer foreground...\n");
@@ -235,11 +247,33 @@ int main() {
     return 16;
   }
 
+  printf("sil_PNGtoNewLayer 10..\n");
+  test=sil_PNGtoNewLayer("testpic10.png",700,300);
+  if (NULL==test) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 17;
+  }
+  sil_setView(test,20,20,60,60);
+  sil_setHoverHandler(test,showme);
+
+  printf("sil_PNGtoNewLayer 11..\n");
+  test=sil_PNGtoNewLayer("testpic11.png",800,300);
+  if (NULL==test) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 17;
+  }
+  sil_setView(test,20,20,60,60);
+  sil_setFlags(test,SILFLAG_VIEWPOSSTAY);
+  sil_setHoverHandler(test,showme);
+
+
+
+
   printf("sil_addLayer fonttest...\n");
   fonttest=sil_addLayer(500,200,50,710,0);
   if (NULL==fonttest) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
-    return 17;
+    return 18;
   }
   printf("painting fonttest ...\n");
   sil_paintLayer(fonttest,180,40,40,255);
@@ -251,7 +285,7 @@ int main() {
   font=sil_loadFont("bahnschrift.fnt");
   if (NULL==font) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
-    return 18;
+    return 19;
   }
 
   printf("sil_drawTextLayer with kerning and original color ...\n");

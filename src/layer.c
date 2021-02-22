@@ -73,8 +73,8 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   /* set the other parameters to default */
   layer->view.minx=0;
   layer->view.miny=0;
-  layer->view.maxx=width;
-  layer->view.maxy=height;
+  layer->view.width=width;
+  layer->view.height=height;
   layer->relx=relx;
   layer->rely=rely;
   layer->alpha=1;
@@ -371,10 +371,9 @@ void sil_setAlphaLayer(SILLYR *layer, float alpha) {
   Set view of layer
   Despite the dimensions and position of layer, it will only display pixels 
   within this view. 
-  In: Layer context, x,y postion top left, x,y postion bottom right, relative
-      to top left position of layer itself
+  In: Layer context, x,y postion top left, width and height
  *****************************************************************************/
-void sil_setView(SILLYR *layer,UINT minx,UINT miny,UINT maxx,UINT maxy) {
+void sil_setView(SILLYR *layer,UINT minx,UINT miny,UINT width,UINT height) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setView on layer that isn't initialized, or with uninitialized FB");
@@ -382,14 +381,18 @@ void sil_setView(SILLYR *layer,UINT minx,UINT miny,UINT maxx,UINT maxy) {
     return;
   }
 #endif
-  if (minx>layer->fb->width) minx=layer->fb->width-1;
-  if (maxx>layer->fb->width) maxx=layer->fb->width-1;
-  if (miny>layer->fb->height) miny=layer->fb->height-1;
-  if (maxy>layer->fb->height) maxy=layer->fb->height-1;
+  if (minx>=layer->fb->width) minx=layer->fb->width-1;
+  if (miny>=layer->fb->height) miny=layer->fb->height-1;
+  if (width>layer->fb->width) width=layer->fb->width;
+  if (height>layer->fb->height) height=layer->fb->height;
   layer->view.minx=minx;
   layer->view.miny=miny;
-  layer->view.maxx=maxx;
-  layer->view.maxy=maxy;
+  layer->view.width=width;
+  layer->view.height=height;
+  if (sil_checkFlags(layer,SILFLAG_VIEWPOSSTAY)) {
+    layer->relx+=minx;
+    layer->rely+=miny;
+  }
   sil_setErr(SILERR_ALLOK);
 }
 
@@ -405,10 +408,14 @@ void sil_resetView(SILLYR *layer) {
     return;
   }
 #endif
+  if (sil_checkFlags(layer,SILFLAG_VIEWPOSSTAY)) {
+    layer->relx-=layer->view.minx;
+    layer->rely-=layer->view.miny;
+  } 
   layer->view.minx=0;
   layer->view.miny=0;
-  layer->view.maxx=layer->fb->width;
-  layer->view.maxy=layer->fb->height;
+  layer->view.width=layer->fb->width;
+  layer->view.height=layer->fb->height;
   sil_setErr(SILERR_ALLOK);
 }
 
@@ -416,10 +423,10 @@ void sil_resetView(SILLYR *layer) {
   Resize layer (used for cropping and turning) will create a temporary 
   framebuffer
 
-  In: Layer context x,y top left, x,y bottom right, using the the top left 
-      position of the original layer as reference.
+  In: Layer context x,y top left within layer + width & height of view
+
  *****************************************************************************/
-UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT maxx,UINT maxy) {
+UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) {
   SILFB *tmpfb;
   BYTE red,green,blue,alpha;
   UINT err=0;
@@ -433,11 +440,11 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT maxx,UINT maxy) {
 #endif
   if (!layer->init) return SILERR_NOTINIT;
 
-  /* no use to create 'negative' sizes... */
-  if ((maxx<=minx)||(maxy<=miny)) return SILERR_WRONGFORMAT;
+  /* no use to create 'empty' sizes... */
+  if ((0==width)||(0==height)) return SILERR_WRONGFORMAT;
 
   /* create temporary framebuffer to copy from old one into */
-  tmpfb=sil_initFB(maxx-minx,maxy-miny,layer->fb->type);
+  tmpfb=sil_initFB(width,height,layer->fb->type);
   if (NULL==tmpfb) {
     log_info("ERR: Can't create temporary framebuffer for resizing");
     return sil_getErr();
@@ -445,8 +452,8 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT maxx,UINT maxy) {
 
 
   /* copy selected part */
-  for (int x=minx;x<maxx;x++) {
-    for (int y=miny;y<maxy;y++) {
+  for (int x=minx;x<minx+width;x++) {
+    for (int y=miny;y<miny+height;y++) {
         sil_getPixelFB(layer->fb,x,y,&red,&green,&blue,&alpha);
         sil_putPixelFB(tmpfb,x-minx,y-miny,red,green,blue,alpha);
     }
@@ -462,8 +469,8 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT maxx,UINT maxy) {
   layer->fb->size=tmpfb->size;
   layer->view.minx=0;
   layer->view.miny=0;
-  layer->view.maxx=tmpfb->width;
-  layer->view.maxy=tmpfb->height;
+  layer->view.width=tmpfb->width;
+  layer->view.height=tmpfb->height;
   return 0;
 }
 
@@ -548,7 +555,6 @@ void LayersToFB(SILFB *fb) {
   UINT pos,pos2;
   float af;
   float negaf;
-  SILBOX rview;
   int absx,absy;
 
 #ifndef SIL_LIVEDANGEROUS
@@ -563,15 +569,15 @@ void LayersToFB(SILFB *fb) {
   sil_clearFB(fb);
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      for (int x=layer->view.minx; x<layer->view.maxx; x++) {
-        for (int y=layer->view.miny; y<layer->view.maxy; y++) {
+      for (int x=layer->view.minx; x<(layer->view.minx+layer->view.width); x++) {
+        for (int y=layer->view.miny; y<(layer->view.miny+layer->view.height); y++) {
           int absx=x+layer->relx-layer->view.minx;
           int absy=y+layer->rely-layer->view.miny;
           int rx=x;
           int ry=y;
 
           /* prevent drawing outside borders of display */
-          if ((absx>=fb->width)||(absy>=fb->height)) continue;
+          if ((absx>fb->width)||(absy>fb->height)) continue;
 
           sil_getPixelLayer(layer,rx,ry,&red,&green,&blue,&alpha);
           if (0==alpha) continue; /* nothing to do if completely transparant */
@@ -603,9 +609,9 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
       if (((NULL!=layer->click)||(sil_checkFlags(layer,SILFLAG_DRAGGABLE))) &&
           (x>=layer->relx+layer->view.minx) &&
-          (x<=layer->relx+layer->view.maxx) &&
+          (x<layer->relx+(layer->view.minx+layer->view.width)) &&
           (y>=layer->rely+layer->view.miny) &&
-          (y<=layer->rely+layer->view.maxy)) {
+          (y<layer->rely+(layer->view.miny+layer->view.height))) {
         return layer;
       }
     }
@@ -622,9 +628,9 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
       if ((NULL!=layer->hover) &&
           (x>=layer->relx+layer->view.minx) &&
-          (x<=layer->relx+layer->view.maxx) &&
+          (x<layer->relx+(layer->view.minx+layer->view.width)) &&
           (y>=layer->rely+layer->view.miny) &&
-          (y<=layer->rely+layer->view.maxy)) {
+          (y<layer->rely+(layer->view.miny+layer->view.height))) {
         return layer;
       }
     }

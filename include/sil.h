@@ -83,6 +83,7 @@ void sil_destroyFB(SILFB *);
 #define SILFLAG_NOBLEND        2
 #define SILFLAG_BUTTONDOWN     4
 #define SILFLAG_DRAGGABLE      8
+#define SILFLAG_VIEWPOSSTAY   16
 
 /* bitmask for internal */
 #define SILFLAG_ALPHACHANGED   1
@@ -106,8 +107,8 @@ typedef struct _SILEVENT {
 typedef struct _SILBOX {
   UINT minx;
   UINT miny;
-  UINT maxx;
-  UINT maxy;
+  UINT width;
+  UINT height;
 } SILBOX;
 
 typedef struct _SILLYR {
