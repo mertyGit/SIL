@@ -54,6 +54,7 @@ UINT sil_getTimeval();
 #define SILTYPE_888BGR   12
 #define SILTYPE_ABGR     13
 #define SILTYPE_ARGB     14
+#define SILTYPE_EMPTY    15
 
 typedef struct _SILFB {
   BYTE *buf;

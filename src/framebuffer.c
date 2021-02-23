@@ -31,6 +31,9 @@
   888 = 8bits + 8bits + 8bits               = 3   bytes per pixel 
   ABGR/ARGB = 8bits + 8bits + 8bits + 8bits = 4   bytes per pixel 
 
+  SILTYPE_EMPTY is used to just to support empty layers with resizable 
+  dimensions, used attach eventhandlers to it.
+
  *****************************************************************************/
 
 
@@ -73,6 +76,9 @@ SILFB *sil_initFB(UINT width, UINT height, BYTE type) {
     case SILTYPE_ARGB:
       size=width*height*4;
       break;
+
+    case SILTYPE_EMPTY:
+      size=1;
     default:
       /* unknown type */
       log_info("ERR: Unknown RGB format given to greate framebuffer: %d",type);
@@ -155,6 +161,8 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
   height=fb->height;
 
   switch(fb->type) {
+    case SILTYPE_EMPTY:
+      break;
     case SILTYPE_332RGB:  
       buf[x+width*y]=(red&0xE0)|((green&0xE0)>>3)|(blue>>6);
       break;
@@ -283,6 +291,12 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
   height=fb->height;
   *alpha=0;
   switch(fb->type) {
+    case SILTYPE_EMPTY;
+      *blue =0;
+      *green=0;
+      *red  =0;
+      *alpha=0;
+      break;
     case SILTYPE_332RGB: 
       *red   = (buf[x+width*y]   )&0xE0;
       *green = (buf[x+width*y]<<3)&0xE0;
