@@ -162,6 +162,7 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
 
   switch(fb->type) {
     case SILTYPE_EMPTY:
+      /* don't do anything */
       break;
     case SILTYPE_332RGB:  
       buf[x+width*y]=(red&0xE0)|((green&0xE0)>>3)|(blue>>6);
@@ -291,7 +292,7 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
   height=fb->height;
   *alpha=0;
   switch(fb->type) {
-    case SILTYPE_EMPTY;
+    case SILTYPE_EMPTY:
       *blue =0;
       *green=0;
       *red  =0;
