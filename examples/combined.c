@@ -7,7 +7,8 @@
 #include "sil.h"
 #include "log.h"
 
-static SILLYR *fonttest,*foreground,*background,*one,*two,*three,*test,*ontop,*both,*bothnoblend;
+static SILLYR *fonttest,*animation, *foreground,*background,*one,*two,*three,*test,*mirror, *ontop,*both,*bothnoblend;
+static UINT animcount=0;
 
 UINT keyhandler(SILEVENT *event) {
   switch(event->type) {
@@ -52,8 +53,9 @@ UINT showme(SILEVENT *event) {
 }
 
 UINT tick(SILEVENT *event) {
-  //log_verbose("GOT tick:%d",event->val);
-  return 0;
+  sil_setViewPart(animation,8,2,++animcount);
+  if (animcount>=(8*2)) animcount=0;
+  return 1;
 }
 
 UINT drag(SILEVENT *event) {
@@ -115,6 +117,15 @@ int main() {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 3;
   }
+
+  printf("loading dancing banana...\n");
+  animation=sil_PNGtoNewLayer("dancingbanana.png",320,80);
+  if (NULL==animation) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 3;
+  }
+  sil_setViewPart(animation,8,2,0);
+
 
   printf("sil_PNGtoNewLayer one...\n");
   one=sil_PNGtoNewLayer("testpic2.png",500,500);
@@ -256,6 +267,13 @@ int main() {
   sil_setView(test,20,20,60,60);
   sil_setHoverHandler(test,showme);
 
+  printf("mirroring layer 10");
+  mirror=sil_mirrorLayer(test,700,400);
+  sil_resetView(mirror);
+
+
+
+
   printf("sil_PNGtoNewLayer 11..\n");
   test=sil_PNGtoNewLayer("testpic11.png",800,300);
   if (NULL==test) {
@@ -310,7 +328,7 @@ int main() {
   sil_setTimerHandler(tick);
 
   printf("sil_setTimeval...\n");
-  sil_setTimeval(1000); /* every 1000 msec = every second */
+  sil_setTimeval(50); /* every 100 msec = every 1/10 second */
 
 
   printf("sil_updateDisplay...\n");

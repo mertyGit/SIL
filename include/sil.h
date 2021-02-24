@@ -135,10 +135,11 @@ typedef struct _SILLYR {
   UINT prevy;
 } SILLYR;
 
-/* this one is in sil.c, not layer.c */
+/* this one is in sil.c, not layer.c but needs SILEVENT defined */
 void sil_setTimerHandler(UINT (*)(SILEVENT *));
 
 SILLYR *sil_addLayer(UINT, UINT, UINT, UINT, BYTE);
+SILLYR *sil_mirrorLayer(SILLYR *, UINT, UINT);
 void sil_putPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
 void sil_blendPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
 void sil_getPixelLayer(SILLYR *, UINT, UINT, BYTE *, BYTE *, BYTE *, BYTE *);
@@ -163,6 +164,7 @@ void sil_setDragHandler(SILLYR *,UINT (*)(SILEVENT *));
 SILLYR *sil_findHighestClick(UINT,UINT);
 SILLYR *sil_findHighestHover(UINT,UINT);
 SILLYR *sil_findHighestKeyPress(UINT,BYTE);
+void sil_setViewPart(SILLYR *,UINT ,UINT, UINT);
 
 /* font.c */
 

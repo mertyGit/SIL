@@ -90,7 +90,8 @@ void sil_mainLoop() {
     switch (se->type) {
       case SILDISP_TIMER:
         gsil.amount=0;
-        if (gsil.timer) gsil.timer(se);
+        if (gsil.timer) 
+          if (gsil.timer(se)) sil_updateDisplay();
         break;
       case SILDISP_MOUSE_UP:
           if (gsil.ActiveLayer) sil_clearFlags(gsil.ActiveLayer,SILFLAG_BUTTONDOWN);

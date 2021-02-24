@@ -96,6 +96,67 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   return layer;
 }
 
+/*****************************************************************************
+  Create a mirror of given layer. New layer will share the same framebuffer 
+  as the original, so all drawings and filters on it will be the same as the 
+  original, however, the new layer can have different position, view or visability
+
+  In:  Layer to mirror
+  Out: Mirrored copy of the Layer
+
+ *****************************************************************************/
+SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
+  SILLYR *newlayer=NULL;
+
+  if (NULL==layer) {
+    log_warn("mirroring layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return NULL;
+  }
+
+  newlayer=calloc(1,sizeof(SILLYR));
+  if (NULL==newlayer) {
+    log_info("ERR: Can't allocate memory for addLayer");
+    sil_setErr(SILERR_NOMEM);
+    return NULL;
+  }
+  log_mark("MIRROR");
+
+  /* copy all information */
+  memcpy(newlayer,layer,sizeof(SILLYR));
+
+  /* and set new id & position*/
+  newlayer->id=glyr.idcount++;
+  newlayer->relx=relx;
+  newlayer->rely=rely;
+
+  /* make sure we dont accidently copy handlers & states */
+  newlayer->internal=0;
+  newlayer->hover=NULL;
+  newlayer->click=NULL;
+  newlayer->keypress=NULL;
+  newlayer->drag=NULL;
+  newlayer->key=0;
+  newlayer->modifiers=0;
+  newlayer->prevx=0;
+  newlayer->prevy=0;
+
+  /* add layer to double linked list of layers */
+  newlayer->next=NULL;
+  if (glyr.top) {
+    glyr.top->next=newlayer;
+    newlayer->previous=glyr.top;
+  } else {
+    glyr.bottom=newlayer;
+    newlayer->previous=NULL;
+  }
+  glyr.top=newlayer;
+
+  sil_setErr(SILERR_ALLOK);
+  return newlayer;
+}
+
+
 void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -659,4 +720,45 @@ SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
     layer=layer->previous;
   }
   return NULL;
+}
+
+void sil_setViewPart(SILLYR *layer,UINT hparts, UINT vparts, UINT partno) {
+  UINT pwidth,pheight;
+  UINT x=0,y=0;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setViewPart on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+  
+  /* calculate dimensions of single part */
+  pwidth=(layer->fb->width)/hparts;
+  pheight=(layer->fb->height)/vparts;
+
+  /* calculate position of given part number */
+  while(partno) {
+    if (x+pwidth < layer->fb->width) {
+      x+=pwidth;
+    } else {
+      x=0;
+      if (y+pheight < layer->fb->height) {
+        y+=pheight;
+      } else {
+        y=0;
+      }
+    }
+    partno--;
+  }
+
+  /* set view accordingly */
+  sil_setView(layer,x,y,pwidth,pheight);
+
+
+
+
+
+  return;
 }

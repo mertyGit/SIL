@@ -418,6 +418,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       gettimeofday(&tv,NULL);
       gdisp.se.val=(tv.tv_sec-gdisp.lasttimer.tv_sec)*1000+(tv.tv_usec-gdisp.lasttimer.tv_usec)/1000;
       gettimeofday(&gdisp.lasttimer,NULL);
+      return 0;
       break;
 
     case WM_PAINT:
