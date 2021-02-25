@@ -92,6 +92,10 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   layer->modifiers=0;
   layer->prevx=0;
   layer->prevy=0;
+
+  layer->sprite.width=0;
+  layer->sprite.height=0;
+  layer->sprite.pos=0;
   sil_setErr(SILERR_ALLOK);
   return layer;
 }
@@ -722,43 +726,120 @@ SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
   return NULL;
 }
 
-void sil_setViewPart(SILLYR *layer,UINT hparts, UINT vparts, UINT partno) {
-  UINT pwidth,pheight;
+void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
   UINT x=0,y=0;
 
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("setViewPart on layer that isn't initialized, or with uninitialized FB");
+    log_warn("initSpriteSheet on layer that isn't initialized, or with uninitialized FB");
     sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   
   /* calculate dimensions of single part */
-  pwidth=(layer->fb->width)/hparts;
-  pheight=(layer->fb->height)/vparts;
+  layer->sprite.width=(layer->fb->width)/hparts;
+  layer->sprite.height=(layer->fb->height)/vparts;
+
+
+  /* set view accordingly */
+  sil_setSprite(layer,0);
+  return;
+}
+
+
+void sil_nextSprite(SILLYR *layer) {
+  UINT maxpos=0;
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+
+  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
+    log_warn("spritesheet isn't initialized, or wrong format");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
+  if (layer->sprite.pos < maxpos) {
+    layer->sprite.pos++;
+  } else {
+    layer->sprite.pos=0;
+  }
+  sil_setSprite(layer,layer->sprite.pos);
+  return;
+}
+
+
+void sil_prevSprite(SILLYR *layer) {
+  UINT maxpos=0;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+
+  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
+    log_warn("spritesheet isn't initialized, or wrong format");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
+  if (layer->sprite.pos>0) {
+    layer->sprite.pos--;
+  } else {
+    layer->sprite.pos=maxpos-1;
+  }
+  sil_setSprite(layer,layer->sprite.pos);
+  return;
+}
+
+void sil_setSprite(SILLYR *layer,UINT pos) {
+  UINT maxpos=0;
+  UINT x=0;
+  UINT y=0;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+
+  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
+    log_warn("spritesheet isn't initialized, or wrong format");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
+  pos%=maxpos;
 
   /* calculate position of given part number */
-  while(partno) {
-    if (x+pwidth < layer->fb->width) {
-      x+=pwidth;
+  layer->sprite.pos=pos;
+  while(pos) {
+    if (x+layer->sprite.width< layer->fb->width) {
+      x+=layer->sprite.width;
     } else {
       x=0;
-      if (y+pheight < layer->fb->height) {
-        y+=pheight;
+      if (y+layer->sprite.height< layer->fb->height) {
+        y+=layer->sprite.height;
       } else {
         y=0;
       }
     }
-    partno--;
+    pos--;
   }
-
-  /* set view accordingly */
-  sil_setView(layer,x,y,pwidth,pheight);
-
-
-
-
+  sil_setView(layer,x,y,layer->sprite.width,layer->sprite.height);
 
   return;
 }

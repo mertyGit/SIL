@@ -138,6 +138,7 @@ void sil_mainLoop() {
             gsil.ActiveLayer->rely=se->y;
             sil_updateDisplay();
           }
+          /*  */
         } else {
           if (sil_findHighestClick(se->x,se->y)) { 
             sil_setCursor(SILCUR_HAND);

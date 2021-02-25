@@ -317,6 +317,7 @@ void sil_destroyDisplay() {
   if (gdisp.fb->type) sil_destroyFB(gdisp.fb);
 }
 
+
 /*****************************************************************************
   
   Get event from display

@@ -112,6 +112,12 @@ typedef struct _SILBOX {
   UINT height;
 } SILBOX;
 
+typedef struct _SILSPRITE {
+  UINT width;
+  UINT height;
+  UINT pos;
+} SILPRITE;
+
 typedef struct _SILLYR {
   SILFB *fb;
   struct _SILLYR *previous;
@@ -133,6 +139,7 @@ typedef struct _SILLYR {
   BYTE modifiers;
   UINT prevx;
   UINT prevy;
+  SILPRITE sprite;
 } SILLYR;
 
 /* this one is in sil.c, not layer.c but needs SILEVENT defined */
@@ -164,7 +171,10 @@ void sil_setDragHandler(SILLYR *,UINT (*)(SILEVENT *));
 SILLYR *sil_findHighestClick(UINT,UINT);
 SILLYR *sil_findHighestHover(UINT,UINT);
 SILLYR *sil_findHighestKeyPress(UINT,BYTE);
-void sil_setViewPart(SILLYR *,UINT ,UINT, UINT);
+void sil_initSpriteSheet(SILLYR *,UINT ,UINT);
+void sil_nextSprite(SILLYR *);
+void sil_prevSprite(SILLYR *);
+void sil_setSprite(SILLYR *,UINT);
 
 /* font.c */
 

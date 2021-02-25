@@ -8,7 +8,6 @@
 #include "log.h"
 
 static SILLYR *fonttest,*animation, *foreground,*background,*one,*two,*three,*test,*mirror, *ontop,*both,*bothnoblend;
-static UINT animcount=0;
 
 UINT keyhandler(SILEVENT *event) {
   switch(event->type) {
@@ -53,8 +52,7 @@ UINT showme(SILEVENT *event) {
 }
 
 UINT tick(SILEVENT *event) {
-  sil_setViewPart(animation,8,2,++animcount);
-  if (animcount>=(8*2)) animcount=0;
+  sil_nextSprite(animation);
   return 1;
 }
 
@@ -124,7 +122,7 @@ int main() {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 3;
   }
-  sil_setViewPart(animation,8,2,0);
+  sil_initSpriteSheet(animation,8,2);
 
 
   printf("sil_PNGtoNewLayer one...\n");
@@ -328,7 +326,7 @@ int main() {
   sil_setTimerHandler(tick);
 
   printf("sil_setTimeval...\n");
-  sil_setTimeval(50); /* every 100 msec = every 1/10 second */
+  sil_setTimeval(100); /* every 100 msec = every 1/10 second */
 
 
   printf("sil_updateDisplay...\n");

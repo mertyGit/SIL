@@ -147,14 +147,12 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
     sil_setErr(SILERR_NOTINIT);
     return;
   }
+#endif
 
   /* don't bother drawing outside of buffer area */
   if ((x>=fb->width)||(y>=fb->height)) {
-    log_verbose("ignoring putPixelFB outside area");
-    sil_setErr(SILERR_WRONGFORMAT);
     return;
   }
-#endif
 
   buf=fb->buf;
   width=fb->width;
@@ -275,14 +273,12 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
     return;
   }
 
-  /* don't bother drawing outside of buffer area */
+  /* don't get pixel outside of buffer area */
   if ((x>=fb->width)||(y>=fb->height)) {
     red=0;
     green=0;
     blue=0;
     alpha=0;
-    log_verbose("ignoring getPixelFB outside area");
-    sil_setErr(SILERR_WRONGFORMAT);
     return;
   }
 #endif
