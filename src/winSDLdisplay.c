@@ -36,6 +36,7 @@ typedef struct _GDISP {
   UINT txt;
   BYTE ctype;
   struct timeval lasttimer;
+  SDL_Cursor *cursor;
 } GDISP;
 
 static GDISP gdisp;
@@ -474,14 +475,23 @@ void sil_setCursor(BYTE type) {
   if ((type!=gdisp.ctype)||(type!=SILCUR_ARROW)) {
     switch(type) {
       case SILCUR_ARROW:
+        gdisp.cursor=SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+        SDL_SetCursor(gdisp.cursor);
         break;
       case SILCUR_HAND:
+        gdisp.cursor=SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+        SDL_SetCursor(gdisp.cursor);
         break;
       case SILCUR_HELP:
+        /* can't find one for SDL, not implemented */
         break;
       case SILCUR_NO:
+        gdisp.cursor=SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
+        SDL_SetCursor(gdisp.cursor);
         break;
       case SILCUR_IBEAM:
+        gdisp.cursor=SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+        SDL_SetCursor(gdisp.cursor);
         break;
     }
   }
