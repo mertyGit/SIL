@@ -7,12 +7,16 @@
    Every updated layer(-framebuffer) will be translated to an texture that can be loaded into
    the gpu and mapped on eachother, using the power of hardware acceleration.
 
-   every "...display.c" file should have 5 functions
+   every "...display.c" file should have these functions
    -sil_initDisplay        ; create initial display, called via initializing SIL
    -sil_updateDisplay      ; update display, will check all layers updates display accordingly
    -sil_destroyDisplay     ; remove display, called via destroying SIL
    -sil_getEventDisplay    ; Wait or get first event ( mouse / keys or closing window )
    -sil_getTypefromDisplay ; will return the "native" color type of the display
+   -sil_setTimerDisplay    ; will set a repeating timer to interrupt the wait loop
+   -sil_stopTimerDisplay   ; stops the repeating timer
+   -sil_setCursor          ; sets the mouse cursor (in windowed environments)
+
 
 */
 
@@ -20,14 +24,21 @@
 #include <stdio.h>
 #include "sil.h"
 #include "log.h"
+#include "sys/time.h"
 
-static SDL_Window *window=NULL;
-static SDL_Surface *surface;
-static SDL_Event event;
-static SDL_Renderer *renderer=NULL;
-static SILFB *scratch=NULL;
-static SILEVENT se;
-static UINT txt;
+
+typedef struct _GDISP {
+  SDL_Window *window;
+  SDL_Event event;
+  SDL_Renderer *renderer;
+  SILFB *scratch;
+  SILEVENT se;
+  UINT txt;
+  BYTE ctype;
+  struct timeval lasttimer;
+} GDISP;
+
+static GDISP gdisp;
 
 /*****************************************************************************
 
@@ -59,14 +70,15 @@ static void LayersToDisplay() {
   BYTE red2,green2,blue2,alpha2;
 
   SILLYR *layer=sil_getBottom();
-  SDL_RenderClear(renderer);
+  SDL_RenderClear(gdisp.renderer);
   /* loop from bottom to top layer */
   while (layer) {
     if (NULL==layer->texture) {
       /* no texture yet for this layer */
-      layer->texture=SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,layer->fb->width,layer->fb->height);
+      layer->texture=SDL_CreateTexture(gdisp.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,layer->fb->width,layer->fb->height);
       if (NULL==layer->texture) {
         printf("Warning: can't create texture for layer: %s\n", SDL_GetError());
+        layer=layer->next;
         continue;
       }
       SDL_SetTextureBlendMode(layer->texture,SDL_BLENDMODE_BLEND);
@@ -77,38 +89,39 @@ static void LayersToDisplay() {
       SDL_SetTextureAlphaMod(layer->texture,(BYTE) (layer->alpha*255));
       layer->internal^=SILFLAG_ALPHACHANGED;
     }
-    if (layer->flags&SILFLAG_INVISIBLE) continue;
-    if (layer->fb->changed) {
-      if (layer->fb->type==SILTYPE_ARGB) {
-        SDL_UpdateTexture(layer->texture,NULL,layer->fb->buf,(layer->fb->width)*4);
-      } else {
-        /* not ARGB , convert it to ARGB                                         */
-        /* use scratch buffer, but to do so, alter its width & height temporarly */
-        scratchw=scratch->width;
-        scratchh=scratch->height;
-        if (scratch->width>layer->fb->width) scratch->width=layer->fb->width;
-        if (scratch->height>layer->fb->height) scratch->height=layer->fb->height;
-        for (UINT x=0;x<scratch->width;x++) {
-          for (UINT y=0;y<scratch->height;y++) {
-              sil_getPixelLayer(layer,x,y,&red,&green,&blue,&alpha);            
-              sil_putPixelFB(scratch,x,y,red,green,blue,alpha);
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      if (layer->fb->changed) {
+        if (layer->fb->type==SILTYPE_ARGB) {
+          SDL_UpdateTexture(layer->texture,NULL,layer->fb->buf,(layer->fb->width)*4);
+        } else {
+          /* not ARGB , convert it to ARGB                                         */
+          /* use scratch buffer, but to do so, alter its width & height temporarly */
+          scratchw=gdisp.scratch->width;
+          scratchh=gdisp.scratch->height;
+          if (gdisp.scratch->width>layer->fb->width) gdisp.scratch->width=layer->fb->width;
+          if (gdisp.scratch->height>layer->fb->height) gdisp.scratch->height=layer->fb->height;
+          for (UINT x=0;x<gdisp.scratch->width;x++) {
+            for (UINT y=0;y<gdisp.scratch->height;y++) {
+                sil_getPixelLayer(layer,x,y,&red,&green,&blue,&alpha);            
+                sil_putPixelFB(gdisp.scratch,x,y,red,green,blue,alpha);
+            }
           }
+          SDL_UpdateTexture(layer->texture,NULL,gdisp.scratch->buf,gdisp.scratch->width*4);
+          gdisp.scratch->width=scratchw;
+          gdisp.scratch->height=scratchh;
         }
-        SDL_UpdateTexture(layer->texture,NULL,scratch->buf,scratch->width*4);
-        scratch->width=scratchw;
-        scratch->height=scratchh;
+        layer->fb->changed=0;
       }
-      layer->fb->changed=0;
+      SR.x=layer->view.minx;
+      SR.y=layer->view.miny;
+      SR.w=layer->view.width;
+      SR.h=layer->view.height;
+      DR.x=layer->relx;
+      DR.y=layer->rely;
+      DR.w=SR.w;
+      DR.h=SR.h;
+      SDL_RenderCopy(gdisp.renderer,layer->texture,&SR,&DR);
     }
-    SR.x=layer->view.minx;
-    SR.y=layer->view.miny;
-    SR.w=layer->view.maxx-SR.x;
-    SR.h=layer->view.maxy-SR.y;
-    DR.x=layer->relx;
-    DR.y=layer->rely;
-    DR.w=SR.w;
-    DR.h=SR.h;
-    SDL_RenderCopy(renderer,layer->texture,&SR,&DR);
     layer=layer->next;
   }
 }
@@ -121,39 +134,52 @@ static void LayersToDisplay() {
 
  *****************************************************************************/
 
+static GDISP gdisp;
 
 UINT sil_initDisplay(void *nop, UINT width, UINT height, char *title) {
   UINT err=0;
 
+  /* initialize global vars */
+  gdisp.window=NULL;
+  gdisp.renderer=NULL;
+  gdisp.scratch=NULL;
+  gdisp.txt=0;
+  gdisp.ctype=0;
+
+  /* initialize SDL */
+  SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO);
+
+
   /* Create window */
-  window=SDL_CreateWindow(title,SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,width,height,0);
-  if (NULL==window) {
+  gdisp.window=SDL_CreateWindow(title,SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,width,height,0);
+  if (NULL==gdisp.window) {
     printf("ERROR: can't create window for display: %s\n",SDL_GetError());
     sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
   }
 
   /* create "scratch" FB, used for conversion to/from non BGRA layers */
-  scratch=sil_initFB(width,height,SILTYPE_ARGB);
-  if (NULL==scratch) {
+  gdisp.scratch=sil_initFB(width,height,SILTYPE_ARGB);
+  if (NULL==gdisp.scratch) {
     log_info("ERR: Can't create scratch framebuffer for display");
     sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
   }
 
   /* Raise created window */
-  SDL_RaiseWindow(window);
+  SDL_RaiseWindow(gdisp.window);
+  SDL_SetWindowGrab(gdisp.window,SDL_FALSE);
 
   /* Create hardware renderer, used for placing textures on it */
-  renderer=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED  );
-  if (NULL==renderer) {
+  gdisp.renderer=SDL_CreateRenderer(gdisp.window, -1, SDL_RENDERER_ACCELERATED  );
+  if (NULL==gdisp.renderer) {
       printf("Could not create renderer: %s\n", SDL_GetError());
       sil_setErr(SILERR_NOTINIT);
       return SILERR_NOTINIT;
   }
 
   /* We want alpha working in layers */
-  SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawBlendMode(gdisp.renderer,SDL_BLENDMODE_BLEND);
   return SILERR_ALLOK;
 }
 
@@ -164,7 +190,7 @@ UINT sil_initDisplay(void *nop, UINT width, UINT height, char *title) {
  *****************************************************************************/
 void sil_updateDisplay() {
   LayersToDisplay();
-  SDL_RenderPresent(renderer);
+  SDL_RenderPresent(gdisp.renderer);
 }
 
 /*****************************************************************************
@@ -328,112 +354,137 @@ static UINT keycode2sil(UINT code) {
 SILEVENT *sil_getEventDisplay(BYTE wait) {
   BYTE back=0;
 
-  se.type=SILDISP_NOTHING;
-  se.val=0;
-  se.x=0;
-  se.y=0;
+  gdisp.se.type=SILDISP_NOTHING;
+  gdisp.se.val=0;
+  gdisp.se.x=0;
+  gdisp.se.y=0;
 
   while(!back) {
-    if (0==wait) 
-      if (!(SDL_PollEvent)) return &se;
-    while(SDL_PollEvent(&event)) {
-      switch(event.type) {
+    while(SDL_PollEvent(&(gdisp.event))) {
+      switch(gdisp.event.type) {
         case SDL_QUIT:
-          se.type=SILDISP_QUIT;
+          gdisp.se.type=SILDISP_QUIT;
           back=1;
           break;
 
         case SDL_KEYDOWN:
-          se.type=SILDISP_KEY_DOWN;
-          se.val=0;
-          se.code=event.key.keysym.scancode;
-          se.modifiers=modifiers2sil();
-          se.key=keycode2sil(event.key.keysym.sym);
-          if (!(event.key.keysym.sym & 0x40000000)) {
-            txt=1;
+          gdisp.se.type=SILDISP_KEY_DOWN;
+          gdisp.se.val=0;
+          gdisp.se.code=gdisp.event.key.keysym.scancode;
+          gdisp.se.modifiers=modifiers2sil();
+          gdisp.se.key=keycode2sil(gdisp.event.key.keysym.sym);
+          if ((!(gdisp.event.key.keysym.sym & 0x40000000))&&(gdisp.event.key.keysym.sym>31)) {
+            gdisp.txt=1;
             back=0;
           } else {
-            txt=0;
+            gdisp.txt=0;
             back=1;
           }
           break;
 
         case SDL_KEYUP:
-          se.type=SILDISP_KEY_UP;
-          se.val=txt;
-          se.code=event.key.keysym.scancode;
-          se.modifiers=modifiers2sil();
-          se.key=keycode2sil(event.key.keysym.sym);
-          txt=0;
+          gdisp.se.type=SILDISP_KEY_UP;
+          gdisp.se.val=gdisp.txt;
+          gdisp.se.code=gdisp.event.key.keysym.scancode;
+          gdisp.se.modifiers=modifiers2sil();
+          gdisp.se.key=keycode2sil(gdisp.event.key.keysym.sym);
+          gdisp.txt=0;
           back=1;
           break;
 
         case SDL_TEXTINPUT:
-          if (txt) {
-            txt=event.text.text[0];
-            if (txt>1) {
-              se.val=txt;
-            } else {
-            }
+          if (gdisp.txt) {
+            gdisp.txt=gdisp.event.text.text[0];
+            if (gdisp.txt>1) {
+              gdisp.se.val=gdisp.txt;
+            } 
+            gdisp.txt=0;
             back=1;
           } 
           break;
 
         case SDL_MOUSEMOTION:
-          se.type=SILDISP_MOUSE_MOVE;
-          se.x=event.motion.x;
-          se.y=event.motion.y;
+          gdisp.se.type=SILDISP_MOUSE_MOVE;
+          gdisp.se.x=gdisp.event.motion.x;
+          gdisp.se.y=gdisp.event.motion.y;
           back=1;
           break;
 
         case SDL_MOUSEWHEEL:
-          se.type=SILDISP_MOUSEWHEEL;
-          if ((event.wheel.y)>0) {
-            se.val=1;
+          gdisp.se.type=SILDISP_MOUSEWHEEL;
+          if ((gdisp.event.wheel.y)>0) {
+            gdisp.se.val=1;
           } else {
-            se.val=2;
+            gdisp.se.val=2;
           }
           back=1;
           break;
 
         case SDL_MOUSEBUTTONDOWN:
-          se.type=SILDISP_MOUSE_DOWN;
-          se.x=event.button.x;
-          se.y=event.button.y;
-          se.val=0;
-          if (event.button.button==SDL_BUTTON_LEFT) {
-            se.val=1;
+          gdisp.se.type=SILDISP_MOUSE_DOWN;
+          gdisp.se.x=gdisp.event.button.x;
+          gdisp.se.y=gdisp.event.button.y;
+          gdisp.se.val=0;
+          if (gdisp.event.button.button==SDL_BUTTON_LEFT) {
+            gdisp.se.val=1;
           } else {
-            if (event.button.button==SDL_BUTTON_MIDDLE) {
-              se.val=2;
+            if (gdisp.event.button.button==SDL_BUTTON_MIDDLE) {
+              gdisp.se.val=2;
             } else {
-              if (event.button.button==SDL_BUTTON_RIGHT) se.val=3;
+              if (gdisp.event.button.button==SDL_BUTTON_RIGHT) gdisp.se.val=3;
             }
           }
-          if (se.val) back=1;
+          if (gdisp.se.val) back=1;
           break;
 
 
         case SDL_MOUSEBUTTONUP:
-          se.type=SILDISP_MOUSE_UP;
-          se.x=event.button.x;
-          se.y=event.button.y;
-          se.val=0;
-          if (event.button.button==SDL_BUTTON_LEFT) {
-            se.val=1;
+          gdisp.se.type=SILDISP_MOUSE_UP;
+          gdisp.se.x=gdisp.event.button.x;
+          gdisp.se.y=gdisp.event.button.y;
+          gdisp.se.val=0;
+          if (gdisp.event.button.button==SDL_BUTTON_LEFT) {
+            gdisp.se.val=1;
           } else {
-            if (event.button.button==SDL_BUTTON_MIDDLE) {
-              se.val=2;
+            if (gdisp.event.button.button==SDL_BUTTON_MIDDLE) {
+              gdisp.se.val=2;
             } else {
-              if (event.button.button==SDL_BUTTON_RIGHT) se.val=3;
+              if (gdisp.event.button.button==SDL_BUTTON_RIGHT) gdisp.se.val=3;
             }
           }
-          if (se.val) back=1;
+          if (gdisp.se.val) back=1;
           break;
       }
     }
   }
-  return &se;
+  return &(gdisp.se);
+}
+
+void sil_setTimerDisplay(UINT amount) {
+  gettimeofday(&gdisp.lasttimer,NULL);
+  //SetTimer(gdisp.win.window, 666, amount, (TIMERPROC) NULL);
+}
+
+void sil_stopTimerDisplay() {
+//  KillTimer(gdisp.win.window, 666);
+}
+
+void sil_setCursor(BYTE type) {
+  /* only load if cursor has been changed */
+  if ((type!=gdisp.ctype)||(type!=SILCUR_ARROW)) {
+    switch(type) {
+      case SILCUR_ARROW:
+        break;
+      case SILCUR_HAND:
+        break;
+      case SILCUR_HELP:
+        break;
+      case SILCUR_NO:
+        break;
+      case SILCUR_IBEAM:
+        break;
+    }
+  }
 }
 
 /*****************************************************************************
@@ -448,6 +499,6 @@ void sil_destroyDisplay() {
     if (layer->texture) SDL_DestroyTexture(layer->texture);
     layer=layer->next;
   }
-  SDL_DestroyWindow(window);
+  SDL_DestroyWindow(gdisp.window);
   SDL_Quit();
 }

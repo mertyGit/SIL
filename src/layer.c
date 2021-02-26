@@ -124,7 +124,6 @@ SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
     sil_setErr(SILERR_NOMEM);
     return NULL;
   }
-  log_mark("MIRROR");
 
   /* copy all information */
   memcpy(newlayer,layer,sizeof(SILLYR));

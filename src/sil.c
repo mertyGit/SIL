@@ -182,7 +182,9 @@ void sil_mainLoop() {
           if ((se->layer->internal) & SILKT_SINGLE) {
             if (0==(se->layer->internal&SILFLAG_KEYEVENT)) {
               se->layer->internal|=SILFLAG_KEYEVENT;
-              if (se->layer->keypress(se)) sil_updateDisplay();
+              if (se->layer->keypress(se)) {
+                sil_updateDisplay();
+              }
             }
           } else {
             if (se->layer->keypress(se)) sil_updateDisplay();

@@ -9,12 +9,16 @@
    This isn't the fastest method, however, it will come close to the usual "software framebuffer" use
    on non-hardware accelerated platforms. If you want speed, use additional SDL one (winSDLdisplay.c)
 
-   every "...display.c" file should have 5 functions
+   every "...display.c" file should have these functions
    -sil_initDisplay        ; create initial display, called via initializing SIL
    -sil_updateDisplay      ; update display, will check all layers updates display accordingly
    -sil_destroyDisplay     ; remove display, called via destroying SIL
    -sil_getEventDisplay    ; Wait or get first event ( mouse / keys or closing window )
    -sil_getTypefromDisplay ; will return the "native" color type of the display
+   -sil_setTimerDisplay    ; will set a repeating timer to interrupt the wait loop 
+   -sil_stopTimerDisplay   ; stops the repeating timer
+   -sil_setCursor          ; sets the mouse cursor (in windowed environments) 
+
 
 */
 
