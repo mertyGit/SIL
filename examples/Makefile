@@ -7,7 +7,7 @@ endif
 ifeq ($(DEST),sdl) 
   E = .exe
   DISP = winSDLdisplay
-  CFLAGS= -mwindows -I/usr/local/x86_64-w64-mingw32/include/ -L/usr/local/x86_64-w64-mingw32/lib/ -lSDL2main -lSDL2 -DSDL_MAIN_HANDLED 
+  CFLAGS= -mconsole -I/usr/local/x86_64-w64-mingw32/include/ -L/usr/local/x86_64-w64-mingw32/lib/ -lSDL2main -lSDL2 -DSDL_MAIN_HANDLED 
   CC = x86_64-w64-mingw32-gcc 
 endif
 ifeq ($(DEST),x11) 

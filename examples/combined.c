@@ -51,6 +51,7 @@ UINT showme(SILEVENT *event) {
   return 0;
 }
 
+
 UINT tick(SILEVENT *event) {
   sil_nextSprite(animation);
   return 1;

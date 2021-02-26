@@ -37,6 +37,7 @@ typedef struct _GDISP {
   BYTE ctype;
   struct timeval lasttimer;
   SDL_Cursor *cursor;
+  SDL_TimerID timerid;
 } GDISP;
 
 static GDISP gdisp;
@@ -95,10 +96,24 @@ static void LayersToDisplay() {
         if (layer->fb->type==SILTYPE_ARGB) {
           SDL_UpdateTexture(layer->texture,NULL,layer->fb->buf,(layer->fb->width)*4);
         } else {
-          /* not ARGB , convert it to ARGB                                         */
-          /* use scratch buffer, but to do so, alter its width & height temporarly */
+          /* not ARGB , convert it to ARGB                                                 */
+          /* use scratch buffer, but to do so, alter its width & height temporarly         */
+          
+          /* if scratch isn't large enough to fit layer, recreate a new one */
+          if ((layer->fb->width>gdisp.scratch->width)||(layer->fb->height>gdisp.scratch->height)) {
+            sil_destroyFB(gdisp.scratch);
+            gdisp.scratch=sil_initFB(layer->fb->width,layer->fb->height,SILTYPE_ARGB);
+            if (NULL==gdisp.scratch) {
+              log_info("ERR: Can't create resized scratch framebuffer for display");
+              sil_setErr(SILERR_NOTINIT);
+              return;
+            }
+          }
+
+          /* we adjust width height temporary for smaller framebufs */
           scratchw=gdisp.scratch->width;
           scratchh=gdisp.scratch->height;
+
           if (gdisp.scratch->width>layer->fb->width) gdisp.scratch->width=layer->fb->width;
           if (gdisp.scratch->height>layer->fb->height) gdisp.scratch->height=layer->fb->height;
           for (UINT x=0;x<gdisp.scratch->width;x++) {
@@ -108,6 +123,8 @@ static void LayersToDisplay() {
             }
           }
           SDL_UpdateTexture(layer->texture,NULL,gdisp.scratch->buf,gdisp.scratch->width*4);
+
+          /* ...and we set the dimensions back to latest size.. */
           gdisp.scratch->width=scratchw;
           gdisp.scratch->height=scratchh;
         }
@@ -354,6 +371,7 @@ static UINT keycode2sil(UINT code) {
 
 SILEVENT *sil_getEventDisplay(BYTE wait) {
   BYTE back=0;
+  struct timeval tv;
 
   gdisp.se.type=SILDISP_NOTHING;
   gdisp.se.val=0;
@@ -363,6 +381,17 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
   while(!back) {
     while(SDL_PollEvent(&(gdisp.event))) {
       switch(gdisp.event.type) {
+
+        case SDL_USEREVENT:
+          /* timer went off */
+          gdisp.se.type=SILDISP_TIMER;
+          gdisp.se.code=gdisp.event.user.code;
+          gettimeofday(&tv,NULL);
+          gdisp.se.val=(tv.tv_sec-gdisp.lasttimer.tv_sec)*1000+(tv.tv_usec-gdisp.lasttimer.tv_usec)/1000;
+          gettimeofday(&gdisp.lasttimer,NULL);
+          back=1;
+          break;
+
         case SDL_QUIT:
           gdisp.se.type=SILDISP_QUIT;
           back=1;
@@ -461,13 +490,28 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
   return &(gdisp.se);
 }
 
+static Uint32 timercallback(Uint32 interval, void *param) {
+    SDL_Event event;
+    SDL_UserEvent userevent;
+
+    /* throw it on message queue to get it picked up by getEvent */
+    userevent.type = SDL_USEREVENT;
+    userevent.code = 666;
+
+    event.type = SDL_USEREVENT;
+    event.user = userevent;
+
+    SDL_PushEvent(&event);
+    return(interval);
+}
+
 void sil_setTimerDisplay(UINT amount) {
   gettimeofday(&gdisp.lasttimer,NULL);
-  //SetTimer(gdisp.win.window, 666, amount, (TIMERPROC) NULL);
+  gdisp.timerid=SDL_AddTimer(amount, &timercallback,NULL);
 }
 
 void sil_stopTimerDisplay() {
-//  KillTimer(gdisp.win.window, 666);
+  SDL_RemoveTimer(gdisp.timerid);
 }
 
 void sil_setCursor(BYTE type) {
