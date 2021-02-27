@@ -17,9 +17,9 @@ ifeq ($(DEST),x11)
   CC = cc
 endif
 DEBUG = -g
-DEPS = ../include/sil.h ../include/log.h ../include/lodepng.h
+DEPS = ../src/sil.h ../src/log.h ../src/lodepng.h
 OBJ = log.o sil.o framebuffer.o layer.o drawing.o filter.o lodepng.o font.o
-CFLAGS += -I ../include/
+CFLAGS +=-I ../src/
 
 $(PROG)$E: $(PROG).o $(OBJ) $(DISP).o 
 	$(CC) -o $@ $^ $(CFLAGS)
