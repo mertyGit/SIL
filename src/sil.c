@@ -53,7 +53,7 @@ UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance) {
 
   gsil.lasterr=0;
   gsil.init=1;
-  err=log_init(NULL,0); 
+  err=log_init(NULL,LOG_INFO|LOG_VERBOSE); 
   if (err) {
     log_fatal("Can't initialize logging");
   }

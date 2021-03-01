@@ -292,7 +292,7 @@ UINT sil_initDisplay(void *, UINT, UINT ,char *);
 void sil_updateDisplay();
 void sil_destroyDisplay();
 UINT sil_getTypefromDisplay();
-SILEVENT *sil_getEventDisplay(BYTE);
+SILEVENT *sil_getEventDisplay();
 void sil_setTimerDisplay(UINT);
 void sil_stopTimerDisplay();
 void sil_setCursor(BYTE);

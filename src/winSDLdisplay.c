@@ -369,7 +369,7 @@ static UINT keycode2sil(UINT code) {
  *****************************************************************************/
 
 
-SILEVENT *sil_getEventDisplay(BYTE wait) {
+SILEVENT *sil_getEventDisplay() {
   BYTE back=0;
   struct timeval tv;
 
@@ -517,26 +517,27 @@ void sil_stopTimerDisplay() {
 void sil_setCursor(BYTE type) {
   /* only load if cursor has been changed */
   if ((type!=gdisp.ctype)||(type!=SILCUR_ARROW)) {
+    gdisp.cursor=NULL;
     switch(type) {
       case SILCUR_ARROW:
         gdisp.cursor=SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-        SDL_SetCursor(gdisp.cursor);
         break;
       case SILCUR_HAND:
         gdisp.cursor=SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
-        SDL_SetCursor(gdisp.cursor);
         break;
       case SILCUR_HELP:
         /* can't find one for SDL, not implemented */
         break;
       case SILCUR_NO:
         gdisp.cursor=SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
-        SDL_SetCursor(gdisp.cursor);
         break;
       case SILCUR_IBEAM:
         gdisp.cursor=SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-        SDL_SetCursor(gdisp.cursor);
         break;
+    }
+    if (gdisp.cursor) {
+      gdisp.ctype=type;
+      SDL_SetCursor(gdisp.cursor);
     }
   }
 }

@@ -347,7 +347,7 @@ void sil_destroyDisplay() {
    (Actually, unicode, but I'm lazy and only want single-byte codes ... )
 
  *****************************************************************************/
-SILEVENT *sil_getEventDisplay(BYTE wait) {
+SILEVENT *sil_getEventDisplay() {
   MSG  msg;
   gdisp.se.type=SILDISP_NOTHING;
   gdisp.se.val=0;

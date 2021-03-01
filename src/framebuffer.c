@@ -197,12 +197,12 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
       buf[x*2+1+width*y*2]=((green&0x18)<<3)|((red  &0xF8)>>2);
       break;
     case SILTYPE_565BGR: 
-      buf[x*2+  width*y*2]= (red  &0xF8)    |((green&0xE0)>>5);
-      buf[x*2+1+width*y*2]=((green&0x1C)<<3)| (blue>>3);
+      buf[x*2+1+width*y*2]= (red  &0xF8)    |((green&0xE0)>>5);
+      buf[x*2+  width*y*2]=((green&0x1C)<<3)| (blue>>3);
       break;
     case SILTYPE_565RGB: 
-      buf[x*2+  width*y*2]= (blue &0xF8)    |((green&0xE0)>>5);
-      buf[x*2+1+width*y*2]=((green&0x1C)<<3)| (red >>3);
+      buf[x*2+1+width*y*2]= (blue &0xF8)    |((green&0xE0)>>5);
+      buf[x*2+  width*y*2]=((green&0x1C)<<3)| (red >>3);
       break;
     case SILTYPE_666BGR:
       buf[x*3+  width*3*y]=red>>2;
@@ -223,6 +223,7 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
       buf[x*3+  width*3*y]=blue;
       buf[x*3+1+width*3*y]=green;
       buf[x*3+2+width*3*y]=red;
+      break;
     case SILTYPE_ABGR:
       buf[x*4+  y*width*4]=red;
       buf[x*4+1+y*width*4]=green;
@@ -286,7 +287,7 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
   buf=fb->buf;
   width=fb->width;
   height=fb->height;
-  *alpha=0;
+  *alpha=255;
   switch(fb->type) {
     case SILTYPE_EMPTY:
       *blue =0;
@@ -336,22 +337,22 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
       *blue =  (val2 & 0x3E)<<2;
       break;
     case SILTYPE_555BGR: 
-      val1=buf[x*2+  width*y*2];
-      val2=buf[x*2+1+width*y*2];
+      val2=buf[x*2+  width*y*2];
+      val1=buf[x*2+1+width*y*2];
       *blue =   val1 & 0xF8;
       *green= ((val1 & 0x07)<<5)|((val2 & 0xC0)>>3);
       *red  =  (val2 & 0x3E)<<2;
       break;
-    case SILTYPE_565RGB: 
-      val1=buf[x*2+  width*y*2];
-      val2=buf[x*2+1+width*y*2];
+    case SILTYPE_565BGR: 
+      val2=buf[x*2+  width*y*2];
+      val1=buf[x*2+1+width*y*2];
       *red  =   val1 & 0xF8;
       *green= ((val1 & 0x07)<<5)|((val2 & 0xE0)>>3);
       *blue =  (val2 & 0x1F)<<3;
       break;
-    case SILTYPE_565BGR: 
-      val1=buf[x*2+  width*y*2];
-      val2=buf[x*2+1+width*y*2];
+    case SILTYPE_565RGB: 
+      val2=buf[x*2+  width*y*2];
+      val1=buf[x*2+1+width*y*2];
       *blue =   val1 & 0xF8;
       *green= ((val1 & 0x07)<<5)|((val2 & 0xE0)>>3);
       *red  =  (val2 & 0x1F)<<3;

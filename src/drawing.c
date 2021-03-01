@@ -164,9 +164,11 @@ UINT sil_PNGintoLayer(SILLYR *layer,char * filename,UINT relx,UINT rely) {
         } else {
           sil_blendPixelLayer(layer,x+relx,y+rely,red,green,blue,alpha);
         }
+        //log_info("x:%d, y:%d",x,y);
       }
     }
   }
+  //log_mark("ENDING");
 
   /* remove temporary framebuffer */
   if (image) free(image);

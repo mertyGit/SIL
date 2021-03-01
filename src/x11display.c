@@ -7,18 +7,24 @@
    It will do so by using a framebuffer as source for a bitmap inside a fixed size window. Every time
    framebuffer is changed, bitmap is replaced.
 
-   every "...display.c" file should have 5 functions
+   every "...display.c" file should have these functions
    -sil_initDisplay        ; create initial display, called via initializing SIL
    -sil_updateDisplay      ; update display, will check all layers updates display accordingly
    -sil_destroyDisplay     ; remove display, called via destroying SIL
    -sil_getEventDisplay    ; Wait or get first event ( mouse / keys or closing window )
    -sil_getTypefromDisplay ; will return the "native" color type of the display
+   -sil_setTimerDisplay    ; will set a repeating timer to interrupt the wait loop
+   -sil_stopTimerDisplay   ; stops the repeating timer
+   -sil_setCursor          ; sets the mouse cursor (in windowed environments)
+
 
 */
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/cursorfont.h>
 
+#include <sys/time.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,21 +35,40 @@
 
 
 /* X11 display variables only used here */
-static Atom      wm_delete_message;
-static Display   *display;
-static Window    window;
-static GC        context;
-static Visual    *visual;
-static int       screen;
-static XImage    *ximage;
-static XGCValues gcvalues;
-static SILFB     *fb;
-static SILEVENT se;
-static SILEVENT pressed[100];
-static UINT keys=0;
+
+typedef struct _GDISP {
+  Atom      wm_delete_message;
+  Display   *display;
+  Window    window;
+  GC        context;
+  Visual    *visual;
+  int       screen;
+  XImage    *ximage;
+  XGCValues gcvalues;
+  SILFB     *fb;
+  SILEVENT se;
+  SILEVENT pressed[100];
+  UINT keys;
+  BYTE ctype;
+  Cursor cursor;
+  struct timeval lasttimer;
+  struct timeval tval;
+  int con;
+} GDISP;
+
+static GDISP gdisp;
+
+
+
+/*****************************************************************************
+
+  retrieve color type from Display (SILTYPE... , see framebuffer.c for info)
+  Used as "default" when no type is given when creating framebuffer
+
+ *****************************************************************************/
 
 UINT sil_getTypefromDisplay() {
-  return fb->type;
+  return gdisp.fb->type;
 }
 
 
@@ -207,7 +232,7 @@ static int expose(XEvent *e) {
   /* don't bother with old messages */
 	if (e->xexpose.count != 0) return 0;
 
-	Status s = XGetGeometry(display, window, &root, &x, &y, &width, &height,
+	Status s = XGetGeometry(gdisp.display, gdisp.window, &root, &x, &y, &width, &height,
 			&border, &depth);
   /* can't do nothing if parameters are wrong, just exit */
 	if (0==s)      log_fatal("XGetGeometry Failed");
@@ -254,129 +279,158 @@ static int fatalHandler(Display *d) {
 
  *****************************************************************************/
 
-SILEVENT *sil_getEventDisplay(BYTE wait) {
+SILEVENT *sil_getEventDisplay() {
 	int stop= 0;
 	XEvent event;
   char buf='\0';
   char keys_return[32];
   int downkeys=0;
+  fd_set rs;
+  struct timeval *tp;
+  struct timeval tt,tv;
 
   do {
     /* another ugly hack to check if keys are *realy* pressed */
-    XQueryKeymap(display,keys_return);
+    XQueryKeymap(gdisp.display,keys_return);
     downkeys=0;
     for (int i=0;i<32;i++) 
       if (keys_return[i]) downkeys++;
     if (!downkeys) {
-      if (keys) {
+      if (gdisp.keys) {
         /* missed a KEY_UP event, lets just send it again */
-        memcpy(&se,&pressed[--keys],sizeof(se));
-        se.type=SILDISP_KEY_UP;
-        se.modifiers=0;
-        return &se;
+        memcpy(&gdisp.se,&gdisp.pressed[--gdisp.keys],sizeof(gdisp.se));
+        gdisp.se.type=SILDISP_KEY_UP;
+        gdisp.se.modifiers=0;
+        return &gdisp.se;
       } 
     }
 
-    se.type=SILDISP_NOTHING;
-    se.val=0;
-    se.x=0;
-    se.y=0;
-    while ((XPending(display) > 0)&&(!stop)) {
-      XNextEvent(display, &event);
+    gdisp.se.type=SILDISP_NOTHING;
+    gdisp.se.val=0;
+    gdisp.se.x=0;
+    gdisp.se.y=0;
 
-      switch (event.type) {
-        case ButtonPress:
-          se.type=SILDISP_MOUSE_DOWN;
-          se.val=0;
-          switch (event.xbutton.button) {
-             case Button1:
-               se.val=1;
-               break;
-             case Button2:
-               se.val=2;
-               break;
-             case Button3:
-               se.val=3;
-               break;
-             case Button4:
-               se.type=SILDISP_MOUSEWHEEL;
-               se.val=2;
-               break;
-             case Button5:
-               se.type=SILDISP_MOUSEWHEEL;
-               se.val=1;
+    FD_ZERO(&rs);
+    FD_SET(gdisp.con,&rs);
+
+    if ((gdisp.tval.tv_sec>0)||(gdisp.tval.tv_usec>0)) {
+      tt.tv_sec=gdisp.tval.tv_sec;
+      tt.tv_usec=gdisp.tval.tv_usec;
+      tp=&tt;
+    } else {
+      tp=NULL;
+    }
+
+    if (0==XPending(gdisp.display)) {
+      if (0==select(gdisp.con+1,&rs,NULL,NULL,tp)) {
+        /* timer expired */
+        gdisp.se.type=SILDISP_TIMER;
+        gdisp.se.code=666;
+        gettimeofday(&tv,NULL);
+        gdisp.se.val=(tv.tv_sec-gdisp.lasttimer.tv_sec)*1000+(tv.tv_usec-gdisp.lasttimer.tv_usec)/1000;
+        gettimeofday(&gdisp.lasttimer,NULL);
+        stop=1;
+        break;
+      }  else {
+        XNextEvent(gdisp.display, &event);
+      }
+    } else {
+     XNextEvent(gdisp.display, &event);
+   }
+
+    switch (event.type) {
+      case ButtonPress:
+        gdisp.se.type=SILDISP_MOUSE_DOWN;
+        gdisp.se.val=0;
+        switch (event.xbutton.button) {
+           case Button1:
+             gdisp.se.val=1;
              break;
-          }
-          se.x  =event.xbutton.x;
-          se.y  =event.xbutton.y;
-          stop=1;
-          break;
+           case Button2:
+             gdisp.se.val=2;
+             break;
+           case Button3:
+             gdisp.se.val=3;
+             break;
+           case Button4:
+             gdisp.se.type=SILDISP_MOUSEWHEEL;
+             gdisp.se.val=2;
+             break;
+           case Button5:
+             gdisp.se.type=SILDISP_MOUSEWHEEL;
+             gdisp.se.val=1;
+           break;
+        }
+        gdisp.se.x  =event.xbutton.x;
+        gdisp.se.y  =event.xbutton.y;
+        stop=1;
+        break;
 
         case ButtonRelease:
-          se.type=SILDISP_MOUSE_UP;
-          se.val=0;
+          gdisp.se.type=SILDISP_MOUSE_UP;
+          gdisp.se.val=0;
           switch (event.xbutton.button) {
              case Button1:
-               se.val=1;
+               gdisp.se.val=1;
                break;
              case Button2:
-               se.val=2;
+               gdisp.se.val=2;
                break;
              case Button3:
-               se.val=3;
+               gdisp.se.val=3;
                break;
              case Button4:
              case Button5:
-               se.type=SILDISP_NOTHING;
+               gdisp.se.type=SILDISP_NOTHING;
                break;
           }
-          if (se.type!=SILDISP_NOTHING) {
-            se.x  =event.xbutton.x;
-            se.y  =event.xbutton.y;
+          if (gdisp.se.type!=SILDISP_NOTHING) {
+            gdisp.se.x  =event.xbutton.x;
+            gdisp.se.y  =event.xbutton.y;
             stop=1;
           }
           break;
 
         case MotionNotify:
-          se.type=SILDISP_MOUSE_MOVE;
-          se.x = event.xmotion.x;
-          se.y = event.xmotion.y;
+          gdisp.se.type=SILDISP_MOUSE_MOVE;
+          gdisp.se.x = event.xmotion.x;
+          gdisp.se.y = event.xmotion.y;
           stop=1;
           break;
 
         case KeyPress:
-          se.type=SILDISP_KEY_DOWN;
+          gdisp.se.type=SILDISP_KEY_DOWN;
           XLookupString(&event.xkey,&buf,1,NULL,NULL);
-          se.val=buf;
-          se.code=XLookupKeysym(&event.xkey,0);
-          se.key=keycode2sil(se.code);
-          se.modifiers=modifiers2sil(event.xkey.state);
-          if (keys<100) {
-            memcpy(&pressed[keys++],&se,sizeof(se));
+          gdisp.se.val=buf;
+          gdisp.se.code=XLookupKeysym(&event.xkey,0);
+          gdisp.se.key=keycode2sil(gdisp.se.code);
+          gdisp.se.modifiers=modifiers2sil(event.xkey.state);
+          if (gdisp.keys<100) {
+            memcpy(&gdisp.pressed[gdisp.keys++],&gdisp.se,sizeof(gdisp.se));
           }
           stop=1;
           break;
 
         case KeyRelease:
-          if (was_it_auto_repeat(display,&event, KeyRelease,KeyPress)) {
-            XNextEvent(display, &event); /* ignore next event */
+          if (was_it_auto_repeat(gdisp.display,&event, KeyRelease,KeyPress)) {
+            XNextEvent(gdisp.display, &event); /* ignore next event */
             stop=1;
           } else {
-            keys--;
-            se.type=SILDISP_KEY_UP;
+            gdisp.keys--;
+            gdisp.se.type=SILDISP_KEY_UP;
             XLookupString(&event.xkey,&buf,1,NULL,NULL);
-            se.val=buf;
-            se.code=XLookupKeysym(&event.xkey,0);
-            se.key=keycode2sil(se.code);
-            se.modifiers=modifiers2sil(event.xkey.state);
+            gdisp.se.val=buf;
+            gdisp.se.code=XLookupKeysym(&event.xkey,0);
+            gdisp.se.key=keycode2sil(gdisp.se.code);
+            gdisp.se.modifiers=modifiers2sil(event.xkey.state);
             /* weird X11 behaviour, grab keyboard focus back when keys are still being pressed */
-            if (keys) {
-              keys--;
-              if (keys) {
-                XGrabKeyboard(display,window,False,GrabModeAsync,GrabModeAsync,CurrentTime);
+            if (gdisp.keys) {
+              gdisp.keys--;
+              if (gdisp.keys) {
+                XGrabKeyboard(gdisp.display,gdisp.window,False,GrabModeAsync,GrabModeAsync,CurrentTime);
               } else {
-                XFlush(display);
-                XUngrabKeyboard(display,CurrentTime);
+                XFlush(gdisp.display);
+                XUngrabKeyboard(gdisp.display,CurrentTime);
               }
             }
             stop=1;
@@ -384,8 +438,8 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
           break;
 
         case ClientMessage:
-          if (event.xclient.data.l[0] == (int)wm_delete_message) {
-            se.type=SILDISP_QUIT;
+          if (event.xclient.data.l[0] == (int)gdisp.wm_delete_message) {
+            gdisp.se.type=SILDISP_QUIT;
             stop=1;
           } 
           break;
@@ -394,10 +448,57 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
           stop=1;
           break;
       }
-    }
   } while (!stop);
-	return &se;
+	return &gdisp.se;
 }
+
+void sil_setTimerDisplay(UINT amount) {
+  gettimeofday(&gdisp.lasttimer,NULL);
+  gdisp.tval.tv_sec=amount/1000;
+  gdisp.tval.tv_usec=(amount-gdisp.tval.tv_sec*1000)*1000;
+  //gdisp.timerid=SDL_AddTimer(amount, &timercallback,NULL);
+}
+
+void sil_stopTimerDisplay() {
+  gdisp.tval.tv_sec=0;
+  gdisp.tval.tv_usec=0;
+}
+
+void sil_setCursor(BYTE type) {
+  /* only load if cursor has been changed */
+  if ((type!=gdisp.ctype)||(type!=SILCUR_ARROW)) {
+    switch(type) {
+      case SILCUR_ARROW:
+        XFreeCursor(gdisp.display,gdisp.cursor);
+        gdisp.cursor=XCreateFontCursor(gdisp.display, XC_arrow);
+        break;
+      case SILCUR_HAND:
+        XFreeCursor(gdisp.display,gdisp.cursor);
+        gdisp.cursor=XCreateFontCursor(gdisp.display, XC_hand2);
+        break;
+      case SILCUR_HELP:
+        XFreeCursor(gdisp.display,gdisp.cursor);
+        gdisp.cursor=XCreateFontCursor(gdisp.display, XC_question_arrow);
+        break;
+      case SILCUR_NO:
+        XFreeCursor(gdisp.display,gdisp.cursor);
+        gdisp.cursor=XCreateFontCursor(gdisp.display, XC_circle);
+        break;
+      case SILCUR_IBEAM:
+        XFreeCursor(gdisp.display,gdisp.cursor);
+        gdisp.cursor=XCreateFontCursor(gdisp.display, XC_xterm);
+        break;
+    }
+  }
+  if (gdisp.cursor) {
+    gdisp.ctype=type;
+    XDefineCursor(gdisp.display,gdisp.window,gdisp.cursor);
+  }
+}
+
+
+
+
 
 /*****************************************************************************
 
@@ -409,13 +510,17 @@ SILEVENT *sil_getEventDisplay(BYTE wait) {
 
 
 UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
-  display=NULL;
-  ximage =NULL;
   UINT ret;
+
+  gdisp.display=NULL;
+  gdisp.ximage =NULL;
+  gdisp.keys=0;
+  gdisp.ctype=SILCUR_ARROW;
+
   
   /* first, create a framebuffer where all layer will go to */
-  fb=sil_initFB(width, height, SILTYPE_ARGB);
-  if (NULL==fb) {
+  gdisp.fb=sil_initFB(width, height, SILTYPE_ARGB);
+  if (NULL==gdisp.fb) {
     log_info("ERR: Can't create framebuffer for display");
     sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
@@ -427,40 +532,48 @@ UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
 	XSetIOErrorHandler(fatalHandler);
 
   /* connect to X11 server (make sure to set DISPLAY environment var ! )*/
-	display = XOpenDisplay(NULL);
-	if (NULL==display) log_fatal("cannot open display");
+	gdisp.display = XOpenDisplay(NULL);
+
+	if (NULL==gdisp.display) log_fatal("cannot open display");
 
 	XSizeHints *sizeHints = XAllocSizeHints();
 	if (NULL==sizeHints) log_fatal("cannot allocate sizehints");
 
 
   /* just take first display */
-	screen = DefaultScreen(display);
+	gdisp.screen = DefaultScreen(gdisp.display);
 
   /* create window */
-	window = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0,
-    width, height, 5, WhitePixel(display, screen),
-    BlackPixel(display, screen));
+	gdisp.window = XCreateSimpleWindow(gdisp.display, DefaultRootWindow(gdisp.display), 0, 0,
+    width, height, 5, WhitePixel(gdisp.display, gdisp.screen),
+    BlackPixel(gdisp.display, gdisp.screen));
 
   /* listen for delete messages (clicking on close window, or Xwindows stopping ) */
-	wm_delete_message = XInternAtom(display, "WM_DELETE_WINDOW", False);
-	XSetWMProtocols(display, window, &wm_delete_message, 1);
+	gdisp.wm_delete_message = XInternAtom(gdisp.display, "WM_DELETE_WINDOW", False);
+	XSetWMProtocols(gdisp.display, gdisp.window, &gdisp.wm_delete_message, 1);
 
 	sizeHints->flags = PMinSize;
 	sizeHints->min_width = width;
 	sizeHints->min_height = height;
 
-	Xutf8SetWMProperties(display,window,title,title,NULL,0,sizeHints,NULL,NULL);
+	Xutf8SetWMProperties(gdisp.display,gdisp.window,title,title,NULL,0,sizeHints,NULL,NULL);
 	XFree(sizeHints);
 
   /* tell them we need keys,pointers & button events */
-	XSelectInput(display, window, ExposureMask | KeyPressMask | PointerMotionMask| ButtonPressMask | ButtonReleaseMask);
-	context = XCreateGC(display, window, 0, 0);
+	XSelectInput(gdisp.display, gdisp.window, ExposureMask | KeyPressMask | PointerMotionMask| ButtonPressMask | ButtonReleaseMask);
+	gdisp.context = XCreateGC(gdisp.display, gdisp.window, 0, 0);
 
   /* raise the window */
-	XMapRaised(display, window);
+	XMapRaised(gdisp.display, gdisp.window);
 
-  visual=DefaultVisual(display,screen);
+  /* set the default cursor */
+  gdisp.cursor=XCreateFontCursor(gdisp.display, XC_arrow);
+  if (gdisp.cursor) XDefineCursor(gdisp.display,gdisp.window,gdisp.cursor);
+
+  /* store connection number to display */
+  gdisp.con=XConnectionNumber(gdisp.display);
+
+  gdisp.visual=DefaultVisual(gdisp.display,gdisp.screen);
   sil_setErr(SILERR_NOTINIT);
   return SILERR_ALLOK;
 }
@@ -474,20 +587,20 @@ UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
 void sil_updateDisplay() {
   GC gc;
 
-	if (NULL==fb) log_fatal("framebuffer not initialized");
-  LayersToFB(fb);
+	if (NULL==gdisp.fb) log_fatal("framebuffer not initialized");
+  LayersToFB(gdisp.fb);
   
   /* create colormap */
-  gc=XCreateGC(display, window, 0, &gcvalues);
+  gc=XCreateGC(gdisp.display, gdisp.window, 0, &gdisp.gcvalues);
 
   /* create image from framebuffer */
-  ximage = XCreateImage(display,visual,24,ZPixmap,0,(char *)fb->buf, fb->width,fb->height, 16,0);
+  gdisp.ximage = XCreateImage(gdisp.display,gdisp.visual,24,ZPixmap,0,(char *)gdisp.fb->buf, gdisp.fb->width,gdisp.fb->height, 16,0);
 
   /* RGBA like intel platforms */
-  ximage->byte_order=LSBFirst;
+  gdisp.ximage->byte_order=LSBFirst;
 
   /* place image on screen */
-  XPutImage(display,window,gc,ximage,0,0,0,0, fb->width, fb->height);
+  XPutImage(gdisp.display,gdisp.window,gc,gdisp.ximage,0,0,0,0, gdisp.fb->width, gdisp.fb->height);
 }
 
 /*****************************************************************************
@@ -497,8 +610,8 @@ void sil_updateDisplay() {
  *****************************************************************************/
 
 void sil_destroyDisplay() {
-	if (NULL != display) {
-		XCloseDisplay(display);
+	if (NULL != gdisp.display) {
+		XCloseDisplay(gdisp.display);
 	}
-  if (NULL!=fb) sil_destroyFB(fb);
+  if (NULL!=gdisp.fb) sil_destroyFB(gdisp.fb);
 }
