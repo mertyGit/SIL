@@ -184,6 +184,7 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   if(ioctl(fd,KDSETMODE,KD_GRAPHICS)) {
     log_warn("Can't set mode to graphics");
   }
+  close(fd);
 
   /* open events for mouse/touchscreen */
   /* not sure /dev/input/event2 is location of touch events in every situation..*/
@@ -226,8 +227,16 @@ void sil_updateDisplay() {
 
  *****************************************************************************/
 void sil_destroyDisplay() { 
+  int fd;
+
   if (gdisp.fb->type) sil_destroyFB(gdisp.fb);
   if (gdisp.fevent) close(gdisp.fevent);
+  fd =open("/dev/tty0",O_RDWR);
+  if (fd) { 
+    /* back to text mode */
+    ioctl(fd,KDSETMODE,KD_TEXT);
+    close(fd);
+  }
 }
 
 
