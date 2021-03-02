@@ -100,11 +100,13 @@ int main() {
 
 
   printf("sil_addLayer background...\n");
-  background=sil_addLayer(1000,1000,0,0,0);
+  background=sil_addLayer(1000,1000,0,0,SILTYPE_565RGB);
+  //background=sil_addLayer(1000,1000,0,0,SILTYPE_ABGR);
   if (NULL==background) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 2;
   }
+
 
   printf("setting catch all for key events...\n");
   sil_setKeyHandler(background,0,0,0,keyhandler); 
@@ -172,7 +174,7 @@ int main() {
 
 
   printf("sil_addLayer foreground...\n");
-  foreground=sil_addLayer(500,500,40,40,0);
+  foreground=sil_addLayer(500,500,40,40,SILTYPE_ARGB);
   if (NULL==foreground) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 8;
@@ -195,7 +197,7 @@ int main() {
 
 
   printf("sil_addLayer ontop...\n");
-  ontop=sil_addLayer(256,256,50,450,0);
+  ontop=sil_addLayer(256,256,50,450,SILTYPE_ARGB);
   if (NULL==ontop) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 10;
@@ -213,7 +215,7 @@ int main() {
   }
 
   printf("sil_addLayer both...\n");
-  both=sil_addLayer(200,200,550,50,0);
+  both=sil_addLayer(200,200,550,50,SILTYPE_ARGB);
   if (NULL==both) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 11;
@@ -235,7 +237,7 @@ int main() {
   }
 
   printf("sil_addLayer bothnoblend...\n");
-  bothnoblend=sil_addLayer(200,200,750,50,0);
+  bothnoblend=sil_addLayer(200,200,750,50,SILTYPE_ARGB);
   if (NULL==bothnoblend) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 14;

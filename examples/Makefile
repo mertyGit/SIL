@@ -16,6 +16,12 @@ ifeq ($(DEST),x11)
   CFLAGS = -lX11 
   CC = cc
 endif
+ifeq ($(DEST),fb) 
+  E = 
+  DISP = lnxFBdisplay
+  CFLAGS = 
+  CC = cc
+endif
 DEBUG = -g
 DEPS = ../src/sil.h ../src/log.h ../src/lodepng.h
 OBJ = log.o sil.o framebuffer.o layer.o drawing.o filter.o lodepng.o font.o
@@ -33,6 +39,8 @@ $(PROG).o: $(PROG).c $(DEPS)
 gdi: clean
 sdl: clean
 x11: clean
+fb: clean
+
 %: 
 	$(MAKE) -C ../examples/ PROG=combined DEST=$@
 	$(MAKE) -C ../examples/ PROG=filters  DEST=$@
