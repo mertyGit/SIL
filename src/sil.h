@@ -175,6 +175,11 @@ void sil_initSpriteSheet(SILLYR *,UINT ,UINT);
 void sil_nextSprite(SILLYR *);
 void sil_prevSprite(SILLYR *);
 void sil_setSprite(SILLYR *,UINT);
+void sil_toAbove(SILLYR *,SILLYR *);
+void sil_toBelow(SILLYR *,SILLYR *);
+void sil_toTop(SILLYR *);
+void sil_toBottom(SILLYR *);
+void sil_swap(SILLYR *,SILLYR *);
 
 /* font.c */
 

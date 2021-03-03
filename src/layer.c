@@ -633,6 +633,9 @@ void LayersToFB(SILFB *fb) {
   sil_clearFB(fb);
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      if (sil_getBottom()==layer) log_debug("Bottom");
+      if (sil_getTop()==layer) log_debug("Top");
+      log_debug("Processing layer %d",layer->id);
       for (int x=layer->view.minx; x<(layer->view.minx+layer->view.width); x++) {
         for (int y=layer->view.miny; y<(layer->view.miny+layer->view.height); y++) {
           int absx=x+layer->relx-layer->view.minx;
@@ -743,7 +746,6 @@ void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
 
   /* set view accordingly */
   sil_setSprite(layer,0);
-  return;
 }
 
 
@@ -770,7 +772,6 @@ void sil_nextSprite(SILLYR *layer) {
     layer->sprite.pos=0;
   }
   sil_setSprite(layer,layer->sprite.pos);
-  return;
 }
 
 
@@ -798,7 +799,6 @@ void sil_prevSprite(SILLYR *layer) {
     layer->sprite.pos=maxpos-1;
   }
   sil_setSprite(layer,layer->sprite.pos);
-  return;
 }
 
 void sil_setSprite(SILLYR *layer,UINT pos) {
@@ -839,6 +839,258 @@ void sil_setSprite(SILLYR *layer,UINT pos) {
     pos--;
   }
   sil_setView(layer,x,y,layer->sprite.width,layer->sprite.height);
+}
 
+/*****************************************************************************
+
+  Functions to change stacking position of layers 
+  toTop    : brings layer to the top of the stack (in front of every layer)
+  toBottom : brings layer to the bottom of the stack (behind every layer) 
+  toAbove  : brings layer (first argument) just in front of another layer (2nd)
+  toBelow  : brings layer (first argument) just behind another layer (2nd)
+
+ *****************************************************************************/
+
+void sil_toTop(SILLYR *layer) {
+  SILLYR *tnext;
+  SILLYR *tprevious;
+
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("trying to change stacking order on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  /* don't move when already on top */
+  if (glyr.top==layer) return;
+
+  tnext=layer->next;
+  tprevious=layer->previous;
+  
+  if (tnext) tnext->previous=tprevious;
+  if (tprevious) tprevious->next=tnext;
+  if (glyr.bottom==layer) glyr.bottom=tnext;
+  layer->previous=glyr.top;
+  layer->next=NULL;
+  glyr.top->next=layer;
+  glyr.top=layer;
+
+}
+
+void sil_toBottom(SILLYR *layer) {
+  SILLYR *tnext;
+  SILLYR *tprevious;
+
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("trying to change stacking order on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  /* don't move when already on bottom */
+  if (glyr.bottom==layer) return;
+
+  tnext=layer->next;
+  tprevious=layer->previous;
+  
+  if (tnext) tnext->previous=tprevious;
+  if (tprevious) tprevious->next=tnext;
+  if (glyr.top==layer) glyr.top=tprevious;
+  layer->next=glyr.bottom;
+  layer->previous=NULL;
+  glyr.bottom->previous=layer;
+  glyr.bottom=layer;
+}
+
+void sil_toAbove(SILLYR *layer,SILLYR *target) {
+  SILLYR *lnext;
+  SILLYR *lprevious;
+  SILLYR *tnext;
+  SILLYR *tprevious;
+  
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==target)) {
+    log_warn("trying to change stacking order on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  /* moveing above yourself ? */
+  if (target==layer) return;
+
+  /* don't move when already on position */
+  if (layer->previous==target) return;
+
+  tnext=target->next;
+  tprevious=target->previous;
+  lnext=layer->next;
+  lprevious=layer->previous;
+  
+  if (target==glyr.top) {
+  log_mark("TOP");
+    sil_toTop(layer);
+    return;
+  }
+
+  if (target==glyr.bottom) {
+  log_mark("BOTTOM");
+    sil_toBottom(layer);
+    sil_swap(layer,target);
+    return;
+  }
+
+  if (tprevious!=layer) {
+  log_mark("BETWEEN");
+    /* they are not connected to each other    */
+    /* so it is save to just move the pointers */
+    layer->previous=target;
+    if (lnext) lnext->previous=lprevious;
+    layer->next=tnext;
+    if (lprevious) lprevious->next=lnext;
+    if (tnext) tnext->previous=layer;
+    target->next=layer;
+    if (layer==glyr.top) glyr.top=lprevious;
+    return;
+
+  }
+
+  /* target->previous == layer is only possible here */
+  /* so just swap ...                            */
+  log_mark("SWAP");
+  sil_swap(layer,target);
   return;
+
+}
+
+void sil_toBelow(SILLYR *layer,SILLYR *target) {
+  SILLYR *lnext;
+  SILLYR *lprevious;
+  SILLYR *tnext;
+  SILLYR *tprevious;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==target)) {
+    log_warn("trying to change stacking order on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  /* moveing below yourself ? */
+  if (target==layer) return;
+
+  /* don't move when already on position */
+  if (layer->next==target) return;
+
+  tnext=target->next;
+  tprevious=target->previous;
+  lnext=layer->next;
+  lprevious=layer->previous;
+
+  if (target==glyr.top) {
+    sil_toTop(layer);
+    sil_swap(layer,target);
+    return;
+  }
+
+  if (target==glyr.bottom) {
+    sil_toBottom(layer);
+    return;
+  }
+
+
+  if (tnext!=layer) {
+    /* they are not connected to each other    */
+    /* so it is save to just move the pointers */
+    layer->next=target;
+    if (lnext) lnext->previous=lprevious;
+    layer->previous=tprevious;
+    if (lprevious) lprevious->next=lnext;
+    if (tprevious) tprevious->next=layer;
+    target->previous=layer;
+    if (layer==glyr.top) glyr.top=lprevious;
+    return;
+  }
+
+  /* target->next == layer is only possible here */
+  /* so just swap ...                            */
+  sil_swap(layer,target);
+  return;
+}
+
+
+void sil_swap(SILLYR *layer,SILLYR *target) {
+  SILLYR *lnext;
+  SILLYR *lprevious;
+  SILLYR *tnext;
+  SILLYR *tprevious;
+
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("trying to change stacking order on layer that isn't initialized");
+    sil_setErr(SILERR_NOTINIT);
+    return;
+  }
+#endif
+
+  if (target==layer) {
+    /* swap with yourself ? nothing to do */
+    return;
+  }
+
+  if (glyr.top==target) {
+    glyr.top=layer;
+  } else {
+    if (glyr.top==layer) {
+      glyr.top=target;
+    }
+  }
+  if (glyr.bottom==target) {
+    glyr.bottom=layer;
+  } else {
+    if (glyr.bottom==layer) glyr.bottom=target;
+  }
+  lnext=layer->next;
+  lprevious=layer->previous;
+  tnext=target->next;
+  tprevious=target->previous;
+
+  if ((lnext!=target)&&(tnext!=layer)) {
+    /* they are not connected to each other    */
+    /* so it is save to just swap the pointers */
+    layer->next      = tnext;
+    layer->previous  = tprevious;
+    target->next     = lnext;
+    target->previous = lprevious;
+    if (tnext)     tnext->previous = layer;
+    if (lnext)     lnext->previous = target;
+    if (tprevious) tprevious->next = layer;
+    if (lprevious) lprevious->next = target;
+    return;
+  }
+
+  /* layer is lower then target ?*/
+  if (lnext==target) {
+    layer->next       = tnext;
+    layer->previous   = target;
+    target->next      = layer;
+    target->previous  = lprevious;
+    if (lprevious) lprevious->next = target;
+    if (tnext)     tnext->previous = layer;
+    return;
+  } 
+
+  /* target is lower then layer      */
+  /* (tnext==layer) is only one left */
+  target->next       = lnext;
+  target->previous   = layer;
+  layer->next        = target;
+  layer->previous    = tprevious;
+  if (tprevious) tprevious->next  = layer;
+  if (lnext)     lnext->previous  = target;
 }

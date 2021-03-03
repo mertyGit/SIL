@@ -140,7 +140,7 @@ int main() {
   sil_updateDisplay();
 
   do {
-    se=sil_getEventDisplay(1);
+    se=sil_getEventDisplay();
     if (se->type==SILDISP_QUIT) break;
     sil_updateDisplay();
   } while (se!=NULL && se->key!=SILKY_ESC);
