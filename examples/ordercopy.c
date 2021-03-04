@@ -7,7 +7,7 @@
 #include "log.h"
 #include "sil.h"
 
-static SILLYR *eight,*eleven;
+static SILLYR *eight,*eleven,*source,*copy,*instance;
 
 UINT totop(SILEVENT *event) {
   if (event->type==SILDISP_MOUSE_DOWN) {
@@ -20,6 +20,14 @@ UINT totop(SILEVENT *event) {
 UINT tobottom(SILEVENT *event) {
   if (event->type==SILDISP_MOUSE_DOWN) {
     sil_toBottom(event->layer);
+    return 1;
+  }
+  return 0;
+}
+
+UINT reverse(SILEVENT *event) {
+  if (event->type==SILDISP_MOUSE_DOWN) {
+    sil_reverseColorFilter(event->layer);
     return 1;
   }
   return 0;
@@ -78,9 +86,9 @@ int main() {
 
   printf("sil_init...\n");
   #ifdef SIL_W32
-    sil_initSIL(1000,1000,"Testing SIL Order",hInstance);
+    sil_initSIL(1000,500,"Testing SIL Order",hInstance);
   #else
-    sil_initSIL(1000,1000,"Testing SIL Order",NULL);
+    sil_initSIL(1000,500,"Testing SIL Order",NULL);
   #endif
   sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
@@ -99,7 +107,7 @@ int main() {
   lyr=sil_PNGtoNewLayer("testpic3.png",x+80,y);
   sil_setClickHandler(lyr,totop);
 
-  x+=250;
+  x+=300;
 
   lyr=sil_PNGtoNewLayer("testpic4.png",x,y);
   sil_setClickHandler(lyr,tobottom);
@@ -109,7 +117,7 @@ int main() {
   lyr=sil_PNGtoNewLayer("testpic6.png",x+80,y);
   sil_setClickHandler(lyr,tobottom);
 
-  x+=250;
+  x+=300;
 
   lyr=sil_PNGtoNewLayer("testpic7.png",x,y);
   sil_setClickHandler(lyr,toswap);
@@ -132,8 +140,16 @@ int main() {
   lyr=sil_PNGtoNewLayer("testpic12.png",x+80,y);
   sil_setClickHandler(lyr,toabovebelow);
 
-  x+=250;
+  x+=450;
 
+  source=sil_PNGtoNewLayer("testpic1.png",x,y);
+  sil_setClickHandler(source,reverse);
+  sil_drawTextLayer(background,font,"  Source       Copy         Instance",x,y+100,0);
+  sil_drawTextLayer(background,font,"click to reverse color",x,y+150,0);
+  copy=sil_addCopy(source,x+110,y);
+  sil_setClickHandler(copy,reverse);
+  instance=sil_addInstance(source,x+220,y);
+  sil_setClickHandler(instance,reverse);
 
 
   sil_updateDisplay();

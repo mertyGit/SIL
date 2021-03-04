@@ -91,6 +91,7 @@ void sil_destroyFB(SILFB *);
 #define SILFLAG_KEYEVENT       2
 #define SILKT_SINGLE           4
 #define SILKT_ONLYUP           8
+#define SILFLAG_INSTANCIATED  16
 
 /* also used by display.c */
 typedef struct _SILEVENT {
@@ -116,7 +117,7 @@ typedef struct _SILSPRITE {
   UINT width;
   UINT height;
   UINT pos;
-} SILPRITE;
+} SILSPRITE;
 
 typedef struct _SILLYR {
   SILFB *fb;
@@ -139,7 +140,7 @@ typedef struct _SILLYR {
   BYTE modifiers;
   UINT prevx;
   UINT prevy;
-  SILPRITE sprite;
+  SILSPRITE sprite;
 } SILLYR;
 
 /* this one is in sil.c, not layer.c but needs SILEVENT defined */
@@ -180,6 +181,8 @@ void sil_toBelow(SILLYR *,SILLYR *);
 void sil_toTop(SILLYR *);
 void sil_toBottom(SILLYR *);
 void sil_swap(SILLYR *,SILLYR *);
+SILLYR *sil_addCopy(SILLYR *,UINT,UINT);
+SILLYR *sil_addInstance(SILLYR *,UINT,UINT);
 
 /* font.c */
 

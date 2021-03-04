@@ -394,11 +394,35 @@ SILLYR *sil_getTop() {
 }
 
 /*****************************************************************************
+  Internal function to check if layer is instanciated and twin(s) of it are
+  still around...
+  return amount of instances found
+
+ *****************************************************************************/
+
+static int hasInstance(SILLYR *layer) {
+  UINT cnt=0;
+  SILLYR *search;
+
+  if (0==layer->internal&SILFLAG_INSTANCIATED) return 0;
+  search=glyr.bottom;
+  while(search) {
+    if ((search != layer)&&(search->internal&SILFLAG_INSTANCIATED)) {
+      if (search->fb==layer->fb) cnt++; 
+    }
+    search=search->next;
+  }
+  return cnt;
+}
+
+/*****************************************************************************
   Remove layer
  *****************************************************************************/
 void sil_destroyLayer(SILLYR *layer) {
   if ((layer)&&(layer->init)) {
-    sil_destroyFB(layer->fb);
+
+    if (0==hasInstance(layer)) sil_destroyFB(layer->fb);
+
     layer->init=0;
     if (layer==glyr.bottom) {
       glyr.bottom=layer->next;
@@ -585,6 +609,7 @@ SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
   if (NULL==layer) {
     log_warn("Can't create layer for loaded PNG file");
     sil_setErr(SILERR_WRONGFORMAT);
+    if (image) free(image);
     return NULL;
   }
 
@@ -592,6 +617,7 @@ SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
   if (!(( layer->fb) && (layer->fb->buf))) {
     log_warn("Created layer for PNG has incorrect or missing framebuffer");
     sil_setErr(SILERR_NOTINIT);
+    if (image) free(image);
     return NULL;
   }
   free(layer->fb->buf);
@@ -633,11 +659,13 @@ void LayersToFB(SILFB *fb) {
   sil_clearFB(fb);
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
+     /*
       if (sil_getBottom()==layer) log_debug("Bottom");
       if (sil_getTop()==layer) log_debug("Top");
       log_debug("Processing layer %d",layer->id);
-      for (int x=layer->view.minx; x<(layer->view.minx+layer->view.width); x++) {
-        for (int y=layer->view.miny; y<(layer->view.miny+layer->view.height); y++) {
+      */
+      for (int y=layer->view.miny; y<(layer->view.miny+layer->view.height); y++) {
+        for (int x=layer->view.minx; x<(layer->view.minx+layer->view.width); x++) {
           int absx=x+layer->relx-layer->view.minx;
           int absy=y+layer->rely-layer->view.miny;
           int rx=x;
@@ -932,20 +960,17 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
   lprevious=layer->previous;
   
   if (target==glyr.top) {
-  log_mark("TOP");
     sil_toTop(layer);
     return;
   }
 
   if (target==glyr.bottom) {
-  log_mark("BOTTOM");
     sil_toBottom(layer);
     sil_swap(layer,target);
     return;
   }
 
   if (tprevious!=layer) {
-  log_mark("BETWEEN");
     /* they are not connected to each other    */
     /* so it is save to just move the pointers */
     layer->previous=target;
@@ -961,7 +986,6 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
 
   /* target->previous == layer is only possible here */
   /* so just swap ...                            */
-  log_mark("SWAP");
   sil_swap(layer,target);
   return;
 
@@ -1093,4 +1117,94 @@ void sil_swap(SILLYR *layer,SILLYR *target) {
   layer->previous    = tprevious;
   if (tprevious) tprevious->next  = layer;
   if (lnext)     lnext->previous  = target;
+}
+
+/*****************************************************************************
+
+  internal function :
+    copies the relevant information from one layer to another one
+
+ *****************************************************************************/
+static void copylayerinfo(SILLYR *from, SILLYR *to) {
+  to->view.minx= from->view.minx; 
+  to->view.miny= from->view.miny; 
+  to->view.width= from->view.width; 
+  to->view.height= from->view.height; 
+  if (sil_checkFlags(from,SILFLAG_INVISIBLE)) sil_setFlags(to,SILFLAG_INVISIBLE);
+  if (sil_checkFlags(from,SILFLAG_DRAGGABLE)) sil_setFlags(to,SILFLAG_DRAGGABLE);
+  if (sil_checkFlags(from,SILFLAG_VIEWPOSSTAY)) sil_setFlags(to,SILFLAG_VIEWPOSSTAY);
+  if (from->internal & SILKT_SINGLE) to->internal|=SILKT_SINGLE;
+  if (from->internal & SILKT_ONLYUP) to->internal|=SILKT_ONLYUP;
+  to->hover= from->hover;
+  to->click= from->click;
+  to->keypress= from->keypress;
+  to->drag= from->drag;
+  to->texture=from->texture;
+  to->sprite.width= from->sprite.width; 
+  to->sprite.height= from->sprite.height; 
+  to->sprite.pos= from->sprite.pos; 
+}
+
+
+/*****************************************************************************
+
+  addCopy : creates a new layer, but copies all layer information to new one
+            New layer will be placed at given x,y postion
+
+ *****************************************************************************/
+SILLYR *sil_addCopy(SILLYR *layer,UINT relx,UINT rely) {
+  SILLYR *ret=NULL;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("addCopy on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return NULL;
+  }
+#endif
+  ret=sil_addLayer(layer->fb->width,layer->fb->height,relx,rely,layer->fb->type);
+  if (NULL==ret) {
+    log_warn("Can't create extra layer for addCopy");
+    return NULL;
+  }
+  memcpy(ret->fb->buf,layer->fb->buf,layer->fb->size);
+  copylayerinfo(layer,ret);
+
+  return ret;
+}
+
+
+/*****************************************************************************
+
+  addInstance: 
+   creates a new layer, but shares the same framebuffer to save memory.
+   New layer will be placed at given x,y postion
+
+ *****************************************************************************/
+
+SILLYR *sil_addInstance(SILLYR *layer,UINT relx,UINT rely) {
+  SILLYR *ret=NULL;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("addCopy on layer that isn't initialized, or with uninitialized FB");
+    sil_setErr(SILERR_NOTINIT);
+    return NULL;
+  }
+#endif
+  /* create layer of size 1x1, since fb will be thrown away later */
+  ret=sil_addLayer(1,1,relx,rely,layer->fb->type);
+  if (NULL==ret) {
+    log_warn("Can't create extra layer for addCopy");
+    return NULL;
+  }
+  free(ret->fb);
+  ret->fb=layer->fb;
+
+  copylayerinfo(layer,ret);
+  /* set flag to instanciated, preventing throwing away framebuffer */
+  /* if there is still a copy of it left                            */
+  layer->internal|=SILFLAG_INSTANCIATED;
+  ret->internal|=SILFLAG_INSTANCIATED;
+  return ret;
 }

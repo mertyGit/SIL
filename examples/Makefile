@@ -42,9 +42,9 @@ x11: clean
 fb: clean
 
 %: 
-	$(MAKE) -C ../examples/ PROG=combined DEST=$@
-	$(MAKE) -C ../examples/ PROG=filters  DEST=$@
-	$(MAKE) -C ../examples/ PROG=order    DEST=$@
+	$(MAKE) -C ../examples/ PROG=combined  DEST=$@
+	$(MAKE) -C ../examples/ PROG=filters   DEST=$@
+	$(MAKE) -C ../examples/ PROG=ordercopy DEST=$@
 
 clean: 
 	rm -rf ../examples/*.exe ../examples/*.o ../examples/combined ../examples/filters
