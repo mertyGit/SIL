@@ -642,7 +642,6 @@ void LayersToFB(SILFB *fb) {
   SILLYR *layer;
   BYTE red,green,blue,alpha;
   BYTE mixred,mixgreen,mixblue,mixalpha;
-  UINT pos,pos2;
   float af;
   float negaf;
   int absx,absy;

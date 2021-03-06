@@ -501,6 +501,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       return 0;
       break;
 
+    case WM_SYSKEYDOWN:
     case WM_KEYDOWN:
       GetKeyboardState(kstate);
       ToUnicode(wParam,MapVirtualKey(wParam, MAPVK_VK_TO_VSC),kstate,kbuf,sizeof(kbuf),0);
@@ -513,6 +514,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       break; 
 
 
+    case WM_SYSKEYUP:
     case WM_KEYUP:
       GetKeyboardState(kstate);
       ToUnicode(wParam,MapVirtualKey(wParam, MAPVK_VK_TO_VSC),kstate,kbuf,sizeof(kbuf),0);

@@ -277,6 +277,7 @@ void sil_getBackgroundColor(BYTE *,BYTE *, BYTE *, BYTE *);
 void sil_setBackgroundColor(BYTE,BYTE,BYTE,BYTE);
 void sil_getForegroundColor(BYTE *,BYTE *, BYTE *, BYTE *);
 void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
+UINT sil_saveDisplay(char *,UINT,UINT,UINT,UINT);
 
 /* x11display.c  / winSDLdisplay.c / winGDIdisplay.c / lnxdisplay.c */
 

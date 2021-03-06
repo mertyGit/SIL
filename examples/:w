@@ -12,12 +12,15 @@ static SILLYR *fonttest,*animation, *foreground,*background,*one,*two,*three,*te
 UINT keyhandler(SILEVENT *event) {
   switch(event->type) {
     case SILDISP_KEY_DOWN:
-      if (SILKY_ESC==event->key) sil_quitLoop();
-      break;
-    case SILDISP_KEY_UP:
-      if  (SILKY_PRINTSCREEN==event->key) {
-        log_info("Printing part of screen wxh=100x100 at 320,80");
-        sil_saveDisplay("printscreen.png",1010,1010,0,0);
+      printf("GOT KEY: %d",event->key);
+      switch(event->key) {
+        case SILKY_ESC:
+          sil_quitLoop();
+          break;
+        case SILKY_PRINTSCREEN:
+          log_info("Printing part of screen wxh=100x100 at 320,80");
+          sil_saveDisplay("printscreen.png",100,100,320,80);
+          break;
       }
       break;
   }

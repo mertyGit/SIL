@@ -114,8 +114,9 @@ UINT sil_PNGintoLayer(SILLYR *layer,char * filename,UINT relx,UINT rely) {
 
 #endif
 
-  /* load image in temporary framebuffer */
-  err=lodepng_decode32_file(&image,&width,&height,filename);
+    /* load image in temporary framebuffer with alhpa */
+    err=lodepng_decode32_file(&image,&width,&height,filename);
+
   if (err) {
     switch (err) {
       case 28:
@@ -164,7 +165,6 @@ UINT sil_PNGintoLayer(SILLYR *layer,char * filename,UINT relx,UINT rely) {
         } else {
           sil_blendPixelLayer(layer,x+relx,y+rely,red,green,blue,alpha);
         }
-        //log_info("x:%d, y:%d",x,y);
       }
     }
   }
@@ -284,4 +284,88 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
     tch=text[++cnt];
   }
   sil_setErr(SILERR_ALLOK);
+}
+
+
+/*****************************************************************************
+
+   dump screen to given .png file with given width and height at position x,y
+
+ *****************************************************************************/
+
+UINT sil_saveDisplay(char *filename,UINT width, UINT height, UINT wx, UINT wy) {
+  SILFB *fb;
+  SILLYR *layer;
+  BYTE red,green,blue,alpha;
+  BYTE mixred,mixgreen,mixblue,mixalpha;
+  float af;
+  float negaf;
+  UINT err=0;
+
+  
+  /* first create framebuffer to hold information */
+  fb=sil_initFB(width,height,SILTYPE_888BGR);
+  if (NULL==fb) {
+    log_warn("Can't initialize framebuffer in order to dump to png file");
+    return SILERR_NOTINIT;
+  }
+
+  /* merge all layers to single fb - within window of given paramaters  */
+  layer=sil_getBottom();
+  while (layer) {
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      for (int y=layer->view.miny; y<(layer->view.miny+layer->view.height); y++) {
+        for (int x=layer->view.minx; x<(layer->view.minx+layer->view.width); x++) {
+          int absx=x+layer->relx-layer->view.minx;
+          int absy=y+layer->rely-layer->view.miny;
+          int rx=x;
+          int ry=y;
+
+          /* draw if it is not within window */
+          if ((absx<wx)||(absy<wy)||(absx>wx+width)||(absy>wy+height)) continue;
+
+          /* adjust wx,wy to 0,0 of framebuffer */
+          absx-=wx;
+          absy-=wy;
+
+          sil_getPixelLayer(layer,rx,ry,&red,&green,&blue,&alpha);
+          if (0==alpha) continue; /* nothing to do if completely transparant */
+          alpha=alpha*layer->alpha;
+          if (255==alpha) {
+            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
+          } else {
+            sil_getPixelFB(fb,absx,absy,&mixred,&mixgreen,&mixblue,&mixalpha);
+            af=((float)alpha)/255;
+            negaf=1-af;
+            red=red*af+negaf*mixred;
+            green=green*af+negaf*mixgreen;
+            blue=blue*af+negaf*mixblue;
+            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
+          }
+        }
+      }
+    }
+    layer=layer->next;
+  }
+
+  /* write to file */
+  err=lodepng_encode24_file(filename, fb->buf, width, height);
+  if (err) {
+    switch (err) {
+      case 79:
+        /* common error, wrong filename, no rights */
+        log_warn("Can't open '%s' for writing (%d)",filename,err);
+        err=SILERR_CANTOPENFILE;
+        break;
+      default:
+        /* something wrong with encoding png */
+        log_warn("Can't encode PNG file '%s' (%d)",filename,err);
+        err=SILERR_CANTDECODEPNG;
+        break;
+    }
+    return err;
+  }
+
+  sil_setErr(SILERR_ALLOK);
+  return SILERR_ALLOK;
 }
