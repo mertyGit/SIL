@@ -57,7 +57,7 @@ UINT sil_cropAlphaFilter(SILLYR *layer) {
       } 
     }
   }
-  err=sil_resizeLayer(layer,minx,miny,maxx+1,maxy+1);
+  err=sil_resizeLayer(layer,minx,miny,maxx-minx+1,maxy-miny+1);
 
   sil_setErr(err);
   return err;
@@ -90,7 +90,7 @@ UINT sil_cropFirstpixelFilter(SILLYR *layer) {
       } 
     }
   }
-  err=sil_resizeLayer(layer,minx,miny,maxx+1,maxy+1);
+  err=sil_resizeLayer(layer,minx,miny,maxx-minx+1,maxy-miny+1);
 
   sil_setErr(err);
   return err;

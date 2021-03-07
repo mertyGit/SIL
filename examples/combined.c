@@ -7,7 +7,7 @@
 #include "sil.h"
 #include "log.h"
 
-static SILLYR *fonttest,*animation, *foreground,*background,*one,*two,*three,*test,*mirror, *ontop,*both,*bothnoblend;
+static SILLYR *fonttest,*drawing,*animation, *foreground,*background,*one,*two,*three,*test,*mirror, *ontop,*both,*bothnoblend;
 
 UINT keyhandler(SILEVENT *event) {
   switch(event->type) {
@@ -290,7 +290,7 @@ int main() {
 
 
   printf("sil_addLayer fonttest...\n");
-  fonttest=sil_addLayer(500,200,50,710,0);
+  fonttest=sil_addLayer(500,200,50,710,SILTYPE_ARGB);
   if (NULL==fonttest) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 18;
@@ -325,6 +325,78 @@ int main() {
   sil_setForegroundColor(0,0,255,150);
   printf("...and now with blue color...\n");
   sil_drawTextLayer(fonttest,font,"Lets turn BLUE",5,5+4*(font->base),0);
+
+  printf("sil_addLayer drawing...\n");
+  drawing=sil_addLayer(400,200,600,710,SILTYPE_ARGB);
+  if (NULL==drawing) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 20;
+  }
+  printf("painting drawing...\n");
+  sil_paintLayer(drawing,30,30,30,255);
+  sil_borderFilter(drawing);
+
+  printf("drawing on it\n");
+  printf("aliased\n");
+  sil_setForegroundColor(0,0,255,255);
+  sil_drawLine(drawing,20,20,180,180);
+  sil_drawLine(drawing,20,20,180,20);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,20,20);
+
+  sil_setForegroundColor(0,255,0,255);
+  sil_drawLine(drawing,180,20,20,180);
+  sil_drawLine(drawing,180,20,180,180);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,180,20);
+
+  sil_setForegroundColor(255,0,0,255);
+  sil_drawLine(drawing,150,20,20,180);
+  sil_drawLine(drawing,20,20,150,180);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,150,20);
+  sil_drawPixel(drawing,20,20);
+
+  sil_setForegroundColor(255,255,0,255);
+  sil_drawLine(drawing,180,50,20,180);
+  sil_drawLine(drawing,180,150,20,20);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,180,50);
+  sil_drawPixel(drawing,180,150);
+
+  printf("antialiased\n");
+  printf("Blue\n");
+  sil_setForegroundColor(0,0,255,255);
+  sil_drawLineAA(drawing,210+20,20,210+180,180);
+  sil_drawLineAA(drawing,210+20,20,210+180,20);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,210+20,20);
+
+  printf("Green\n");
+  sil_setForegroundColor(0,255,0,255);
+  sil_drawLineAA(drawing,210+180,20,210+20,180);
+  sil_drawLineAA(drawing,210+180,20,210+180,180);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,210+180,20);
+
+  printf("Red\n");
+  sil_setForegroundColor(255,0,0,255);
+  sil_drawLineAA(drawing,210+150,20,210+20,180);
+  sil_drawLineAA(drawing,210+20,20,210+150,180);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,210+150,20);
+  sil_drawPixel(drawing,210+20,20);
+
+  printf("Yellow\n");
+  sil_setForegroundColor(255,255,0,255);
+  sil_drawLineAA(drawing,210+180,50,210+20,180);
+  sil_drawLineAA(drawing,210+180,150,210+20,20);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,210+180,50);
+  sil_drawPixel(drawing,210+180,150);
+
+
+
 
   printf("sil_setTimerHandler...\n");
   sil_setTimerHandler(tick);

@@ -292,15 +292,18 @@ void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BY
     return;
   }
 #endif
-  if (0==alpha) return; /* nothing to do */
-  if (alpha<255) { 
-    /* only calculate when its less then 100% opaque */
-    sil_getPixelLayer(layer,x,y,&mixred,&mixgreen,&mixblue,&mixalpha);
-    af=((float)alpha)/255;
-    negaf=1-af;
-    red=red*af+negaf*mixred;
-    green=green*af+negaf*mixgreen;
-    blue=blue*af+negaf*mixblue;
+  sil_getPixelLayer(layer,x,y,&mixred,&mixgreen,&mixblue,&mixalpha);
+  if (mixalpha>0) {
+    /* only mix when underlaying pixel doesn't have 0 alpha */
+    if (0==alpha) return; /* nothing to do */
+    if (alpha<255) {
+      /* only calculate when its less then 100% opaque */
+      af=((float)alpha)/255;
+      negaf=1-af;
+      red=red*af+negaf*mixred;
+      green=green*af+negaf*mixgreen;
+      blue=blue*af+negaf*mixblue;
+    }
   }
   sil_putPixelLayer(layer,x,y,red,green,blue,255);
   sil_setErr(SILERR_ALLOK);

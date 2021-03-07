@@ -34,32 +34,6 @@ typedef struct _GCOLOR {
 
 static GCOLOR gcolor={255,255,255,255,0,0,0,0};
 
-
-static int absint(int in) {
-  if (in<0) return (-1*in);
-  return in;
-}
-
-static void swapcoords(UINT *fromx, UINT *fromy, UINT *tox, UINT *toy) {
-  UINT tmp;
-
-  tmp=*fromx;
-  *fromx=*tox;
-  *tox=tmp;
-
-  tmp=*fromy;
-  *fromy=*toy;
-  *toy=tmp;
-}
-
-/* primitive function to get closed square root (without math.h)*/
-static int sqrtint(UINT val) {
-  int i=1;
-  while((i*i)<val) i++;
-  return i-1;
-}
-
-
 /*****************************************************************************
   getters & setters for those colors
 
@@ -399,15 +373,32 @@ UINT sil_saveDisplay(char *filename,UINT width, UINT height, UINT wx, UINT wy) {
 
 /*****************************************************************************
 
-   internal Draw Single Line (not anti-aliased) from x1,y1 to x2,y2 
-   with current color
+   Draw Line (not anti-aliased) from x1,y1 to x2,y2 with current color
 
  *****************************************************************************/
 
-static void drawSingleLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
+void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
   UINT fromx,fromy,tox,toy;
   int dx,dy,p;
   int add=1;
+
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("Trying to draw non-existing layer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+  if (NULL==layer->fb) {
+    log_warn("Trying to draw on layer with no framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+  if (0==layer->fb->size) {
+    log_warn("Drawing on layer without initialized framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+#endif
 
   /* make sure lines always go from left to right */
   if (x1>x2) {
@@ -498,16 +489,128 @@ static void drawSingleLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
   }
 }
 
+static int abs(int in) {
+  if (in<0) return (-1*in);
+  return in;
+}
+
 /*****************************************************************************
 
-   internal Draw Single Line (not anti-aliased) from x1,y1 to x2,y2 
-   with current color and thickness
+   Internal function , Draw single Line anti-aliased from x1,y1 to x2,y2 
+   with current color
+
+ *****************************************************************************/
+static void drawSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox, UINT toy) {
+    int dx,dy;
+    BYTE overx=0;
+    UINT add=1;
+
+    /* No AA needed for straight lines */
+    if ((toy==fromy)||(tox==fromx)) {
+      drawSingleLine(layer,fromx,fromy,tox,toy);
+      return;
+    }
+
+    /* and now a Xiaolin Wu's algorithm */
+    dx=tox-fromx;
+    dy=toy-fromy;
+
+    if (abs(dx)>abs(dy)) {
+      overx=1;
+      if (dy<0) {
+        dy=absdy
+        add=-1;
+      }
+
+
+
+
+
+
+    if (dy<0) {
+      dy=-1*dy;
+      add=-1;
+    }
+    fraction=0;
+    if (dy<=dx) {
+      step=(float)dy/(float)dx;
+      while(fromx<tox) {
+        alpha2=gcolor.fg_alpha*fraction;
+        alpha1=gcolor.fg_alpha-alpha2;
+        sil_blendPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha1);
+        sil_blendPixelLayer(layer, fromx ,fromy+add, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha2);
+        fromx++;
+        fraction+=step;
+        if (fraction>1) {
+          fromy+=add;
+          fraction-=1;
+        }
+      }
+    } else {
+      /* to steep, draw with looping y instead of x */
+      /* makesure to draw from top till bottom      */
+      if (y1>y2) {
+        tox=x1;
+        toy=y1;
+        fromx=x2;
+        fromy=y2;
+      } else {
+        tox=x2;
+        toy=y2;
+        fromx=x1;
+        fromy=y1;
+      }
+      dx=tox-fromx;
+      dy=toy-fromy;
+      add=1;
+      if (dx<0) {
+        dx=-1*dx;
+        add=-1;
+      }
+      step=(float)dx/(float)dy;
+
+      while(fromy<toy) {
+        alpha2=255*fraction;
+        alpha1=255-alpha2;
+        alpha2=gcolor.fg_alpha*fraction;
+        alpha1=gcolor.fg_alpha-alpha2;
+        sil_blendPixelLayer(layer, fromx,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha1);
+        sil_blendPixelLayer(layer, fromx+add ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha2);
+        fromy++;
+        fraction+=step;
+        if (fraction>1) {
+          fromx+=add;
+          fraction-=1;
+        }
+      }
+
+    } 
+    /* single line                                */
+    /* quick hack: get rid of AA inside the lines */
+
+    if ((lw>minus)&&(lw<plus-1)) {
+      sil_drawLine(layer,x1,y1,x2,y2);
+    }
+  }  
+  
+}
+
+
+/*****************************************************************************
+
+   Draw Line anti-aliased from x1,y1 to x2,y2 with current color and thickness
 
  *****************************************************************************/
 
-
-void sil_drawLine(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
+void sil_drawLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
+  UINT fromx,fromy,tox,toy;
+  int dx,dy,p;
+  int add=1;
+  float fraction;
+  float step;
+  UINT alpha1,alpha2;
   UINT x1,y1,x2,y2;
+  BYTE noaa=0;
 
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -545,153 +648,9 @@ void sil_drawLine(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
     } else {
       x1+=lw; x2+=lw;
     }
-    drawSingleLine(layer,x1,y1,x2,y2);
-  }
+
+@@
 }
-
-
-/*****************************************************************************
-
-   Internal function , Draw single Line anti-aliased from x1,y1 to x2,y2 
-   with current color
-
- *****************************************************************************/
-static void drawSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox, UINT toy) {
-  int dx,dy;
-  UINT alpha1,alpha2;
-  BYTE overx=0;
-  UINT addx=0;
-  UINT addy=0;
-  UINT point=0;
-  UINT end=0;
-  float fraction=0;
-  float step=0;
-
-  /* No AA needed for straight lines */
-  if ((toy==fromy)||(tox==fromx)) {
-    drawSingleLine(layer,fromx,fromy,tox,toy);
-    return;
-  }
-
-  /* and now a Xiaolin Wu's algorithm */
-
-  //log_info("Drawing: %d,%d -> %d,%d",fromx,fromy,tox,toy);
-  if (absint(tox-fromx)>absint(toy-fromy)) {
-    /* we progress over the X axis */
-    overx=1;
-    addx=0;
-    addy=1;
-    /* draw always from left to right */
-    if (tox<fromx) swapcoords(&tox,&toy,&fromx,&fromy);
-    dx=tox-fromx;
-    dy=toy-fromy;
-    if (dy<0) addy=-1;
-    step=(float)absint(dy)/(float)absint(dx);
-    point=fromx;
-    end=tox;
-  } else {
-    /* we progress over the Y axis */
-    overx=0;
-    addx=1;
-    addy=0;
-    /* draw always from top to bottom */
-    if (toy<fromy) swapcoords(&tox,&toy,&fromx,&fromy);
-    dx=tox-fromx;
-    dy=toy-fromy;
-    if (dx<0) addx=-1;
-    step=(float)absint(dx)/(float)absint(dy);
-    point=fromy;
-    end=toy;
-  }
-
-    //log_info("OverX: %d, addx: %d, addy: %d, point: %d, end: %d",overx,addx,addy,point,end);
-  while(point++<end) {
-    alpha2=gcolor.fg_alpha*fraction;
-    alpha1=gcolor.fg_alpha-alpha2;
-    sil_blendPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha1);
-    sil_blendPixelLayer(layer, fromx+addx ,fromy+addy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha2);
-
-    fraction+=step;
-    if (fraction>1) {
-      fraction-=1;
-      fromy+=addy;
-      fromx+=addx;
-    }
-    if (1==overx) {
-      fromx++;
-    } else {
-      fromy++;
-    }
-  }
-
-}
-
-
-/*****************************************************************************
-
-   Draw Line anti-aliased from x1,y1 to x2,y2 with current color and thickness
-
- *****************************************************************************/
-
-void sil_drawLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
-  UINT fromx,fromy,tox,toy;
-  UINT x1,y1,x2,y2;
-  float d=0;
-
-#ifndef SIL_LIVEDANGEROUS
-  if (NULL==layer) {
-    log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (NULL==layer->fb) {
-    log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (0==layer->fb->size) {
-    log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-#endif
-
-
-  /* straight lines don't need aliasing */
-  if ((ix1==ix2)||(iy1==iy2)) {
-    sil_drawLine(layer,ix1,iy1,ix2,iy2);
-    return;
-  }
-  
-  int gw=7;
-  int minus=-gw/2;
-  int plus=gw+minus;
-  int t=0;
-  int cnt;
-  int lw=minus;
-
-  for (lw=minus;lw<plus;lw++) {
-    y1=iy1;
-    y2=iy2;
-    x1=ix1;
-    x2=ix2;
-
-    if (absint(x2-x1) > absint(y2-y1)) {
-      y1+=lw; y2+=lw;
-    } else {
-      x1+=lw; x2+=lw;
-    }
-    drawSingleLineAA(layer,x1,y1,x2,y2);
-
-    /* single line                                */
-    /* quick hack: get rid of AA inside the lines */
-
-    if ((lw>minus)&&(lw<plus-1)) {
-      drawSingleLine(layer,x1,y1,x2,y2);
-    }
-  }
-}
-
 
 
 
@@ -708,16 +667,4 @@ void sil_drawLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
 void sil_drawPixel(SILLYR *layer, UINT x, UINT y) {
   /* checks on validity of layer, fb and all is done in putPixelLayer function already */
   sil_putPixelLayer(layer, x, y, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-}
-
-/*****************************************************************************
-
-   Draw Pixel at x,y with current color and blend with existing pixels
-
- *****************************************************************************/
-
-
-void sil_blendPixel(SILLYR *layer, UINT x, UINT y) {
-  /* checks on validity of layer, fb and all is done in blendPixelLayer function already */
-  sil_blendPixelLayer(layer, x, y, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
 }

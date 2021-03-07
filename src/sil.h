@@ -278,6 +278,10 @@ void sil_setBackgroundColor(BYTE,BYTE,BYTE,BYTE);
 void sil_getForegroundColor(BYTE *,BYTE *, BYTE *, BYTE *);
 void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 UINT sil_saveDisplay(char *,UINT,UINT,UINT,UINT);
+void sil_drawLine(SILLYR *, UINT, UINT, UINT, UINT);
+void sil_drawLineAA(SILLYR *, UINT, UINT, UINT, UINT);
+void sil_drawPixel(SILLYR *, UINT, UINT);
+void sil_blendPixel(SILLYR *, UINT, UINT);
 
 /* x11display.c  / winSDLdisplay.c / winGDIdisplay.c / lnxdisplay.c */
 
