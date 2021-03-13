@@ -1034,22 +1034,12 @@ static void circlepart(SILLYR *layer,UINT xm, UINT ym, int x, int y, int px, int
   drawSingleLine(layer,xm-py,ym-px,xm-y,ym-x);
 }
 
-static void circlepartAA(SILLYR *layer,UINT xm, UINT ym, int x, int y, int px, int py) {
-  drawSingleLineAA(layer,xm+px,ym+py,xm+x,ym+y);
-  drawSingleLineAA(layer,xm-px,ym+py,xm-x,ym+y); 
-  drawSingleLineAA(layer,xm+px,ym-py,xm+x,ym-y);
-  drawSingleLineAA(layer,xm-px,ym-py,xm-x,ym-y);
-  drawSingleLineAA(layer,xm+py,ym+px,xm+y,ym+x);
-  drawSingleLineAA(layer,xm-py,ym+px,xm-y,ym+x); 
-  drawSingleLineAA(layer,xm+py,ym-px,xm+y,ym-x);
-  drawSingleLineAA(layer,xm-py,ym-px,xm-y,ym-x);
-}
-
 /*****************************************************************************
 
    Draw Single line Circle with xm,ym being middle point and r the radius  
 
  *****************************************************************************/
+
 
 static void drawSingleCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
    int x=0,y=r;
@@ -1066,33 +1056,8 @@ static void drawSingleCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
         px=x,py=y;
       }
    } 
-   circlepart(layer,xm,ym,x+1,y,px,py);
+   circlepart(layer,xm,ym,x,y,px,py);
 }
-
-/*****************************************************************************
-
-   Draw Single line Circle Anti-Aliased
-
- *****************************************************************************/
-
-static void drawSingleCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
-   int x=0,y=r;
-   int d=3-2*r;
-   int px=x,py=y;
-   while( y>x) {
-      x++;
-      if (d>0) {
-        y--;
-        d+=4*(x-y)+10;
-      } else {
-        d+=4*x+6;
-        circlepartAA(layer,xm,ym,x,y,px,py);
-        px=x,py=y;
-      }
-   } 
-   circlepartAA(layer,xm,ym,x+1,y,px,py);
-}
-
 
 
 /*****************************************************************************
@@ -1133,48 +1098,6 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
     drawSingleCircle(layer,xm,ym,r+c);
   }
 }
-
-/*****************************************************************************
-
-   Draw Circle with xm,ym being middle point and r the radius and using 
-   drawing with 
-
- *****************************************************************************/
-void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
-  int minus,plus;
-
-#ifndef SIL_LIVEDANGEROUS
-  if (NULL==layer) {
-    log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (NULL==layer->fb) {
-    log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (0==layer->fb->size) {
-    log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-#endif
-
-  if (1==gdraw.width) {
-    drawSingleCircleAA(layer,xm,ym,r);
-    return;
-  }
-
-  minus=-(int)gdraw.width/2;
-  plus=gdraw.width+minus-1;
-  drawSingleCircle(layer,xm,ym,r+minus);
-  drawSingleCircle(layer,xm,ym,r+plus);
-  for (int c=minus+1;c<plus;c++) {
-    drawSingleCircle(layer,xm,ym,r+c);
-  }
-}
-
 
 
 

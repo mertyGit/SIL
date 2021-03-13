@@ -249,6 +249,29 @@ void sil_placeLayer(SILLYR *layer, UINT x,UINT y) {
   layer->rely=y;
   sil_setErr(SILERR_ALLOK);
 }
+/*****************************************************************************
+
+ Draw a pixel 8 times as big as normal, for drawing debug purposes
+ x,y are multiplied by 8 !
+
+ *****************************************************************************/
+
+void sil_putBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
+  for (int cy=0;cy<8;cy++) {
+    for (int cx=0;cx<8;cx++) {
+      sil_putPixelLayer(layer,(x*8)+cx,(y*8)+cy,red,green,blue,alpha);
+    }
+  }
+}
+
+
+void sil_blendBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
+  for (int cy=0;cy<8;cy++) {
+    for (int cx=0;cx<8;cx++) {
+      sil_blendPixelLayer(layer,(x*8)+cx,(y*8)+cy,red,green,blue,alpha);
+    }
+  }
+}
 
 /*****************************************************************************
   Draw a pixel on given location inside a layer
@@ -303,9 +326,10 @@ void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BY
       red=red*af+negaf*mixred;
       green=green*af+negaf*mixgreen;
       blue=blue*af+negaf*mixblue;
+      if (mixalpha>alpha) alpha=mixalpha;
     }
   }
-  sil_putPixelLayer(layer,x,y,red,green,blue,255);
+  sil_putPixelLayer(layer,x,y,red,green,blue,alpha);
   sil_setErr(SILERR_ALLOK);
 }
 

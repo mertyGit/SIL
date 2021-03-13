@@ -64,6 +64,37 @@ int main() {
   sil_drawTextLayer(top,font,"blendPixel",10,240,SILTXT_KEEPCOLOR);
 
 
+  sil_setForegroundColor(0,255,0,255);
+  sil_drawBigLine(top,1,50,30,40);
+  sil_drawTextLayer(top,font,"single line no AA (x8)",10,420,SILTXT_KEEPCOLOR);
+
+  sil_drawBigLineAA(top,1,50+20,30,40+20);
+  sil_drawTextLayer(top,font,"single line with AA (x8)",10,580,SILTXT_KEEPCOLOR);
+
+  sil_setDrawWidth(5);
+  sil_drawBigLine(top,1+40,50,30+40,40);
+  sil_drawTextLayer(top,font,"linewidth=5 no AA (x8)",10+300,420,SILTXT_KEEPCOLOR);
+
+  sil_drawBigLineAA(top,1+40,50+20,30+40,40+20);
+  sil_drawTextLayer(top,font,"linewidth=5 with AA (x8)",10+300,580,SILTXT_KEEPCOLOR);
+
+  sil_setDrawWidth(1);
+  sil_drawCircle(top,80,680,50);
+  sil_drawTextLayer(top,font,"single circle, no AA",10,730,SILTXT_KEEPCOLOR);
+
+  sil_setDrawWidth(5);
+  sil_drawCircle(top,300+80,680,50);
+  sil_drawTextLayer(top,font,"linewidth=5, no AA",300+10,730,SILTXT_KEEPCOLOR);
+
+  sil_setDrawWidth(1);
+  sil_drawCircleAA(top,80,680+150,50);
+  sil_drawTextLayer(top,font,"single circle, with AA",10,730+150,SILTXT_KEEPCOLOR);
+
+  sil_setDrawWidth(5);
+  sil_drawCircleAA(top,300+80,680+150,50);
+  sil_drawTextLayer(top,font,"linewidth=5, with AA",300+10,730+150,SILTXT_KEEPCOLOR);
+
+
 
   sil_updateDisplay();
 

@@ -150,6 +150,8 @@ SILLYR *sil_addLayer(UINT, UINT, UINT, UINT, BYTE);
 SILLYR *sil_mirrorLayer(SILLYR *, UINT, UINT);
 void sil_putPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
 void sil_blendPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
+void sil_putBigPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
+void sil_blendBigPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
 void sil_getPixelLayer(SILLYR *, UINT, UINT, BYTE *, BYTE *, BYTE *, BYTE *);
 SILLYR *sil_getBottom();
 SILLYR *sil_getTop();
@@ -280,8 +282,14 @@ void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 UINT sil_saveDisplay(char *,UINT,UINT,UINT,UINT);
 void sil_drawLine(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawLineAA(SILLYR *, UINT, UINT, UINT, UINT);
+void sil_drawBigLine(SILLYR *, UINT, UINT, UINT, UINT);
+void sil_drawBigLineAA(SILLYR *, UINT, UINT, UINT, UINT);
+void sil_drawCircle(SILLYR *, UINT, UINT, UINT);
+void sil_drawCircleAA(SILLYR *, UINT, UINT, UINT);
 void sil_drawPixel(SILLYR *, UINT, UINT);
 void sil_blendPixel(SILLYR *, UINT, UINT);
+void sil_setDrawWidth(UINT);
+UINT sil_getDrawWidth();
 
 /* x11display.c  / winSDLdisplay.c / winGDIdisplay.c / lnxdisplay.c */
 
