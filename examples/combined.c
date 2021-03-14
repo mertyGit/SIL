@@ -11,7 +11,7 @@ static SILLYR *fonttest,*drawing,*animation, *foreground,*background,*one,*two,*
 static UINT lw=1;
 
 void drawlines() {
-  printf("painting drawing...\n");
+  printf("(re-) painting drawing...\n");
   sil_paintLayer(drawing,30,30,30,255);
   sil_borderFilter(drawing);
 

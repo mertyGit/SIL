@@ -19,9 +19,9 @@ int main() {
 
 
   #ifdef SIL_W32
-    sil_initSIL(1000,1000,"Testing SIL Filters",hInstance);
+    sil_initSIL(600,1000,"Testing SIL drawing primitives",hInstance);
   #else
-    sil_initSIL(1000,1000,"Testing SIL Filters",NULL);
+    sil_initSIL(600,1000,"Testing SIL drawing primitives",NULL);
   #endif
   sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
@@ -94,6 +94,20 @@ int main() {
   sil_drawCircleAA(top,300+80,680+150,50);
   sil_drawTextLayer(top,font,"linewidth=5, with AA",300+10,730+150,SILTXT_KEEPCOLOR);
 
+  sil_setDrawWidth(3);
+  sil_setForegroundColor(255,0,255,255);
+  sil_setBackgroundColor(255,255,0,255);
+  sil_drawRectangle(top,300,150,80,80);
+
+  sil_setForegroundColor(0,255,0,255);
+  sil_drawRectangle(top,350,100,100,60);
+
+  sil_setForegroundColor(255,0,255,100);
+  sil_drawRectangle(top,400,50,80,80);
+
+  sil_setForegroundColor(255,0,0,0);
+  sil_drawRectangle(top,400,150,80,80);
+  sil_drawTextLayer(top,font,"drawRectangle",300+10,240,SILTXT_KEEPCOLOR);
 
 
   sil_updateDisplay();

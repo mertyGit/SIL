@@ -569,6 +569,7 @@ static void drawSingleLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
       fromy++;
     }
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -618,6 +619,7 @@ void sil_drawLine(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
   for (int lw=minus;lw<plus;lw++) {
     drawSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -694,6 +696,7 @@ static void drawSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox, UI
       fromy++;
     }
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -756,6 +759,7 @@ void sil_drawLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
   for (int lw=minus;lw<plus;lw++) {
     drawSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
   }
+  sil_setErr(SILERR_ALLOK);
 }
   
 
@@ -854,6 +858,7 @@ static void drawBigSingleLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2)
       fromy++;
     }
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -895,6 +900,7 @@ void sil_drawBigLine(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
   for (int lw=minus;lw<plus;lw++) {
     drawBigSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -966,6 +972,7 @@ static void drawBigSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox,
     }
   }
 
+  sil_setErr(SILERR_ALLOK);
 }
 
 void sil_drawBigLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
@@ -1020,29 +1027,36 @@ void sil_drawBigLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
   for (int lw=minus;lw<plus;lw++) {
     drawBigSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 
 static void circlepart(SILLYR *layer,UINT xm, UINT ym, int x, int y, int px, int py) {
-  drawSingleLine(layer,xm+px,ym+py,xm+x,ym+y);
-  drawSingleLine(layer,xm-px,ym+py,xm-x,ym+y); 
-  drawSingleLine(layer,xm+px,ym-py,xm+x,ym-y);
-  drawSingleLine(layer,xm-px,ym-py,xm-x,ym-y);
-  drawSingleLine(layer,xm+py,ym+px,xm+y,ym+x);
-  drawSingleLine(layer,xm-py,ym+px,xm-y,ym+x); 
-  drawSingleLine(layer,xm+py,ym-px,xm+y,ym-x);
-  drawSingleLine(layer,xm-py,ym-px,xm-y,ym-x);
+  UINT tmp=gdraw.width;
+  if (gdraw.width>1) gdraw.width=2;
+  sil_drawLine(layer,xm+px,ym+py,xm+x,ym+y);
+  sil_drawLine(layer,xm-px,ym+py,xm-x,ym+y); 
+  sil_drawLine(layer,xm+px,ym-py,xm+x,ym-y);
+  sil_drawLine(layer,xm-px,ym-py,xm-x,ym-y);
+  sil_drawLine(layer,xm+py,ym+px,xm+y,ym+x);
+  sil_drawLine(layer,xm-py,ym+px,xm-y,ym+x); 
+  sil_drawLine(layer,xm+py,ym-px,xm+y,ym-x);
+  sil_drawLine(layer,xm-py,ym-px,xm-y,ym-x);
+  gdraw.width=tmp;
 }
 
 static void circlepartAA(SILLYR *layer,UINT xm, UINT ym, int x, int y, int px, int py) {
-  drawSingleLineAA(layer,xm+px,ym+py,xm+x,ym+y);
-  drawSingleLineAA(layer,xm-px,ym+py,xm-x,ym+y); 
-  drawSingleLineAA(layer,xm+px,ym-py,xm+x,ym-y);
-  drawSingleLineAA(layer,xm-px,ym-py,xm-x,ym-y);
-  drawSingleLineAA(layer,xm+py,ym+px,xm+y,ym+x);
-  drawSingleLineAA(layer,xm-py,ym+px,xm-y,ym+x); 
-  drawSingleLineAA(layer,xm+py,ym-px,xm+y,ym-x);
-  drawSingleLineAA(layer,xm-py,ym-px,xm-y,ym-x);
+  UINT tmp=gdraw.width;
+  if (gdraw.width>1) gdraw.width=2;
+  sil_drawLineAA(layer,xm+px,ym+py,xm+x,ym+y);
+  sil_drawLineAA(layer,xm-px,ym+py,xm-x,ym+y); 
+  sil_drawLineAA(layer,xm+px,ym-py,xm+x,ym-y);
+  sil_drawLineAA(layer,xm-px,ym-py,xm-x,ym-y);
+  sil_drawLineAA(layer,xm+py,ym+px,xm+y,ym+x);
+  sil_drawLineAA(layer,xm-py,ym+px,xm-y,ym+x); 
+  sil_drawLineAA(layer,xm+py,ym-px,xm+y,ym-x);
+  sil_drawLineAA(layer,xm-py,ym-px,xm-y,ym-x);
+  gdraw.width=tmp;
 }
 
 /*****************************************************************************
@@ -1132,6 +1146,7 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
   for (int c=minus;c<plus;c++) {
     drawSingleCircle(layer,xm,ym,r+c);
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -1168,14 +1183,55 @@ void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
 
   minus=-(int)gdraw.width/2;
   plus=gdraw.width+minus-1;
-  drawSingleCircle(layer,xm,ym,r+minus);
-  drawSingleCircle(layer,xm,ym,r+plus);
+  drawSingleCircleAA(layer,xm,ym,r+minus);
+  drawSingleCircleAA(layer,xm,ym,r+plus);
   for (int c=minus+1;c<plus;c++) {
     drawSingleCircle(layer,xm,ym,r+c);
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 
+/*****************************************************************************
+
+   Draw Rectangle at x,y using given width and height
+
+ *****************************************************************************/
+
+void sil_drawRectangle(SILLYR *layer, UINT x, UINT y, UINT width, UINT height) {
+
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("Trying to draw non-existing layer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+  if (NULL==layer->fb) {
+    log_warn("Trying to draw on layer with no framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+  if (0==layer->fb->size) {
+    log_warn("Drawing on layer without initialized framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+#endif
+
+  for (UINT yc=0;yc<height;yc++) {
+    for (UINT xc=0;xc<width;xc++) {
+      if (((x+xc)<layer->fb->width)&&((y+yc)<layer->fb->height)) {
+        if ((xc<gdraw.width)||(xc>width-gdraw.width)||(yc<gdraw.width)||(yc>height-gdraw.width)) {
+          /* border */
+          sil_putPixelLayer(layer, x+xc, y+yc, gcolor.bg_red, gcolor.bg_green, gcolor.bg_blue, gcolor.bg_alpha);
+        } else {
+          sil_blendPixelLayer(layer, x+xc, y+yc, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+        }
+      }
+    }
+  }
+  sil_setErr(SILERR_ALLOK);
+}
 
 
 
