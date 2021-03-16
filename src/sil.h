@@ -272,6 +272,12 @@ UINT sil_grayFilter(SILLYR *);
 #define SILTXT_MONOSPACE        4
 #define SILTXT_KEEPCOLOR        8
 
+/* kinds of line overlap */
+#define SILLO_NONE              0
+#define SILLO_MAJOR             1
+#define SILLO_MINOR             2
+
+
 UINT sil_PNGintoLayer(SILLYR *,char *, UINT,UINT);
 void sil_paintLayer(SILLYR *,BYTE,BYTE,BYTE,BYTE);
 void sil_drawTextLayer(SILLYR *,SILFONT *, char *, UINT, UINT, BYTE);
@@ -285,7 +291,6 @@ void sil_drawLineAA(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawBigLine(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawBigLineAA(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawCircle(SILLYR *, UINT, UINT, UINT);
-void sil_drawCircleAA(SILLYR *, UINT, UINT, UINT);
 void sil_drawRectangle(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawPixel(SILLYR *, UINT, UINT);
 void sil_blendPixel(SILLYR *, UINT, UINT);

@@ -44,3 +44,15 @@ freely, subject to the following restrictions:
 
     3. This notice may not be removed or altered from any source
     distribution.
+
+---
+
+This software makes use of code derived from "thickLine.cpp"
+(https://github.com/ArminJo/STMF3-Discovery-Demos/blob/master/lib/graphics/src/thickLine.cpp) 
+from Armin Joachimsmeyer and do contain the following license information:
+
+date 25.03.2013
+author Armin Joachimsmeyer
+Email:   armin.joachimsmeyer@gmail.com
+copyright LGPL v3 (http://www.gnu.org/licenses/lgpl.html)
+version 1.5.0

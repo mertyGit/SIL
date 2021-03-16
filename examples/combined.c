@@ -43,6 +43,9 @@ void drawlines() {
   sil_drawPixel(drawing,180,50);
   sil_drawPixel(drawing,180,150);
 
+  sil_setForegroundColor(0,255,255,255);
+  sil_drawLine(drawing,20,90,180,70);
+
   printf("antialiased\n");
   printf("Blue\n");
   sil_setForegroundColor(0,0,255,255);

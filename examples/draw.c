@@ -80,19 +80,12 @@ int main() {
 
   sil_setDrawWidth(1);
   sil_drawCircle(top,80,680,50);
-  sil_drawTextLayer(top,font,"single circle, no AA",10,730,SILTXT_KEEPCOLOR);
+  sil_drawTextLayer(top,font,"single circle",10,730,SILTXT_KEEPCOLOR);
 
   sil_setDrawWidth(5);
   sil_drawCircle(top,300+80,680,50);
-  sil_drawTextLayer(top,font,"linewidth=5, no AA",300+10,730,SILTXT_KEEPCOLOR);
+  sil_drawTextLayer(top,font,"linewidth=5",300+10,730,SILTXT_KEEPCOLOR);
 
-  sil_setDrawWidth(1);
-  sil_drawCircleAA(top,80,680+150,50);
-  sil_drawTextLayer(top,font,"single circle, with AA",10,730+150,SILTXT_KEEPCOLOR);
-
-  sil_setDrawWidth(5);
-  sil_drawCircleAA(top,300+80,680+150,50);
-  sil_drawTextLayer(top,font,"linewidth=5, with AA",300+10,730+150,SILTXT_KEEPCOLOR);
 
   sil_setDrawWidth(3);
   sil_setForegroundColor(255,0,255,255);
@@ -108,6 +101,76 @@ int main() {
   sil_setForegroundColor(255,0,0,0);
   sil_drawRectangle(top,400,150,80,80);
   sil_drawTextLayer(top,font,"drawRectangle",300+10,240,SILTXT_KEEPCOLOR);
+
+  sil_setDrawWidth(1);
+
+  /* variation of line directions */
+
+
+  /* green, over X increasing x and y */
+  sil_setForegroundColor(0,255,0,255);
+  sil_drawLine(top,30,800,30+80,800+50);
+  sil_putPixelLayer(top,30,799,255,255,255,255);
+  sil_putPixelLayer(top,30+80,800+49,0,0,0,255);
+
+  /* light green, over X decreasing x and y */
+  sil_setForegroundColor(150,255,150,255);
+  sil_drawLine(top,30+90,800+50,40,800);
+  sil_putPixelLayer(top,30+90,799+50,255,255,255,255);
+  sil_putPixelLayer(top,40,799,0,0,0,255);
+
+  /* red, over Y increasing x and y */
+  sil_setForegroundColor(255,0,0,255);
+  sil_drawLine(top,10+10,800,10+10+50,800+70);
+  sil_putPixelLayer(top,10+10,799,255,255,255,255);
+  sil_putPixelLayer(top,10+10+50,799+70,0,0,0,255);
+
+  /* light red, over Y decreasing x and y */
+  sil_setForegroundColor(255,150,150,255);
+  sil_drawLine(top,10+50,800+70,10,800);
+  sil_putPixelLayer(top,10+50,799+70,255,255,255,255);
+  sil_putPixelLayer(top,10,799,0,0,0,255);
+
+
+  /* blue, over X increasing x and decreasing y */
+  sil_setForegroundColor(0,0,255,255);
+  sil_drawLine(top,10,800+60,10+80,800+10);
+  sil_putPixelLayer(top,10,799+60,255,255,255,255);
+  sil_putPixelLayer(top,10+80,799+10,0,0,0,255);
+
+  /* light blue, over X decreasing x and increasing y */
+  sil_setForegroundColor(150,150,255,255);
+  sil_drawLine(top,10+90,800+10,20,800+60);
+  sil_putPixelLayer(top,10+90,799+10,255,255,255,255);
+  sil_putPixelLayer(top,20,799+60,0,0,0,255);
+
+  /* purple, over Y increasing x and decreasing y */
+  sil_setForegroundColor(255,0,255,255);
+  sil_drawLine(top,10,800+70,10+40,800+10);
+  sil_putPixelLayer(top,10,799+70,255,255,255,255);
+  sil_putPixelLayer(top,10+40,799+10,0,0,0,255);
+
+  /* light purple, over Y decreasing x and increasing y */
+  sil_setForegroundColor(255,150,255,255);
+  sil_drawLine(top,10+40,790,10,790+60);
+  sil_putPixelLayer(top,10+40,789,255,255,255,255);
+  sil_putPixelLayer(top,10,789+60,0,0,0,255);
+
+  /* purple horizontal and vertical lines */
+  sil_setForegroundColor(255,0,255,255);
+  sil_drawLine(top,10,45+900,100,45+900);
+  sil_putPixelLayer(top,10,45+899,255,255,255,255);
+  sil_putPixelLayer(top,100,45+899,0,0,0,255);
+
+  sil_drawLine(top,55,900,55,90+900);
+  sil_putPixelLayer(top,56,900,255,255,255,255);
+  sil_putPixelLayer(top,56,90+900,0,0,0,255);
+ 
+  /* yellow 45 degree lines */
+  sil_setForegroundColor(0,255,255,255);
+  sil_drawLine(top,10,900,100,990);
+  sil_putPixelLayer(top,10,899,255,255,255,255);
+  sil_putPixelLayer(top,100,989,0,0,0,255);
 
 
   sil_updateDisplay();

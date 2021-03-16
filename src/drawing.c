@@ -118,6 +118,20 @@ static float squareroot(int number)
     return ans;
 }
 
+void floodfill(SILLYR *layer, UINT x,UINT y) {
+  BYTE red,green,blue,alpha;
+
+  if ((x>=layer->fb->width)||(y>=layer->fb->height)) return;
+  sil_getPixelLayer(layer,x,y,&red,&green,&blue,&alpha);
+  if ((red!=gcolor.fg_red)||(green!=gcolor.fg_green)||(blue!=gcolor.fg_blue)||(alpha!=gcolor.fg_alpha)) {
+    sil_drawPixel(layer,x,y);
+    floodfill(layer,x+1,y);
+    if (x>0) floodfill(layer,x-1,y);
+    floodfill(layer,x,y+1);
+    if (y>0) floodfill(layer,x,y-1);
+  } 
+}
+
 
 /*****************************************************************************
   getters & setters for global colors settings
@@ -469,121 +483,304 @@ UINT sil_saveDisplay(char *filename,UINT width, UINT height, UINT wx, UINT wy) {
   return SILERR_ALLOK;
 }
 
-
 /*****************************************************************************
 
-   internal Draw Single Line (not anti-aliased) from x1,y1 to x2,y2 
-   with current color
+ ----------------------------------------------------------------------
+ Based from code "thickLine.cpp" from Armin Joachimsmeyer under LGPL
+ ----------------------------------------------------------------------
+
+ internal Draw Single Line (not anti-aliased) from x1,y1 to x2,y2 
+ with current color and possibility to overlap
+
+ Sample line : (0=SILLO_NONE, +=SILLO_MAJOR, -=SILLO_MINOR)
+
+     00+
+      -0000+
+          -0000+
+              -00
 
  *****************************************************************************/
 
-static void drawSingleLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
-  UINT fromx,fromy,tox,toy;
-  int dx,dy,p;
-  int add=1;
+void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overlap) {
+  int tDeltaX, tDeltaY, tDeltaXTimes2, tDeltaYTimes2, tError, tStepX, tStepY;
+  int tmp;
 
-  /* make sure lines always go from left to right */
-  if (x1>x2) {
-    tox=x1;
-    toy=y1;
-    fromx=x2;
-    fromy=y2;
-  } else {
-    tox=x2;
-    toy=y2;
-    fromx=x1;
-    fromy=y1;
-  }
-   
-
-  /* just handle straight lines first */
-  if (toy==fromy) {
-    while(fromx!=tox) {
-      sil_putPixelLayer(layer, fromx++,toy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+  /* if it is an horizontal or vertical line, just use rectangle function */
+  if (x1 == x2) {
+    if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
+    while(y1<=y2) {
+      sil_putPixelLayer(layer, x1,y1++, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
     }
     return;
   }
-  if (tox==fromx) {
-    if (y1>y2) { 
-      fromy=y2;
-      toy=y1;
-    } else {
-      fromy=y1;
-      toy=y2;
+
+  if (y1 == y2) {
+    if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
+    while(x1<=x2) {
+      sil_putPixelLayer(layer, x1++,y1, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
     } 
-    while(toy!=fromy) {
-      sil_putPixelLayer(layer, fromx,fromy++, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-    }
     return;
   }
-  
-  /* and now a Bresenham's algorithm */
-  dx=tox-fromx;
-  dy=toy-fromy;
-  if (dy<0) {
-    dy=-1*dy;
-    add=-1;
-  }
-  if (dy<=dx) {
-    p=2*dy-dx;
-    while(fromx<tox) {
-      sil_putPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-      if (p>=0) {
-        fromy+=add;
-        p+=2*(dy-dx);
-      } else {
-        p+=2*dy;
+
+  /* bresenham algorithm */
+
+  /* Direction */
+
+  tDeltaX=absint(x2-x1);
+  tDeltaY=absint(y2-y1);
+  tStepX=x1<x2 ? 1 : -1;
+  tStepY=y1<y2 ? 1 : -1;
+  tDeltaXTimes2 = tDeltaX*2;
+  tDeltaYTimes2 = tDeltaY*2;
+
+  sil_drawPixel(layer,x1,y1);
+
+  if (tDeltaX > tDeltaY) {
+    /* stepping over X axis */
+    tError = tDeltaYTimes2 - tDeltaX;
+    while (x1 != x2) {
+      x1 += tStepX;
+      if (tError >= 0) {
+        if (overlap & SILLO_MAJOR) sil_drawPixel(layer,x1,y1);
+        y1 += tStepY;
+        if (overlap & SILLO_MINOR) sil_drawPixel(layer,x1-tStepX,y1);
+        tError -= tDeltaXTimes2;
       }
-      fromx++;
+      tError += tDeltaYTimes2;
+      sil_drawPixel(layer,x1,y1);
     }
   } else {
-    /* to steep, draw with looping y instead of x */
-    /* makesure to draw from top till bottom      */
-    if (y1>y2) {
-      tox=x1;
-      toy=y1;
-      fromx=x2;
-      fromy=y2;
-    } else {
-      tox=x2;
-      toy=y2;
-      fromx=x1;
-      fromy=y1;
-    }
-    dx=tox-fromx;
-    dy=toy-fromy;
-    add=1;
-    if (dx<0) {
-      dx=-1*dx;
-      add=-1;
-    }
-
-    while(fromy<toy) {
-      sil_putPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-      if (p>=0) {
-        fromx+=add;
-        p+=2*(dx-dy);
-      } else {
-        p+=2*dx;
+    /* stepping over y axis */
+    tError = tDeltaXTimes2 - tDeltaY;
+    while (y1 != y2) {
+      y1 += tStepY;
+      if (tError >= 0) {
+        if (overlap & SILLO_MAJOR) sil_drawPixel(layer,x1,y1);
+        x1 += tStepX;
+        if (overlap & SILLO_MINOR) sil_drawPixel(layer,x1,y1-tStepY);
+        tError -= tDeltaYTimes2;
       }
-      fromy++;
+      tError += tDeltaXTimes2;
+      sil_drawPixel(layer,x1,y1);
     }
   }
+  sil_drawPixel(layer,x2,y2);
   sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
 
-   internal Draw Single Line (not anti-aliased) from x1,y1 to x2,y2 
+  Draw Line (not anti-aliased) from x1,y1 to x2,y2 
+  with current color and thickness
+
+ *****************************************************************************/
+
+void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
+  int i,tDeltaX,tDeltaY,tDeltaXTimes2, tDeltaYTimes2, tError, tStepX, tStepY;
+  int tDrawStartAdjustCount;
+  BYTE tSwap=1;
+  BYTE tOverlap=0;
+
+
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("Trying to draw non-existing layer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+  if (NULL==layer->fb) {
+    log_warn("Trying to draw on layer with no framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+  if (0==layer->fb->size) {
+    log_warn("Drawing on layer without initialized framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+#endif
+
+  /* if it has one single line, use that function */
+  if (gdraw.width<2) {
+    drawSingleLine(layer,x1,y1,x2,y2,SILLO_NONE);
+    return;
+  }
+  tDeltaY=absint(x2-x1);
+  tDeltaX=absint(y2-y1);
+  tSwap=1;
+  if (x1>x2) {
+    tStepX=-1;
+    tSwap=0;
+  } else {
+    tStepX=1;
+  }
+  if (y1>y2) {
+    tStepY=-1;
+    tSwap=(0==tSwap)?1:0;
+  } else {
+    tStepY=1;
+  }
+  tDeltaXTimes2=tDeltaX*2;
+  tDeltaYTimes2=tDeltaY*2;
+  tDrawStartAdjustCount=gdraw.width/2;
+
+  if (tDeltaX >= tDeltaY) {
+    /* step over X */
+
+    if (tSwap) {
+      tDrawStartAdjustCount = (gdraw.width-1)-tDrawStartAdjustCount;
+      tStepY=-tStepY;
+    } else {
+      tStepX=-tStepX;
+    }
+
+    tError=tDeltaYTimes2 - tDeltaX;
+    for (i = tDrawStartAdjustCount; i > 0; i--) {
+      x1 -= tStepX;
+      x2 -= tStepX;
+      if (tError >= 0) {
+        y1 -= tStepY;
+        y2 -= tStepY;
+        tError -= tDeltaXTimes2;
+      }
+      tError += tDeltaYTimes2;
+    }
+    /* start line */
+    drawSingleLine(layer,x1,y1,x2,y2,SILLO_NONE);
+
+    /* draw gdraw.width number of lines */
+    tError = tDeltaYTimes2 - tDeltaX;
+    for (i = gdraw.width; i > 1; i--) {
+      x1 += tStepX;
+      x2 += tStepX;
+      tOverlap = SILLO_NONE;
+      if (tError >= 0) {
+        y1 += tStepY;
+        y2 += tStepY;
+        tError -= tDeltaXTimes2;
+        tOverlap = SILLO_MAJOR|SILLO_MINOR;
+      }
+      tError += tDeltaYTimes2;
+      drawSingleLine(layer,x1, y1, x2, y2, tOverlap);
+    }
+  } else {
+  /* step over Y */
+
+    if (tSwap) {
+      tStepX = -tStepX;
+    } else {
+      tDrawStartAdjustCount = (gdraw.width-1) - tDrawStartAdjustCount;
+      tStepY = -tStepY;
+    }
+
+    tError = tDeltaXTimes2 - tDeltaY;
+    for (i = tDrawStartAdjustCount; i > 0; i--) {
+      y1 -= tStepY;
+      y2 -= tStepY;
+      if (tError >= 0) {
+        x1 -= tStepX;
+        x2 -= tStepX;
+        tError -= tDeltaYTimes2;
+      }
+      tError += tDeltaXTimes2;
+    }
+
+    drawSingleLine(layer,x1, y1, x2, y2, SILLO_NONE);
+
+    tError = tDeltaXTimes2 - tDeltaY;
+    for (i = gdraw.width; i > 1; i--) {
+      y1 += tStepY;
+      y2 += tStepY;
+      tOverlap = SILLO_NONE;
+      if (tError >= 0) {
+        x1 += tStepX;
+        x2 += tStepX;
+        tError -= tDeltaYTimes2;
+        tOverlap = SILLO_MAJOR|SILLO_MINOR;
+      }
+      tError += tDeltaXTimes2;
+      drawSingleLine(layer,x1, y1, x2, y2, tOverlap);
+    }
+  }
+
+  sil_setErr(SILERR_ALLOK);
+}
+
+/*****************************************************************************
+
+  Same as Draw Single Line, but with 90 grade angle and 
+  stops when line has lenght "len" 
+
+ *****************************************************************************/
+
+static void drawLineLen(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, UINT len) {
+  int dx,sx,dy,sy,err,e2;
+  UINT cx,cy;
+  UINT px,py;
+
+  /* just handle straight lines first */
+  if (y1==y2) {
+    if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
+    while(len--) {
+      sil_putPixelLayer(layer, x1++,y1, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+    }
+    return;
+  }
+  if (x1==x2) {
+    if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
+    while(len--) {
+      sil_putPixelLayer(layer, x1,y1++, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+    }
+    return;
+  }
+  
+  
+  /* bresenham algorithm */
+
+  dx=absint(x2-x1);
+  sx=x1<x2 ? 1 : -1;
+  dy=absint(y2-y1);
+  sy=y1<y2 ? 1 : -1;
+  err=(dx>dy ? dx : -dy)/2;
+  cx=0;
+  cy=0;
+  px=x1;
+  py=y1;
+
+  do {
+    sil_drawPixel(layer,px-(cy*sy),py+(cx*sx));
+    sil_drawPixel(layer,px+(cy*sy),py-(cx*sx));
+    sil_drawPixel(layer,x2-(cy*sy),y2+(cx*sx));
+    sil_drawPixel(layer,x2+(cy*sy),y2-(cx*sx));
+    e2 = err;
+    if (e2>-dx) { 
+      err-=dy; 
+      x1+=sx; 
+      cx++;
+    }
+    if (e2<dx) { 
+      err+=dx; 
+      y1+=sy; 
+      cy++;
+    }
+  } while (len*len>=((cx*cx)+(cy*cy)));
+  sil_setErr(SILERR_ALLOK);
+
+}
+
+/*****************************************************************************
+
+  Draw Single Line (not anti-aliased) from x1,y1 to x2,y2 
    with current color and thickness
 
  *****************************************************************************/
 
 
-void sil_drawLine(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
+void sil_drawLine2(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
   int plus,minus;
   UINT addy=0;
   UINT addx=0;
+  int dx,dy;
 
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -604,24 +801,31 @@ void sil_drawLine(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
 #endif
   
   if (1==gdraw.width) {
-    drawSingleLine(layer,ix1,iy1,ix2,iy2);
+    drawSingleLine(layer,x1,y1,x2,y2,SILLO_NONE);
     return;
   }
   
+  minus=(int)gdraw.width/2;
+  plus=gdraw.width-minus;
 
-  minus=-(int)gdraw.width/2;
-  plus=gdraw.width+minus;
+/*
   if (absint(ix2-ix1) > absint(iy2-iy1)) {
     addy=1;
+    addx=0;
   } else {
     addx=1;
+    addy=0;
   }
   for (int lw=minus;lw<plus;lw++) {
     drawSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
   }
+*/
+  dx=x2-x1;
+  dy=y2-y1;
+  drawSingleLine(layer,x1,y1,x2,y2,SILLO_NONE);
+  drawLineLen(layer,x1,y1,x2,y2,plus);
   sil_setErr(SILERR_ALLOK);
 }
-
 
 /*****************************************************************************
 
@@ -642,7 +846,7 @@ static void drawSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox, UI
 
   /* No AA needed for straight lines */
   if ((toy==fromy)||(tox==fromx)) {
-    drawSingleLine(layer,fromx,fromy,tox,toy);
+    drawSingleLine(layer,fromx,fromy,tox,toy,SILLO_NONE);
     return;
   }
 
@@ -678,7 +882,7 @@ static void drawSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox, UI
   }
 
     //log_info("OverX: %d, addx: %d, addy: %d, point: %d, end: %d",overx,addx,addy,point,end);
-  while(point++<end) {
+  while(point++<=end) {
     alpha2=gcolor.fg_alpha*fraction;
     alpha1=gcolor.fg_alpha-alpha2;
     sil_blendPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha1);
@@ -757,7 +961,7 @@ void sil_drawLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
 
   /* fill in with non-AA on top of it */
   for (int lw=minus;lw<plus;lw++) {
-    drawSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
+    drawSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw,SILLO_NONE);
   }
   sil_setErr(SILERR_ALLOK);
 }
@@ -1031,80 +1235,38 @@ void sil_drawBigLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
 }
 
 
-static void circlepart(SILLYR *layer,UINT xm, UINT ym, int x, int y, int px, int py) {
-  UINT tmp=gdraw.width;
-  if (gdraw.width>1) gdraw.width=2;
-  sil_drawLine(layer,xm+px,ym+py,xm+x,ym+y);
-  sil_drawLine(layer,xm-px,ym+py,xm-x,ym+y); 
-  sil_drawLine(layer,xm+px,ym-py,xm+x,ym-y);
-  sil_drawLine(layer,xm-px,ym-py,xm-x,ym-y);
-  sil_drawLine(layer,xm+py,ym+px,xm+y,ym+x);
-  sil_drawLine(layer,xm-py,ym+px,xm-y,ym+x); 
-  sil_drawLine(layer,xm+py,ym-px,xm+y,ym-x);
-  sil_drawLine(layer,xm-py,ym-px,xm-y,ym-x);
-  gdraw.width=tmp;
-}
-
-static void circlepartAA(SILLYR *layer,UINT xm, UINT ym, int x, int y, int px, int py) {
-  UINT tmp=gdraw.width;
-  if (gdraw.width>1) gdraw.width=2;
-  sil_drawLineAA(layer,xm+px,ym+py,xm+x,ym+y);
-  sil_drawLineAA(layer,xm-px,ym+py,xm-x,ym+y); 
-  sil_drawLineAA(layer,xm+px,ym-py,xm+x,ym-y);
-  sil_drawLineAA(layer,xm-px,ym-py,xm-x,ym-y);
-  sil_drawLineAA(layer,xm+py,ym+px,xm+y,ym+x);
-  sil_drawLineAA(layer,xm-py,ym+px,xm-y,ym+x); 
-  sil_drawLineAA(layer,xm+py,ym-px,xm+y,ym-x);
-  sil_drawLineAA(layer,xm-py,ym-px,xm-y,ym-x);
-  gdraw.width=tmp;
-}
-
 /*****************************************************************************
 
-   Draw Single line Circle with xm,ym being middle point and r the radius  
+   Draw Single Circle with xm,ym being middle point and r the radius  
 
  *****************************************************************************/
 
 static void drawSingleCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
-   int x=0,y=r;
-   int d=3-2*r;
-   int px=x,py=y;
-   while( y>x) {
-      x++;
-      if (d>0) {
-        y--;
-        d+=4*(x-y)+10;
-      } else {
-        d+=4*x+6;
-        circlepart(layer,xm,ym,x,y,px,py);
-        px=x,py=y;
-      }
-   } 
-   circlepart(layer,xm,ym,x+1,y,px,py);
-}
+  int x=r;
+  int y=0;
+  int px=x,py=y;
+  int xch=1-2*r;
+  int ych=1;
+  int rerr=0;
 
-/*****************************************************************************
-
-   Draw Single line Circle Anti-Aliased
-
- *****************************************************************************/
-
-static void drawSingleCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
-   int x=0,y=r;
-   int d=3-2*r;
-   int px=x,py=y;
-   while( y>x) {
-      x++;
-      if (d>0) {
-        y--;
-        d+=4*(x-y)+10;
-      } else {
-        d+=4*x+6;
-        circlepartAA(layer,xm,ym,x,y,px,py);
-        px=x,py=y;
-      }
-   } 
-   circlepartAA(layer,xm,ym,x+1,y,px,py);
+  while(x>=y) {
+    sil_drawPixel(layer,xm + x, ym + y);
+    sil_drawPixel(layer,xm - x, ym + y);
+    sil_drawPixel(layer,xm - x, ym - y);
+    sil_drawPixel(layer,xm + x, ym - y);
+    sil_drawPixel(layer,xm + y, ym + x);
+    sil_drawPixel(layer,xm - y, ym + x);
+    sil_drawPixel(layer,xm - y, ym - x);
+    sil_drawPixel(layer,xm + y, ym - x);
+    y++;
+    rerr+=ych;
+    ych+=2;
+    if (2*rerr+xch > 0) {
+      x--;
+      rerr+=xch;
+      xch+=2;
+    }
+  }
 }
 
 
@@ -1143,51 +1305,9 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
 
   minus=-(int)gdraw.width/2;
   plus=gdraw.width+minus-1;
-  for (int c=minus;c<plus;c++) {
-    drawSingleCircle(layer,xm,ym,r+c);
-  }
-  sil_setErr(SILERR_ALLOK);
-}
-
-/*****************************************************************************
-
-   Draw Circle with xm,ym being middle point and r the radius and using 
-   drawing with 
-
- *****************************************************************************/
-void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
-  int minus,plus;
-
-#ifndef SIL_LIVEDANGEROUS
-  if (NULL==layer) {
-    log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (NULL==layer->fb) {
-    log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (0==layer->fb->size) {
-    log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-#endif
-
-  if (1==gdraw.width) {
-    drawSingleCircleAA(layer,xm,ym,r);
-    return;
-  }
-
-  minus=-(int)gdraw.width/2;
-  plus=gdraw.width+minus-1;
-  drawSingleCircleAA(layer,xm,ym,r+minus);
-  drawSingleCircleAA(layer,xm,ym,r+plus);
-  for (int c=minus+1;c<plus;c++) {
-    drawSingleCircle(layer,xm,ym,r+c);
-  }
+  drawSingleCircle(layer,xm,ym,r+minus);
+  drawSingleCircle(layer,xm,ym,r+plus);
+  floodfill(layer,xm+r-1,ym);
   sil_setErr(SILERR_ALLOK);
 }
 
