@@ -22,23 +22,39 @@
 
 
 typedef struct _GCOLOR {
-  BYTE fg_red;
-  BYTE fg_green;
-  BYTE fg_blue;
-  BYTE fg_alpha;
-  BYTE bg_red;
-  BYTE bg_green;
-  BYTE bg_blue;
-  BYTE bg_alpha;
+  BYTE red;
+  BYTE green;
+  BYTE blue;
+  BYTE alpha;
 } GCOLOR;
 
-static GCOLOR gcolor={255,255,255,255,0,0,0,0};
 
 typedef struct _GDRAW {
   UINT width;
+  GCOLOR fg;
+  GCOLOR bg;
+  BYTE zoom;
 } GDRAW;
 
-static GDRAW gdraw={1};
+static GDRAW gd;
+
+/*****************************************************************************
+  
+  Set by sil_init, to initialize global variable "gdraw"
+
+ *****************************************************************************/
+void sil_initDraw() {
+  gd.width=1;
+  gd.fg.red=255;
+  gd.fg.green=255;
+  gd.fg.blue=255;
+  gd.fg.alpha=255;
+  gd.bg.red=0;
+  gd.bg.green=0;
+  gd.bg.blue=0;
+  gd.bg.alpha=0;
+  gd.zoom=0;
+}
 
 
 static int absint(int in) {
@@ -123,7 +139,7 @@ void floodfill(SILLYR *layer, UINT x,UINT y) {
 
   if ((x>=layer->fb->width)||(y>=layer->fb->height)) return;
   sil_getPixelLayer(layer,x,y,&red,&green,&blue,&alpha);
-  if ((red!=gcolor.fg_red)||(green!=gcolor.fg_green)||(blue!=gcolor.fg_blue)||(alpha!=gcolor.fg_alpha)) {
+  if ((red!=gd.fg.red)||(green!=gd.fg.green)||(blue!=gd.fg.blue)||(alpha!=gd.fg.alpha)) {
     sil_drawPixel(layer,x,y);
     floodfill(layer,x+1,y);
     if (x>0) floodfill(layer,x-1,y);
@@ -132,6 +148,27 @@ void floodfill(SILLYR *layer, UINT x,UINT y) {
   } 
 }
 
+/*****************************************************************************
+  swap foreground with background color
+
+ *****************************************************************************/
+
+
+void sil_swapColor() {
+  BYTE tmp;
+
+  tmp=gd.fg.red;
+  gd.fg.red=gd.bg.red;
+  gd.bg.red=tmp;
+
+  tmp=gd.fg.green;
+  gd.fg.green=gd.bg.green;
+  gd.bg.green=tmp;
+
+  tmp=gd.fg.blue;
+  gd.fg.blue=gd.bg.blue;
+  gd.bg.blue=tmp;
+}
 
 /*****************************************************************************
   getters & setters for global colors settings
@@ -139,32 +176,43 @@ void floodfill(SILLYR *layer, UINT x,UINT y) {
  *****************************************************************************/
 
 void sil_setBackgroundColor(BYTE red,BYTE green, BYTE blue, BYTE alpha) {
-  gcolor.bg_red=red;
-  gcolor.bg_green=green;
-  gcolor.bg_blue=blue;
-  gcolor.bg_alpha=alpha;
+  gd.bg.red=red;
+  gd.bg.green=green;
+  gd.bg.blue=blue;
+  gd.bg.alpha=alpha;
 }
 
 void sil_setForegroundColor(BYTE red,BYTE green, BYTE blue, BYTE alpha) {
-  gcolor.fg_red=red;
-  gcolor.fg_green=green;
-  gcolor.fg_blue=blue;
-  gcolor.fg_alpha=alpha;
+  gd.fg.red=red;
+  gd.fg.green=green;
+  gd.fg.blue=blue;
+  gd.fg.alpha=alpha;
 }
 
+
 void sil_getBackgroundColor(BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
-  *red=gcolor.bg_red;
-  *green=gcolor.bg_green;
-  *blue=gcolor.bg_blue;
-  *alpha=gcolor.bg_alpha;
+  *red=gd.bg.red;
+  *green=gd.bg.green;
+  *blue=gd.bg.blue;
+  *alpha=gd.bg.alpha;
 }
 
 void sil_getForegroundColor(BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
-  *red=gcolor.fg_red;
-  *green=gcolor.fg_green;
-  *blue=gcolor.fg_blue;
-  *alpha=gcolor.fg_alpha;
+  *red=gd.fg.red;
+  *green=gd.fg.green;
+  *blue=gd.fg.blue;
+  *alpha=gd.fg.alpha;
 }
+
+void sil_setZoom(BYTE lvl) {
+  gd.zoom=lvl;
+}
+
+BYTE sil_getZoom() {
+  return gd.zoom;
+  
+}
+
 
 /*****************************************************************************
   getters & setters for global drawing settings
@@ -172,11 +220,11 @@ void sil_getForegroundColor(BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
  *****************************************************************************/
 
 void sil_setDrawWidth(UINT width) {
-  gdraw.width=width;
+  gd.width=width;
 }
 
 UINT sil_getDrawWidth() {
-  return gdraw.width;
+  return gd.width;
 }
 
 
@@ -375,10 +423,10 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
         alpha=alpha*(font->alpha);
         if ((alpha>0) && (red+green+blue>0)) {
           if (!(flags&SILTXT_KEEPCOLOR)) {
-            red=((float)red/255)*gcolor.fg_red;
-            green=((float)green/255)*gcolor.fg_green;
-            blue=((float)blue/255)*gcolor.fg_blue;
-            alpha=((float)alpha/255)*gcolor.fg_alpha;
+            red=((float)red/255)*gd.fg.red;
+            green=((float)green/255)*gd.fg.green;
+            blue=((float)blue/255)*gd.fg.blue;
+            alpha=((float)alpha/255)*gd.fg.alpha;
           }
           if (flags&SILTXT_BLENDLAYER) {
             sil_blendPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,alpha);
@@ -509,7 +557,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   if (x1 == x2) {
     if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
     while(y1<=y2) {
-      sil_putPixelLayer(layer, x1,y1++, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+      sil_putBigPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     }
     return;
   }
@@ -517,7 +565,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   if (y1 == y2) {
     if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
     while(x1<=x2) {
-      sil_putPixelLayer(layer, x1++,y1, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+      sil_putBigPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     } 
     return;
   }
@@ -533,7 +581,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   tDeltaXTimes2 = tDeltaX*2;
   tDeltaYTimes2 = tDeltaY*2;
 
-  sil_drawPixel(layer,x1,y1);
+  sil_putBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
 
   if (tDeltaX > tDeltaY) {
     /* stepping over X axis */
@@ -541,13 +589,13 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
     while (x1 != x2) {
       x1 += tStepX;
       if (tError >= 0) {
-        if (overlap & SILLO_MAJOR) sil_drawPixel(layer,x1,y1);
+        if (overlap & SILLO_MAJOR) sil_putBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         y1 += tStepY;
-        if (overlap & SILLO_MINOR) sil_drawPixel(layer,x1-tStepX,y1);
+        if (overlap & SILLO_MINOR) sil_putBigPixelLayer(layer, x1-tStepX,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         tError -= tDeltaXTimes2;
       }
       tError += tDeltaYTimes2;
-      sil_drawPixel(layer,x1,y1);
+      sil_putBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     }
   } else {
     /* stepping over y axis */
@@ -555,20 +603,25 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
     while (y1 != y2) {
       y1 += tStepY;
       if (tError >= 0) {
-        if (overlap & SILLO_MAJOR) sil_drawPixel(layer,x1,y1);
+        if (overlap & SILLO_MAJOR) sil_putBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         x1 += tStepX;
-        if (overlap & SILLO_MINOR) sil_drawPixel(layer,x1,y1-tStepY);
+        if (overlap & SILLO_MINOR) sil_putBigPixelLayer(layer, x1,y1-tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         tError -= tDeltaYTimes2;
       }
       tError += tDeltaXTimes2;
       sil_drawPixel(layer,x1,y1);
     }
   }
-  sil_drawPixel(layer,x2,y2);
+  sil_putBigPixelLayer(layer, x2,y2, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
   sil_setErr(SILERR_ALLOK);
 }
 
+
 /*****************************************************************************
+
+ ----------------------------------------------------------------------
+ Based from code "thickLine.cpp" from Armin Joachimsmeyer under LGPL
+ ----------------------------------------------------------------------
 
   Draw Line (not anti-aliased) from x1,y1 to x2,y2 
   with current color and thickness
@@ -601,7 +654,7 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
 #endif
 
   /* if it has one single line, use that function */
-  if (gdraw.width<2) {
+  if (gd.width<2) {
     drawSingleLine(layer,x1,y1,x2,y2,SILLO_NONE);
     return;
   }
@@ -622,13 +675,13 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
   }
   tDeltaXTimes2=tDeltaX*2;
   tDeltaYTimes2=tDeltaY*2;
-  tDrawStartAdjustCount=gdraw.width/2;
+  tDrawStartAdjustCount=gd.width/2;
 
   if (tDeltaX >= tDeltaY) {
     /* step over X */
 
     if (tSwap) {
-      tDrawStartAdjustCount = (gdraw.width-1)-tDrawStartAdjustCount;
+      tDrawStartAdjustCount = (gd.width-1)-tDrawStartAdjustCount;
       tStepY=-tStepY;
     } else {
       tStepX=-tStepX;
@@ -648,9 +701,9 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
     /* start line */
     drawSingleLine(layer,x1,y1,x2,y2,SILLO_NONE);
 
-    /* draw gdraw.width number of lines */
+    /* draw gd.width number of lines */
     tError = tDeltaYTimes2 - tDeltaX;
-    for (i = gdraw.width; i > 1; i--) {
+    for (i = gd.width; i > 1; i--) {
       x1 += tStepX;
       x2 += tStepX;
       tOverlap = SILLO_NONE;
@@ -669,7 +722,7 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
     if (tSwap) {
       tStepX = -tStepX;
     } else {
-      tDrawStartAdjustCount = (gdraw.width-1) - tDrawStartAdjustCount;
+      tDrawStartAdjustCount = (gd.width-1) - tDrawStartAdjustCount;
       tStepY = -tStepY;
     }
 
@@ -688,7 +741,7 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
     drawSingleLine(layer,x1, y1, x2, y2, SILLO_NONE);
 
     tError = tDeltaXTimes2 - tDeltaY;
-    for (i = gdraw.width; i > 1; i--) {
+    for (i = gd.width; i > 1; i--) {
       y1 += tStepY;
       y2 += tStepY;
       tOverlap = SILLO_NONE;
@@ -706,203 +759,120 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
   sil_setErr(SILERR_ALLOK);
 }
 
-/*****************************************************************************
-
-  Same as Draw Single Line, but with 90 grade angle and 
-  stops when line has lenght "len" 
-
- *****************************************************************************/
-
-static void drawLineLen(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, UINT len) {
-  int dx,sx,dy,sy,err,e2;
-  UINT cx,cy;
-  UINT px,py;
-
-  /* just handle straight lines first */
-  if (y1==y2) {
-    if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
-    while(len--) {
-      sil_putPixelLayer(layer, x1++,y1, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-    }
-    return;
-  }
-  if (x1==x2) {
-    if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
-    while(len--) {
-      sil_putPixelLayer(layer, x1,y1++, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-    }
-    return;
-  }
-  
-  
-  /* bresenham algorithm */
-
-  dx=absint(x2-x1);
-  sx=x1<x2 ? 1 : -1;
-  dy=absint(y2-y1);
-  sy=y1<y2 ? 1 : -1;
-  err=(dx>dy ? dx : -dy)/2;
-  cx=0;
-  cy=0;
-  px=x1;
-  py=y1;
-
-  do {
-    sil_drawPixel(layer,px-(cy*sy),py+(cx*sx));
-    sil_drawPixel(layer,px+(cy*sy),py-(cx*sx));
-    sil_drawPixel(layer,x2-(cy*sy),y2+(cx*sx));
-    sil_drawPixel(layer,x2+(cy*sy),y2-(cx*sx));
-    e2 = err;
-    if (e2>-dx) { 
-      err-=dy; 
-      x1+=sx; 
-      cx++;
-    }
-    if (e2<dx) { 
-      err+=dx; 
-      y1+=sy; 
-      cy++;
-    }
-  } while (len*len>=((cx*cx)+(cy*cy)));
-  sil_setErr(SILERR_ALLOK);
-
-}
-
-/*****************************************************************************
-
-  Draw Single Line (not anti-aliased) from x1,y1 to x2,y2 
-   with current color and thickness
-
- *****************************************************************************/
-
-
-void sil_drawLine2(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
-  int plus,minus;
-  UINT addy=0;
-  UINT addx=0;
-  int dx,dy;
-
-#ifndef SIL_LIVEDANGEROUS
-  if (NULL==layer) {
-    log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (NULL==layer->fb) {
-    log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (0==layer->fb->size) {
-    log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-#endif
-  
-  if (1==gdraw.width) {
-    drawSingleLine(layer,x1,y1,x2,y2,SILLO_NONE);
-    return;
-  }
-  
-  minus=(int)gdraw.width/2;
-  plus=gdraw.width-minus;
-
-/*
-  if (absint(ix2-ix1) > absint(iy2-iy1)) {
-    addy=1;
-    addx=0;
-  } else {
-    addx=1;
-    addy=0;
-  }
-  for (int lw=minus;lw<plus;lw++) {
-    drawSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
-  }
-*/
-  dx=x2-x1;
-  dy=y2-y1;
-  drawSingleLine(layer,x1,y1,x2,y2,SILLO_NONE);
-  drawLineLen(layer,x1,y1,x2,y2,plus);
-  sil_setErr(SILERR_ALLOK);
-}
 
 /*****************************************************************************
 
    Internal function , Draw single Line anti-aliased from x1,y1 to x2,y2 
-   with current color
+   with current color anti-aliased
+   combined principles of Wu algorithm onto Bresenham algorithm
 
  *****************************************************************************/
-static void drawSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox, UINT toy) {
-  int dx,dy;
-  UINT alpha1,alpha2;
-  BYTE overx=0;
-  UINT addx=0;
-  UINT addy=0;
-  UINT point=0;
-  UINT end=0;
-  float fraction=0;
-  float step=0;
 
-  /* No AA needed for straight lines */
-  if ((toy==fromy)||(tox==fromx)) {
-    drawSingleLine(layer,fromx,fromy,tox,toy,SILLO_NONE);
+static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, BYTE overlap) {
+  int tDeltaX, tDeltaY, tDeltaXTimes2, tDeltaYTimes2, tError, tStepX, tStepY;
+  float fraction,tan,dist;
+  char cor;
+  
+
+  /* if it is an horizontal or vertical line, just use rectangle function */
+  if (x1 == x2+1) {
+    if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
+    while(y1<=y2) {
+      sil_putBigPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+    }
     return;
   }
 
-  /* and now a Xiaolin Wu's algorithm */
-
-  //log_info("Drawing: %d,%d -> %d,%d",fromx,fromy,tox,toy);
-  if (absint(tox-fromx)>absint(toy-fromy)) {
-    /* we progress over the X axis */
-    overx=1;
-    addx=0;
-    addy=1;
-    /* draw always from left to right */
-    if (tox<fromx) swapcoords(&tox,&toy,&fromx,&fromy);
-    dx=tox-fromx;
-    dy=toy-fromy;
-    if (dy<0) addy=-1;
-    step=(float)absint(dy)/(float)absint(dx);
-    point=fromx;
-    end=tox;
-  } else {
-    /* we progress over the Y axis */
-    overx=0;
-    addx=1;
-    addy=0;
-    /* draw always from top to bottom */
-    if (toy<fromy) swapcoords(&tox,&toy,&fromx,&fromy);
-    dx=tox-fromx;
-    dy=toy-fromy;
-    if (dx<0) addx=-1;
-    step=(float)absint(dx)/(float)absint(dy);
-    point=fromy;
-    end=toy;
+  if (y1 == y2) {
+    if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
+    while(x1<=x2) {
+      sil_putBigPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+    } 
+    return;
   }
 
-    //log_info("OverX: %d, addx: %d, addy: %d, point: %d, end: %d",overx,addx,addy,point,end);
-  while(point++<=end) {
-    alpha2=gcolor.fg_alpha*fraction;
-    alpha1=gcolor.fg_alpha-alpha2;
-    sil_blendPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha1);
-    sil_blendPixelLayer(layer, fromx+addx ,fromy+addy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha2);
 
-    fraction+=step;
-    if (fraction>1) {
-      fraction-=1;
-      fromy+=addy;
-      fromx+=addx;
+  /* Direction */
+
+  tDeltaX=absint(x2-x1);
+  tDeltaY=absint(y2-y1);
+  tStepX=x1<x2 ? 1 : -1;
+  tStepY=y1<y2 ? 1 : -1;
+  tDeltaXTimes2 = tDeltaX*2;
+  tDeltaYTimes2 = tDeltaY*2;
+
+
+  if (tDeltaX > tDeltaY) {
+    /* stepping over X axis */
+
+    tError = tDeltaYTimes2 - tDeltaX;
+    tan=(float)tDeltaY/(float)tDeltaX;
+    dist=tan/2;
+    while (x1 != x2+tStepX) {
+      fraction=0.5-dist;
+      cor=(fraction<0)?-1:1;
+      fraction*=cor;
+      if ((SILLO_MAJOR|SILLO_MINOR)==overlap) {
+        sil_blendBigPixelLayer(layer, x1,y1-cor*tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
+        sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
+      } else {
+        if (SILLO_NONE==overlap) {
+          sil_blendBigPixelLayer(layer, x1,y1-cor*tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        } else {
+          if (SILLO_MAJOR==overlap) {
+            sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (fraction)*gd.fg.alpha);
+          } else {
+            sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
+          }
+        }
+      }
+      
+      dist+=tan;
+      x1 += tStepX;
+      if (tError >= 0) {
+        y1 += tStepY;
+        tError -= tDeltaXTimes2;
+        dist--;
+      }
+      tError += tDeltaYTimes2;
     }
-    if (1==overx) {
-      fromx++;
-    } else {
-      fromy++;
+  } else {
+    /* stepping over y axis */
+
+    tError = tDeltaXTimes2 - tDeltaY;
+    tan=(float)tDeltaX/(float)tDeltaY;
+    dist=tan/2;
+    while (y1 != y2+tStepY) {
+      fraction=0.5-dist;
+      cor=(fraction<0)?-1:1;
+      fraction*=cor;
+      if ((SILLO_MAJOR|SILLO_MINOR)==overlap) {
+        sil_blendBigPixelLayer(layer, x1-cor*tStepX, y1, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
+        sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
+      } else {
+        if (SILLO_NONE==overlap) {
+          sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        } else {
+          if (SILLO_MAJOR==overlap) {
+            sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
+          } else {
+            sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
+          }
+        }
+      }
+
+      dist+=tan;
+      y1 += tStepY;
+      if (tError >= 0) {
+        x1 += tStepX;
+        tError -= tDeltaYTimes2;
+        dist--;
+      }
+      tError += tDeltaXTimes2;
     }
   }
   sil_setErr(SILERR_ALLOK);
 }
-
 
 /*****************************************************************************
 
@@ -910,12 +880,16 @@ static void drawSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox, UI
 
  *****************************************************************************/
 
-void sil_drawLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
-  UINT fromx,fromy,tox,toy;
-  UINT addy=0;
-  UINT addx=0;
-  int plus,minus;
-  float d=0;
+
+void sil_drawLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
+  int i,tDeltaX,tDeltaY,tDeltaXTimes2, tDeltaYTimes2, tError, tStepX, tStepY;
+  int tDrawStartAdjustCount;
+  UINT bx1,by1,bx2,by2;
+  UINT ex1,ey1,ex2,ey2;
+  BYTE tSwap=1;
+  BYTE tOverlap=0;
+  char dir;
+
 
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -935,304 +909,132 @@ void sil_drawLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
   }
 #endif
 
-
-  /* straight lines don't need aliasing */
-  if ((ix1==ix2)||(iy1==iy2)) {
-    sil_drawLine(layer,ix1,iy1,ix2,iy2);
+  /* if it has one single line, use that function */
+  if (gd.width<2) {
+    drawSingleLineAA(layer,x1,y1,x2,y2,SILLO_MAJOR|SILLO_MINOR);
     return;
   }
-
-  if (1==gdraw.width) {
-    drawSingleLineAA(layer,ix1,iy1,ix2,iy2);
-    return;
-  }
-
-  minus=-(int)gdraw.width/2;
-  plus=gdraw.width+minus-1;
-  if (absint(ix2-ix1) > absint(iy2-iy1)) {
-    addy=1;
-  } else {
-    addx=1;
-  }
-
-  /* draw AA outerborders first */
-  drawSingleLineAA(layer,ix1+addx*minus,iy1+addy*minus,ix2+addx*minus,iy2+addy*minus);
-  drawSingleLineAA(layer,ix1+addx*plus,iy1+addy*plus,ix2+addx*plus,iy2+addy*plus);
-
-  /* fill in with non-AA on top of it */
-  for (int lw=minus;lw<plus;lw++) {
-    drawSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw,SILLO_NONE);
-  }
-  sil_setErr(SILERR_ALLOK);
-}
-  
-
-/* draw functions for BIG pixels, to check out errors in algorithm by sight */
-
-
-static void drawBigSingleLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
-  UINT fromx,fromy,tox,toy;
-  int dx,dy,p;
-  int add=1;
-
-  /* make sure lines always go from left to right */
+  tDeltaY=absint(x2-x1);
+  tDeltaX=absint(y2-y1);
+  tSwap=1;
   if (x1>x2) {
-    tox=x1;
-    toy=y1;
-    fromx=x2;
-    fromy=y2;
+    tStepX=-1;
+    tSwap=0;
   } else {
-    tox=x2;
-    toy=y2;
-    fromx=x1;
-    fromy=y1;
+    tStepX=1;
   }
-   
+  if (y1>y2) {
+    tStepY=-1;
+    tSwap=(0==tSwap)?1:0;
+  } else {
+    tStepY=1;
+  }
+  tDeltaXTimes2=tDeltaX*2;
+  tDeltaYTimes2=tDeltaY*2;
+  tDrawStartAdjustCount=gd.width/2;
+  dir=tStepX*tStepY;
 
-  /* just handle straight lines first */
-  if (toy==fromy) {
-    while(fromx!=tox) {
-      sil_putBigPixelLayer(layer, fromx++,toy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-    }
-    return;
-  }
-  if (tox==fromx) {
-    if (y1>y2) { 
-      fromy=y2;
-      toy=y1;
+  if (tDeltaX >= tDeltaY) {
+    /* step over X */
+
+    if (tSwap) {
+      tDrawStartAdjustCount = (gd.width-1)-tDrawStartAdjustCount;
+      tStepY=-tStepY;
     } else {
-      fromy=y1;
-      toy=y2;
-    } 
-    while(toy!=fromy) {
-      sil_putBigPixelLayer(layer, fromx,fromy++, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+      tStepX=-tStepX;
     }
-    return;
-  }
-  
-  /* and now a Bresenham's algorithm */
-  dx=tox-fromx;
-  dy=toy-fromy;
-  if (dy<0) {
-    dy=-1*dy;
-    add=-1;
-  }
-  if (dy<=dx) {
-    p=2*dy-dx;
-    while(fromx<tox) {
-      sil_putBigPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-      if (p>=0) {
-        fromy+=add;
-        p+=2*(dy-dx);
-      } else {
-        p+=2*dy;
+
+    tError=tDeltaYTimes2 - tDeltaX;
+    for (i = tDrawStartAdjustCount; i > 0; i--) {
+      x1 -= tStepX;
+      x2 -= tStepX;
+      if (tError >= 0) {
+        y1 -= tStepY;
+        y2 -= tStepY;
+        tError -= tDeltaXTimes2;
       }
-      fromx++;
-    }
-  } else {
-    /* to steep, draw with looping y instead of x */
-    /* makesure to draw from top till bottom      */
-    if (y1>y2) {
-      tox=x1;
-      toy=y1;
-      fromx=x2;
-      fromy=y2;
-    } else {
-      tox=x2;
-      toy=y2;
-      fromx=x1;
-      fromy=y1;
-    }
-    dx=tox-fromx;
-    dy=toy-fromy;
-    add=1;
-    if (dx<0) {
-      dx=-1*dx;
-      add=-1;
+      tError += tDeltaYTimes2;
     }
 
-    while(fromy<toy) {
-      sil_putBigPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
-      if (p>=0) {
-        fromx+=add;
-        p+=2*(dx-dy);
-      } else {
-        p+=2*dx;
+    /* remember starting line */
+    bx1=x1;by1=y1;
+    bx2=x2;by2=y2;
+
+    /* draw gd.width number of lines */
+    tError = tDeltaYTimes2 - tDeltaX;
+    for (i = gd.width; i > 1; i--) {
+      ey1=y1;
+      ey2=y2;
+      x1 += tStepX;
+      x2 += tStepX;
+      tOverlap = SILLO_NONE;
+      if (tError >= 0) {
+        y1 += tStepY;
+        y2 += tStepY;
+        tError -= tDeltaXTimes2;
+        tOverlap = SILLO_MAJOR|SILLO_MINOR;
       }
-      fromy++;
+      ex1=x1;
+      ex2=x2;
+      tError += tDeltaYTimes2;
+      if (i>2) drawSingleLine(layer,x1, y1, x2, y2,tOverlap );
     }
-  }
-  sil_setErr(SILERR_ALLOK);
-}
-
-
-void sil_drawBigLine(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
-  int plus,minus;
-  UINT addy=0;
-  UINT addx=0;
-
-#ifndef SIL_LIVEDANGEROUS
-  if (NULL==layer) {
-    log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (NULL==layer->fb) {
-    log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (0==layer->fb->size) {
-    log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-#endif
-  
-  if (1==gdraw.width) {
-    drawBigSingleLine(layer,ix1,iy1,ix2,iy2);
-    return;
-  }
-
-  minus=-(int)gdraw.width/2;
-  plus=gdraw.width+minus;
-  if (absint(ix2-ix1) > absint(iy2-iy1)) {
-    addy=1;
   } else {
-    addx=1;
-  }
-  for (int lw=minus;lw<plus;lw++) {
-    drawBigSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
-  }
-  sil_setErr(SILERR_ALLOK);
-}
+  /* step over Y */
 
-
-static void drawBigSingleLineAA(SILLYR *layer, UINT fromx, UINT fromy, UINT tox, UINT toy) {
-  int dx,dy;
-  UINT alpha1,alpha2;
-  BYTE overx=0;
-  UINT addx=0;
-  UINT addy=0;
-  UINT point=0;
-  UINT end=0;
-  float fraction=0;
-  float step=0;
-
-  /* No AA needed for straight lines */
-  if ((toy==fromy)||(tox==fromx)) {
-    drawBigSingleLine(layer,fromx,fromy,tox,toy);
-    return;
-  }
-
-  /* and now a Xiaolin Wu's algorithm */
-
-  //log_info("Drawing: %d,%d -> %d,%d",fromx,fromy,tox,toy);
-  if (absint(tox-fromx)>absint(toy-fromy)) {
-    /* we progress over the X axis */
-    overx=1;
-    addx=0;
-    addy=1;
-    /* draw always from left to right */
-    if (tox<fromx) swapcoords(&tox,&toy,&fromx,&fromy);
-    dx=tox-fromx;
-    dy=toy-fromy;
-    if (dy<0) addy=-1;
-    step=(float)absint(dy)/(float)absint(dx);
-    point=fromx;
-    end=tox;
-  } else {
-    /* we progress over the Y axis */
-    overx=0;
-    addx=1;
-    addy=0;
-    /* draw always from top to bottom */
-    if (toy<fromy) swapcoords(&tox,&toy,&fromx,&fromy);
-    dx=tox-fromx;
-    dy=toy-fromy;
-    if (dx<0) addx=-1;
-    step=(float)absint(dx)/(float)absint(dy);
-    point=fromy;
-    end=toy;
-  }
-
-    //log_info("OverX: %d, addx: %d, addy: %d, point: %d, end: %d",overx,addx,addy,point,end);
-  while(point++<end) {
-    alpha2=gcolor.fg_alpha*fraction;
-    alpha1=gcolor.fg_alpha-alpha2;
-    sil_blendBigPixelLayer(layer, fromx ,fromy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha1);
-    sil_blendBigPixelLayer(layer, fromx+addx ,fromy+addy, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, alpha2);
-
-    fraction+=step;
-    if (fraction>1) {
-      fraction-=1;
-      fromy+=addy;
-      fromx+=addx;
-    }
-    if (1==overx) {
-      fromx++;
+    if (tSwap) {
+      tStepX = -tStepX;
     } else {
-      fromy++;
+      tDrawStartAdjustCount = (gd.width-1) - tDrawStartAdjustCount;
+      tStepY = -tStepY;
+    }
+
+    tError = tDeltaXTimes2 - tDeltaY;
+    for (i = tDrawStartAdjustCount; i > 0; i--) {
+      y1 -= tStepY;
+      y2 -= tStepY;
+      if (tError >= 0) {
+        x1 -= tStepX;
+        x2 -= tStepX;
+        tError -= tDeltaYTimes2;
+      }
+      tError += tDeltaXTimes2;
+    }
+
+    /* remember starting line */
+    bx1=x1;by1=y1;
+    bx2=x2;by2=y2;
+
+    tError = tDeltaXTimes2 - tDeltaY;
+    for (i = gd.width; i > 1; i--) {
+      ex1=x1;
+      ex2=x2;
+      y1 += tStepY;
+      y2 += tStepY;
+      tOverlap = SILLO_NONE;
+      if (tError >= 0) {
+        x1 += tStepX;
+        x2 += tStepX;
+        tError -= tDeltaYTimes2;
+        tOverlap = SILLO_MAJOR|SILLO_MINOR;
+      }
+      tError += tDeltaXTimes2;
+      ey1=y1;
+      ey2=y2;
+      if (i>2) drawSingleLine(layer,x1, y1, x2, y2,tOverlap );
     }
   }
-
-  sil_setErr(SILERR_ALLOK);
-}
-
-void sil_drawBigLineAA(SILLYR *layer, UINT ix1, UINT iy1, UINT ix2, UINT iy2) {
-  UINT fromx,fromy,tox,toy;
-  int plus,minus;
-  UINT addy=0;
-  UINT addx=0;
-
-#ifndef SIL_LIVEDANGEROUS
-  if (NULL==layer) {
-    log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (NULL==layer->fb) {
-    log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-  if (0==layer->fb->size) {
-    log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
-    return ;
-  }
-#endif
-
-
-  /* straight lines don't need aliasing */
-  if ((ix1==ix2)||(iy1==iy2)) {
-    sil_drawLine(layer,ix1,iy1,ix2,iy2);
-    return;
-  }
-  
-  if (1==gdraw.width) {
-    drawBigSingleLineAA(layer,ix1,iy1,ix2,iy2);
-    return;
-  }
-
-  minus=-(int)gdraw.width/2;
-  plus=gdraw.width+minus-1;
-  if (absint(ix2-ix1) > absint(iy2-iy1)) {
-    addy=1;
+  /* draw border lines Aliased */
+  if (dir<0) {
+    drawSingleLineAA(layer,bx1, by1, bx2, by2,SILLO_MINOR);
+    drawSingleLineAA(layer,ex1, ey1, ex2, ey2,SILLO_MAJOR);
   } else {
-    addx=1;
-  }
-
-  /* draw AA outerborders first */
-  drawBigSingleLineAA(layer,ix1+addx*minus,iy1+addy*minus,ix2+addx*minus,iy2+addy*minus);
-  drawBigSingleLineAA(layer,ix1+addx*plus,iy1+addy*plus,ix2+addx*plus,iy2+addy*plus);
-
-  /* fill in with non-AA on top of it */
-  for (int lw=minus;lw<plus;lw++) {
-    drawBigSingleLine(layer,ix1+addx*lw,iy1+addy*lw,ix2+addx*lw,iy2+addy*lw);
+    drawSingleLineAA(layer,bx1, by1, bx2, by2,SILLO_MAJOR);
+    drawSingleLineAA(layer,ex1, ey1, ex2, ey2,SILLO_MINOR);
   }
   sil_setErr(SILERR_ALLOK);
 }
+
 
 
 /*****************************************************************************
@@ -1298,13 +1100,13 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
   }
 #endif
 
-  if (1==gdraw.width) {
+  if (1==gd.width) {
     drawSingleCircle(layer,xm,ym,r);
     return;
   }
 
-  minus=-(int)gdraw.width/2;
-  plus=gdraw.width+minus-1;
+  minus=-(int)gd.width/2;
+  plus=gd.width+minus-1;
   drawSingleCircle(layer,xm,ym,r+minus);
   drawSingleCircle(layer,xm,ym,r+plus);
   floodfill(layer,xm+r-1,ym);
@@ -1341,11 +1143,11 @@ void sil_drawRectangle(SILLYR *layer, UINT x, UINT y, UINT width, UINT height) {
   for (UINT yc=0;yc<height;yc++) {
     for (UINT xc=0;xc<width;xc++) {
       if (((x+xc)<layer->fb->width)&&((y+yc)<layer->fb->height)) {
-        if ((xc<gdraw.width)||(xc>width-gdraw.width)||(yc<gdraw.width)||(yc>height-gdraw.width)) {
+        if ((xc<gd.width)||(xc>width-gd.width)||(yc<gd.width)||(yc>height-gd.width)) {
           /* border */
-          sil_putPixelLayer(layer, x+xc, y+yc, gcolor.bg_red, gcolor.bg_green, gcolor.bg_blue, gcolor.bg_alpha);
+          sil_putPixelLayer(layer, x+xc, y+yc, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
         } else {
-          sil_blendPixelLayer(layer, x+xc, y+yc, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+          sil_blendPixelLayer(layer, x+xc, y+yc, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         }
       }
     }
@@ -1365,7 +1167,7 @@ void sil_drawRectangle(SILLYR *layer, UINT x, UINT y, UINT width, UINT height) {
 
 void sil_drawPixel(SILLYR *layer, UINT x, UINT y) {
   /* checks on validity of layer, fb and all is done in putPixelLayer function already */
-  sil_putPixelLayer(layer, x, y, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+  sil_putPixelLayer(layer, x, y, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
 }
 
 /*****************************************************************************
@@ -1377,7 +1179,7 @@ void sil_drawPixel(SILLYR *layer, UINT x, UINT y) {
 
 void sil_blendPixel(SILLYR *layer, UINT x, UINT y) {
   /* checks on validity of layer, fb and all is done in blendPixelLayer function already */
-  sil_blendPixelLayer(layer, x, y, gcolor.fg_red, gcolor.fg_green, gcolor.fg_blue, gcolor.fg_alpha);
+  sil_blendPixelLayer(layer, x, y, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
 }
 
 

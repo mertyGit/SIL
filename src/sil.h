@@ -278,6 +278,7 @@ UINT sil_grayFilter(SILLYR *);
 #define SILLO_MINOR             2
 
 
+void sil_initDraw();
 UINT sil_PNGintoLayer(SILLYR *,char *, UINT,UINT);
 void sil_paintLayer(SILLYR *,BYTE,BYTE,BYTE,BYTE);
 void sil_drawTextLayer(SILLYR *,SILFONT *, char *, UINT, UINT, BYTE);
@@ -296,6 +297,8 @@ void sil_drawPixel(SILLYR *, UINT, UINT);
 void sil_blendPixel(SILLYR *, UINT, UINT);
 void sil_setDrawWidth(UINT);
 UINT sil_getDrawWidth();
+void sil_setZoom(BYTE);
+BYTE sil_getZoom();
 
 /* x11display.c  / winSDLdisplay.c / winGDIdisplay.c / lnxdisplay.c */
 

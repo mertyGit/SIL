@@ -60,6 +60,9 @@ UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance) {
   if (SILERR_ALLOK!=sil_initDisplay(hInstance,width,height,title)) {
     log_fatal("Can't initialize display");
   }
+
+  /* initialize other globals */
+  sil_initDraw();
   return ret;
 }
 

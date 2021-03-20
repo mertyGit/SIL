@@ -251,24 +251,36 @@ void sil_placeLayer(SILLYR *layer, UINT x,UINT y) {
 }
 /*****************************************************************************
 
- Draw a pixel 8 times as big as normal, for drawing debug purposes
- x,y are multiplied by 8 !
+ Draw a pixel "zoomlevel" times as big as normal, for debugging drawing
+ algorithms. Be aware ; x,y are also multiplied by zoomlevel !
 
  *****************************************************************************/
 
 void sil_putBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
-  for (int cy=0;cy<8;cy++) {
-    for (int cx=0;cx<8;cx++) {
-      sil_putPixelLayer(layer,(x*8)+cx,(y*8)+cy,red,green,blue,alpha);
+  BYTE lvl=sil_getZoom();
+  if (lvl<2) {
+    /* width of one or none, so just a "normal" pixel */
+    sil_putPixelLayer(layer,x,y,red,green,blue,alpha);
+    return;
+  }
+  for (int cy=0;cy<lvl;cy++) {
+    for (int cx=0;cx<lvl;cx++) {
+      sil_putPixelLayer(layer,(x*lvl)+cx,(y*lvl)+cy,red,green,blue,alpha);
     }
   }
 }
 
 
 void sil_blendBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
-  for (int cy=0;cy<8;cy++) {
-    for (int cx=0;cx<8;cx++) {
-      sil_blendPixelLayer(layer,(x*8)+cx,(y*8)+cy,red,green,blue,alpha);
+  BYTE lvl=sil_getZoom();
+  if (lvl<2) {
+    /* width of one or none, so just a "normal" pixel */
+    sil_blendPixelLayer(layer,x,y,red,green,blue,alpha);
+    return;
+  }
+  for (int cy=0;cy<lvl;cy++) {
+    for (int cx=0;cx<lvl;cx++) {
+      sil_blendPixelLayer(layer,(x*lvl)+cx,(y*lvl)+cy,red,green,blue,alpha);
     }
   }
 }

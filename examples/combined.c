@@ -12,11 +12,10 @@ static UINT lw=1;
 
 void drawlines() {
   printf("(re-) painting drawing...\n");
+  printf("width %d\n",lw);
   sil_paintLayer(drawing,30,30,30,255);
   sil_borderFilter(drawing);
 
-  printf("drawing on it\n");
-  printf("aliased\n");
   sil_setForegroundColor(0,0,255,255);
   sil_drawLine(drawing,20,20,180,180);
   sil_drawLine(drawing,20,20,180,20);
@@ -45,23 +44,30 @@ void drawlines() {
 
   sil_setForegroundColor(0,255,255,255);
   sil_drawLine(drawing,20,90,180,70);
+  sil_drawLine(drawing,20,70,180,90);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,20,70);
+  sil_drawPixel(drawing,20,90);
 
-  printf("antialiased\n");
-  printf("Blue\n");
+  sil_setForegroundColor(255,0,255,255);
+  sil_drawLine(drawing,70,20,90,180);
+  sil_drawLine(drawing,90,20,70,180);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,70,20);
+  sil_drawPixel(drawing,90,20);
+
   sil_setForegroundColor(0,0,255,255);
   sil_drawLineAA(drawing,210+20,20,210+180,180);
   sil_drawLineAA(drawing,210+20,20,210+180,20);
   sil_setForegroundColor(255,255,255,255);
   sil_drawPixel(drawing,210+20,20);
 
-  printf("Green\n");
   sil_setForegroundColor(0,255,0,255);
   sil_drawLineAA(drawing,210+180,20,210+20,180);
   sil_drawLineAA(drawing,210+180,20,210+180,180);
   sil_setForegroundColor(255,255,255,255);
   sil_drawPixel(drawing,210+180,20);
 
-  printf("Red\n");
   sil_setForegroundColor(255,0,0,255);
   sil_drawLineAA(drawing,210+150,20,210+20,180);
   sil_drawLineAA(drawing,210+20,20,210+150,180);
@@ -69,7 +75,6 @@ void drawlines() {
   sil_drawPixel(drawing,210+150,20);
   sil_drawPixel(drawing,210+20,20);
 
-  printf("Yellow\n");
   sil_setForegroundColor(255,255,0,255);
   sil_drawLineAA(drawing,210+180,50,210+20,180);
   sil_drawLineAA(drawing,210+180,150,210+20,20);
@@ -77,6 +82,20 @@ void drawlines() {
   sil_drawPixel(drawing,210+180,50);
   sil_drawPixel(drawing,210+180,150);
   
+  sil_setForegroundColor(0,255,255,255);
+  sil_drawLineAA(drawing,210+20,90,210+180,70);
+  sil_drawLineAA(drawing,210+20,70,210+180,90);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,20,70);
+  sil_drawPixel(drawing,20,90);
+
+  sil_setForegroundColor(255,0,255,255);
+  sil_drawLineAA(drawing,210+70,20,210+90,180);
+  sil_drawLineAA(drawing,210+90,20,210+70,180);
+  sil_setForegroundColor(255,255,255,255);
+  sil_drawPixel(drawing,210+70,20);
+  sil_drawPixel(drawing,210+90,20);
+
 }
 
 UINT keyhandler(SILEVENT *event) {
