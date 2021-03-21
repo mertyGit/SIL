@@ -193,7 +193,7 @@ int main() {
   UINT err;
   BYTE move=0;
   BYTE update=0;
-  SILFONT *font;
+  SILFONT *font,*font2;
 
 
   printf("sil_init...\n");
@@ -407,8 +407,13 @@ int main() {
   
 
   printf("sil_loadFont...\n");
-  font=sil_loadFont("bahnschrift.fnt");
+  font=sil_loadFont("architectsdaughter_thickoutline_20px.fnt");
   if (NULL==font) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 19;
+  }
+  font2=sil_loadFont("architectsdaughter_24px.fnt");
+  if (NULL==font2) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 19;
   }
@@ -417,8 +422,8 @@ int main() {
   sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5,SILTXT_KEEPCOLOR);
 
   sil_setAlphaFont(font,0.5);
-  printf("...and without kerning but with blending ...\n");
-  sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+(font->base),SILTXT_NOKERNING|SILTXT_BLENDLAYER);
+  printf("...and without kerning but with punchout...\n");
+  sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+(font->base),SILTXT_NOKERNING|SILTXT_PUNCHOUT);
 
   printf("...and with alpha set, no blending ..\n");
   sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+2*(font->base),0);
@@ -427,9 +432,15 @@ int main() {
   printf("...and now with monospaced...\n");
   sil_drawTextLayer(fonttest,font,"The Monospace 123456790",5,5+3*(font->base),SILTXT_MONOSPACE);
 
-  sil_setForegroundColor(0,0,255,150);
+  sil_setForegroundColor(0,0,255,128);
   printf("...and now with blue color...\n");
-  sil_drawTextLayer(fonttest,font,"Lets turn BLUE",5,5+4*(font->base),0);
+  sil_drawTextLayer(fonttest,font2,"Lets turn the color halfway to BLUE",5,5+4*(font2->base),0);
+  sil_setForegroundColor(255,255,0,255);
+  printf("...and now with yellow color & without Kerning...\n");
+  sil_drawTextLayer(fonttest,font2,"Lets turn the color to YELLOW",5,5+5*(font2->base),0);
+  sil_drawTextLayer(fonttest,font,"Lets turn the color to YELLOW",5,5+6*(font2->base),0);
+
+  printf("sil_addLayer drawing...\n");
 
   printf("sil_addLayer drawing...\n");
   drawing=sil_addLayer(400,200,600,710,SILTYPE_ARGB);

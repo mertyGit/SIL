@@ -7,8 +7,7 @@
    Note: I don't implemented all options, fonts do have the following constrains:
    - Only a single png file per font, extra will be ignored
    - Its far from unicode ready
-   - Lines within font file may not exceed SILFONT_MAXWIDTH (or are chopped of)
-   - 
+   - Textlines within font file may not exceed SILFONT_MAXWIDTH (or are chopped of)
 
 */
 
@@ -48,6 +47,7 @@ static void initFont(SILFONT *font) {
   font->kdefs=NULL;
   font->alpha=1;
   font->mspace=0;
+  font->outline=0;
 }
 
 
@@ -324,7 +324,7 @@ SILFONT *sil_loadFont(char *name) {
         /* Info section, contains all parameters used to generate font */
         /* ignore it for now                                           */
         if (!(found)&&isSection(font,"info")) {
-          /* placeholder for future use      */
+          font->outline=intValue(font,"outline");
           found=1;
         }
 
@@ -424,6 +424,10 @@ int sil_getKerningFont(SILFONT *font, char first, char second) {
   }
   sil_setErr(SILERR_ALLOK);
   return 0;
+}
+
+UINT sil_getOutlineFont(SILFONT *font) {
+  return font->outline;
 }
 
 

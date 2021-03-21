@@ -372,7 +372,7 @@ void sil_paintLayer(SILLYR *layer, BYTE red, BYTE green, BYTE blue, BYTE alpha) 
         SILTXT_NOKERNING  = Don't apply correction to kerning of characters 
         SILTXT_MONOSPACE  = Every character is as wide as widest char in font
         SILTXT_KEEPCOLOR  = Ignores foreground color and uses color of font
-        SILTXT_BLENDLAYER = Blend text pixels with existing pixels 
+        SILTXT_PUNCHOUT   = Use font to "punch out" characters in layer
 
 
  *****************************************************************************/
@@ -385,6 +385,7 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
   BYTE red,green,blue,alpha;
   SILFCHAR *chardef;
   int kerning=0;
+  UINT outline=0;
 
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
@@ -411,6 +412,8 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
       kerning=sil_getKerningFont(font,prevtch,tch);
       cursor+=kerning;
     }
+    outline=sil_getOutlineFont(font);
+    cursor+=outline*2;
 #ifndef SIL_LIVEDANGEROUS
     if (((cursor+relx+chardef->width)>=layer->fb->width)||((rely+chardef->yoffset+chardef->height)>=layer->fb->height)) {
       log_verbose("drawing text outside layer area, skipping char");
@@ -421,17 +424,18 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
       for (int y=0;y<chardef->height;y++) {
         sil_getPixelFont(font,x+chardef->x,y+chardef->y,&red,&green,&blue,&alpha);
         alpha=alpha*(font->alpha);
-        if ((alpha>0) && (red+green+blue>0)) {
+        //if ((alpha>0) && (red+green+blue>0)) {
+        if (alpha>0) {
           if (!(flags&SILTXT_KEEPCOLOR)) {
             red=((float)red/255)*gd.fg.red;
             green=((float)green/255)*gd.fg.green;
             blue=((float)blue/255)*gd.fg.blue;
             alpha=((float)alpha/255)*gd.fg.alpha;
           }
-          if (flags&SILTXT_BLENDLAYER) {
-            sil_blendPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,alpha);
+          if (flags&SILTXT_PUNCHOUT) {
+            if (alpha>110) sil_putPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,0);
           } else {
-            sil_putPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,alpha);
+            sil_blendPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,alpha);
           }
         }
       }
@@ -553,6 +557,11 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   int tDeltaX, tDeltaY, tDeltaXTimes2, tDeltaYTimes2, tError, tStepX, tStepY;
   int tmp;
 
+  /* don't try to draw lines that are (partially) outside of layer */
+  if ((x1>=layer->fb->width)||(y1>=layer->fb->height)||(x2>=layer->fb->width)||(y2>=layer->fb->height)) {
+    return;
+  }
+
   /* if it is an horizontal or vertical line, just use rectangle function */
   if (x1 == x2) {
     if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
@@ -650,6 +659,12 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
     log_warn("Drawing on layer without initialized framebuffer");
     sil_setErr(SILERR_WRONGFORMAT);
     return ;
+  }
+
+  if ((x1>=layer->fb->width)||(y1>=layer->fb->height)||(x2>=layer->fb->width)||(y2>=layer->fb->height)) {
+    log_warn("Drawing outside boundary of layer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return;
   }
 #endif
 
@@ -773,6 +788,10 @@ static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, 
   float fraction,tan,dist;
   char cor;
   
+  /* don't try to draw lines that are (partially) outside of layer */
+  if ((x1>=layer->fb->width)||(y1>=layer->fb->height)||(x2>=layer->fb->width)||(y2>=layer->fb->height)) {
+    return;
+  }
 
   /* if it is an horizontal or vertical line, just use rectangle function */
   if (x1 == x2+1) {
@@ -907,6 +926,12 @@ void sil_drawLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
     sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
+
+  if ((x1>=layer->fb->width)||(y1>=layer->fb->height)||(x2>=layer->fb->width)||(y2>=layer->fb->height)) {
+    log_warn("Drawing outside boundary of layer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return;
+  }
 #endif
 
   /* if it has one single line, use that function */
@@ -1024,13 +1049,17 @@ void sil_drawLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
       if (i>2) drawSingleLine(layer,x1, y1, x2, y2,tOverlap );
     }
   }
-  /* draw border lines Aliased */
+  /* draw border lines Aliased on top of it */
   if (dir<0) {
     drawSingleLineAA(layer,bx1, by1, bx2, by2,SILLO_MINOR);
     drawSingleLineAA(layer,ex1, ey1, ex2, ey2,SILLO_MAJOR);
+    drawSingleLineAA(layer,bx1, by1, ex1, ey1,SILLO_MAJOR|SILLO_MINOR);
+    drawSingleLineAA(layer,bx2, by2, ex2, ey2,SILLO_MAJOR|SILLO_MINOR);
   } else {
     drawSingleLineAA(layer,bx1, by1, bx2, by2,SILLO_MAJOR);
     drawSingleLineAA(layer,ex1, ey1, ex2, ey2,SILLO_MINOR);
+    drawSingleLineAA(layer,bx1, by1, ex1, ey1,SILLO_MAJOR|SILLO_MINOR);
+    drawSingleLineAA(layer,bx2, by2, ex2, ey2,SILLO_MAJOR|SILLO_MINOR);
   }
   sil_setErr(SILERR_ALLOK);
 }
@@ -1040,6 +1069,7 @@ void sil_drawLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
 /*****************************************************************************
 
    Draw Single Circle with xm,ym being middle point and r the radius  
+   fastest way
 
  *****************************************************************************/
 
@@ -1076,11 +1106,13 @@ static void drawSingleCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
 /*****************************************************************************
 
    Draw Circle with xm,ym being middle point and r the radius and using 
-   drawing with 
+   drawing with. Foreground = border, background = fill.
 
  *****************************************************************************/
 void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
-  int minus,plus;
+  UINT x1,y1,x2,y2;
+  UINT innersq,outersq,xsq,ysq;
+  UINT width;
 
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -1098,18 +1130,60 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
     sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
+
+  if (((xm+r+gd.width/2)>layer->fb->width) ||((xm-(r+gd.width/2))<0)||
+      ((ym+r+gd.width/2)>layer->fb->height)||((ym-(r+gd.width/2))<0)) {
+    log_warn("Drawing falls outside layer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
 #endif
 
-  if (1==gd.width) {
+/*
+  if ((1==gd.width)&&(0==gd.bg.alpha)) {
     drawSingleCircle(layer,xm,ym,r);
     return;
   }
+  */
 
-  minus=-(int)gd.width/2;
-  plus=gd.width+minus-1;
-  drawSingleCircle(layer,xm,ym,r+minus);
-  drawSingleCircle(layer,xm,ym,r+plus);
-  floodfill(layer,xm+r-1,ym);
+  /* do it the hard way */
+  innersq=r-gd.width/2;
+  outersq=innersq+gd.width;
+  innersq=innersq*innersq;
+  outersq=outersq*outersq;
+  for (x1=0;x1<r+gd.width;x1++) {
+    xsq=x1*x1;
+    for (y1=0;y1<r+gd.width;y1++) {
+      ysq=y1*y1;
+      if (ysq+xsq<outersq) {
+        if (ysq+xsq>innersq) {
+          /* border */
+          sil_putPixelLayer(layer, xm+x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          sil_putPixelLayer(layer, xm-x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          sil_putPixelLayer(layer, xm+x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          sil_putPixelLayer(layer, xm-x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        } else {
+          /* inside */
+          sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
+          sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
+          sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
+          sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
+        }
+      }
+    }
+  }
+  /* fix for 4 edges of circle */
+  sil_putPixelLayer(layer, xm+r-gd.width/2, ym, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+  sil_putPixelLayer(layer, xm-r-gd.width/2, ym, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+  sil_putPixelLayer(layer, xm, ym+r-gd.width/2, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+  sil_putPixelLayer(layer, xm, ym-r-gd.width/2, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+
+
+
+
+
+
+
   sil_setErr(SILERR_ALLOK);
 }
 
@@ -1145,9 +1219,9 @@ void sil_drawRectangle(SILLYR *layer, UINT x, UINT y, UINT width, UINT height) {
       if (((x+xc)<layer->fb->width)&&((y+yc)<layer->fb->height)) {
         if ((xc<gd.width)||(xc>width-gd.width)||(yc<gd.width)||(yc>height-gd.width)) {
           /* border */
-          sil_putPixelLayer(layer, x+xc, y+yc, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
+          sil_putPixelLayer(layer, x+xc, y+yc, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         } else {
-          sil_blendPixelLayer(layer, x+xc, y+yc, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          sil_blendPixelLayer(layer, x+xc, y+yc, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
         }
       }
     }
