@@ -249,6 +249,7 @@ int sil_getKerningFont(SILFONT *, char, char);
 void sil_setAlphaFont(SILFONT *, float);
 void sil_destroyFont(SILFONT *);
 UINT sil_getOutlineFont(SILFONT *);
+UINT sil_getHeightFont(SILFONT *);
 
 
 /* filter.c */
@@ -294,6 +295,7 @@ void sil_drawLineAA(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawBigLine(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawBigLineAA(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawCircle(SILLYR *, UINT, UINT, UINT);
+void sil_drawCircleAA(SILLYR *, UINT, UINT, UINT);
 void sil_drawRectangle(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawPixel(SILLYR *, UINT, UINT);
 void sil_blendPixel(SILLYR *, UINT, UINT);

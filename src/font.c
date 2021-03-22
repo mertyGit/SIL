@@ -397,6 +397,19 @@ SILFCHAR *sil_getCharFont(SILFONT *font, char c) {
   return NULL;
 }
 
+UINT sil_getHeightFont(SILFONT *font) {
+#ifndef SIL_LIVEDANGEROUS
+  /* if font isn't initialized properly, get out */
+  if ((NULL==font)||(NULL==font->image)) {
+    log_warn("retrieving charecter information from a non-initialized font");
+    sil_setErr(SILERR_NOTINIT);
+    return 0;
+  }
+#endif
+
+  return font->base;
+}
+
 
 
 /*****************************************************************************
