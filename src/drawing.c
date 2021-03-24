@@ -10,9 +10,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include"lodepng.h"
-#include"sil.h"
-#include"log.h"
+#include "lodepng.h"
+#include "sil.h"
+#include "log.h"
+
 
 /*****************************************************************************
   Program wide foreground & background colors 
@@ -1115,6 +1116,49 @@ static void drawSingleCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
   }
 }
 
+/* internal function to draw pixels on 4 places, preventing overwriting same pixel */
+/* fgflag=1 will use foreground color, fgflag=0 will use background */
+
+#define BG_COLOR 0
+#define FG_COLOR 1
+
+static void drawAround(SILLYR *layer, UINT xm, UINT ym, UINT x1, UINT y1, BYTE fgflag ) {
+  BYTE red,green,blue,alpha;
+
+  if (FG_COLOR==fgflag) {
+    red  =gd.fg.red;
+    green=gd.fg.green;
+    blue =gd.fg.blue;
+    alpha=gd.fg.alpha;
+  } else {
+    red  =gd.bg.red;
+    green=gd.bg.green;
+    blue =gd.bg.blue;
+    alpha=gd.bg.alpha;
+  }
+  if (x1>0) {
+    if (y1>0) {
+      /* x1>0, y1>0 */
+      sil_blendPixelLayer(layer, xm+x1, ym+y1,red,green,blue,alpha);
+      sil_blendPixelLayer(layer, xm-x1, ym+y1,red,green,blue,alpha);
+      sil_blendPixelLayer(layer, xm+x1, ym-y1,red,green,blue,alpha);
+      sil_blendPixelLayer(layer, xm-x1, ym-y1,red,green,blue,alpha);
+    } else {
+      /* x1>0, y1=0 */
+      sil_blendPixelLayer(layer, xm+x1, ym,red,green,blue,alpha);
+      sil_blendPixelLayer(layer, xm-x1, ym,red,green,blue,alpha);
+    }
+  } else {
+    if (y1>0) {
+      /* x1=0, y1>0 */
+      sil_blendPixelLayer(layer, xm, ym+y1,red,green,blue,alpha);
+      sil_blendPixelLayer(layer, xm, ym-y1,red,green,blue,alpha);
+    } else {
+      /* x1=0,y1=0, center */
+      sil_blendPixelLayer(layer, xm, ym,red,green,blue,alpha);
+    }
+  }
+}
 
 
 /*****************************************************************************
@@ -1152,7 +1196,7 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
     return ;
   }
 
-  if (r<2) {
+  if ((r<2)||(r<gd.width)) {
     log_warn("Circle too small to draw on layer");
     sil_setErr(SILERR_WRONGFORMAT);
     return;
@@ -1173,6 +1217,7 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
   outersq=innersq+width;
   innersq=innersq*innersq;
   outersq=outersq*outersq;
+  if (0==width) innersq=outersq+1;
   for (x1=0;x1<=r+width;x1++) {
     xsq=x1*x1;
     for (y1=0;y1<=r+width;y1++) {
@@ -1180,16 +1225,10 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
       if (ysq+xsq<=outersq) {
         if (ysq+xsq>=innersq) {
           /* border */
-          sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
-          sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          drawAround(layer,xm,ym,x1,y1,FG_COLOR);
         } else {
           /* inside */
-          sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
-          sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
+          drawAround(layer,xm,ym,x1,y1,BG_COLOR);
         }
       }
     }
@@ -1208,6 +1247,7 @@ void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
   UINT x1,y1,x2,y2;
   UINT innersq,outersq,xsq,ysq;
   UINT width;
+  BYTE alpha;
 
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -1233,8 +1273,8 @@ void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
     return ;
   }
 
-  if (r<2) {
-    log_warn("Circle too small to draw on layer");
+  if ((r<2)||(r<gd.width+1)) {
+    log_warn("Circle to small to draw on layer");
     sil_setErr(SILERR_WRONGFORMAT);
     return;
   }
@@ -1245,49 +1285,64 @@ void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
   r--;
   width=gd.width;
   if (width>1) {
-    /* adjust extra layer of AA */
+    /* substract one pixel, later used for AA */
     width--;
   }
   innersq=r-width/2;
   outersq=innersq+width;
   innersq=innersq*innersq;
   outersq=outersq*outersq;
+  if (0==width) {
+    innersq=outersq+1;
+  }
+  log_info("inner,outer,width=%d,%d,%d",innersq,outersq,width);
   for (x1=0;x1<=r+width;x1++) {
     xsq=x1*x1;
     for (y1=0;y1<=r+width;y1++) {
       ysq=y1*y1;
       if (ysq+xsq<=outersq) {
         if (ysq+xsq>=innersq) {
-          /* border */
-          sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
-          sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          if (width>0) {
+            /* border */
+            drawAround(layer,xm,ym,x1,y1,FG_COLOR);
+          }
         } else {
           /* inside */
-          sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
-          sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
+          drawAround(layer,xm,ym,x1,y1,BG_COLOR);
           if (ysq+xsq>=innersq-(r*2)) {
             /* AA of innercircle */
-            BYTE alpha;
-            alpha=gd.fg.alpha*(1-(float)(innersq-xsq-ysq)/(2.0*r));
-            sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
-            sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
-            sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
-            sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+            if (width>0) {
+              alpha=gd.fg.alpha*(1-(innersq-xsq-ysq)/(2.0*r));
+              sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+              sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+              sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+              sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+            } else {
+              alpha=gd.bg.alpha*(1-(innersq-xsq-ysq)/(2.0*r));
+              sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, alpha);
+              sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, alpha);
+              sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, alpha);
+              sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, alpha);
+            }
           }
+
         }
       } else {
         /* AA of outercircle */
         if (ysq+xsq<=outersq+(r*2)) {
-          BYTE alpha;
-          alpha=gd.fg.alpha*(1-(float)(xsq+ysq-outersq)/(2.0*r));
-          sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
-          sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
-          sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+          if (width>0) {
+            alpha=gd.fg.alpha*(1-(xsq+ysq-outersq)/(2.0*r));
+            sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+            sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+            sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+            sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.fg.red, gd.fg.green, gd.fg.blue, alpha);
+          } else {
+            alpha=gd.bg.alpha*(1-(xsq+ysq-outersq)/(2.0*r));
+            sil_blendPixelLayer(layer, xm+x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, alpha);
+            sil_blendPixelLayer(layer, xm-x1, ym+y1, gd.bg.red, gd.bg.green, gd.bg.blue, alpha);
+            sil_blendPixelLayer(layer, xm+x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, alpha);
+            sil_blendPixelLayer(layer, xm-x1, ym-y1, gd.bg.red, gd.bg.green, gd.bg.blue, alpha);
+          }
         }
       }
     }

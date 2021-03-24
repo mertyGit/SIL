@@ -120,13 +120,55 @@ int main() {
 
   sil_setBackgroundColor(SILCOLOR_RED,0);
   sil_drawRectangle(top,400,150,80,80);
+
+  sil_setDrawWidth(0);
+  sil_setBackgroundColor(SILCOLOR_NAVY,255);
+  sil_drawRectangle(top,300,50,80,80);
+
   sil_drawTextLayer(top,font,"drawRectangle",300+10,240,SILTXT_KEEPCOLOR);
 
-  sil_setDrawWidth(1);
+
+  sil_setDrawWidth(3);
+  sil_setForegroundColor(SILCOLOR_YELLOW,255);
+  sil_setBackgroundColor(SILCOLOR_MAGENTA,255);
+  sil_drawCircleAA(top,640,180,40);
+
+  sil_setBackgroundColor(SILCOLOR_LIME,255);
+  sil_drawCircleAA(top,690,120,60);
+
+  sil_setBackgroundColor(SILCOLOR_MAGENTA,100);
+  sil_drawCircleAA(top,750,100,40);
+
+  sil_setBackgroundColor(SILCOLOR_RED,0);
+  sil_drawCircleAA(top,750,180,40);
+
+  sil_setDrawWidth(0);
+  sil_setBackgroundColor(SILCOLOR_NAVY,255);
+  sil_drawCircleAA(top,640,100,40);
+
+  sil_drawTextLayer(top,font,"drawCircleAA",600+10,240,SILTXT_KEEPCOLOR);
+
+  sil_setDrawWidth(3);
+  sil_setForegroundColor(SILCOLOR_YELLOW,255);
+  sil_setBackgroundColor(SILCOLOR_LIME,255);
+  sil_drawCircle(top,840,180,40);
+
+  sil_setBackgroundColor(SILCOLOR_LIME,0);
+  sil_drawCircle(top,870,160,40);
+
+  sil_setDrawWidth(0);
+  sil_setBackgroundColor(SILCOLOR_NAVY,255);
+  sil_drawCircle(top,840,120,40);
+  sil_drawTextLayer(top,font,"drawCircle",800+10,240,SILTXT_KEEPCOLOR);
+
+  sil_setDrawWidth(3);
+  sil_setBackgroundColor(SILCOLOR_MAGENTA,100);
+  sil_drawCircle(top,880,140,40);
 
   /* variation of line directions */
 
 
+  sil_setDrawWidth(1);
   /* green, over X increasing x and y */
   sil_setForegroundColor(0,255,0,255);
   sil_drawLine(top,30,700,30+80,700+50);
@@ -198,6 +240,7 @@ int main() {
   sil_drawLineAA(top,400,800,350,800);
   sil_drawLineAA(top,400,800,400,850);
   sil_drawLineAA(top,400,800,400,750);
+  sil_drawTextLayer(top,font,"Non-AA lines",10,900,SILTXT_KEEPCOLOR);
    
  /*
 
@@ -250,6 +293,7 @@ int main() {
   log_info("blue, quadrant IV - 1x2y");
   sil_drawLineAA(top,400+10,800+5,425+10,850+5);
 
+  sil_drawTextLayer(top,font,"AA lines",10+300,900,SILTXT_KEEPCOLOR);
 
 
   sil_updateDisplay();
