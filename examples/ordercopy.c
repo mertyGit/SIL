@@ -93,7 +93,7 @@ int main() {
   sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
 
-  font=sil_loadFont("bahnschrift.fnt");
+  font=sil_loadFont("architectsdaughter_thickoutline_20px.fnt");
 
   background=sil_addLayer(1000,1000,0,0,0);
   sil_setKeyHandler(background,0,0,0,keyhandler);
@@ -101,7 +101,7 @@ int main() {
 
   lyr=sil_PNGtoNewLayer("testpic1.png",x,y);
   sil_setClickHandler(lyr,totop);
-  sil_drawTextLayer(background,font,"Click to move to top",x,y+150,0);
+  sil_drawText(background,font,"Click to move to top",x,y+150,0);
   lyr=sil_PNGtoNewLayer("testpic2.png",x+50,y+50);
   sil_setClickHandler(lyr,totop);
   lyr=sil_PNGtoNewLayer("testpic3.png",x+80,y);
@@ -111,7 +111,7 @@ int main() {
 
   lyr=sil_PNGtoNewLayer("testpic4.png",x,y);
   sil_setClickHandler(lyr,tobottom);
-  sil_drawTextLayer(background,font,"Click to move to bottom",x,y+150,0);
+  sil_drawText(background,font,"Click to move to bottom",x,y+150,0);
   lyr=sil_PNGtoNewLayer("testpic5.png",x+50,y+50);
   sil_setClickHandler(lyr,tobottom);
   lyr=sil_PNGtoNewLayer("testpic6.png",x+80,y);
@@ -125,7 +125,7 @@ int main() {
   sil_setClickHandler(eight,toswap);
   lyr=sil_PNGtoNewLayer("testpic9.png",x+80,y);
   sil_setClickHandler(lyr,toswap);
-  sil_drawTextLayer(background,font,"Click to swap with 8",x,y+150,0);
+  sil_drawText(background,font,"Click to swap with 8",x,y+150,0);
 
   /* --- */
 
@@ -134,7 +134,7 @@ int main() {
 
   lyr=sil_PNGtoNewLayer("testpic10.png",x,y);
   sil_setClickHandler(lyr,toabovebelow);
-  sil_drawTextLayer(background,font,"r click->under, l click->above 11",x,y+150,0);
+  sil_drawText(background,font,"r click->under, l click->above 11",x,y+150,0);
   eleven=sil_PNGtoNewLayer("testpic11.png",x+50,y+50);
   sil_setClickHandler(eleven,toabovebelow);
   lyr=sil_PNGtoNewLayer("testpic12.png",x+80,y);
@@ -144,8 +144,8 @@ int main() {
 
   source=sil_PNGtoNewLayer("testpic1.png",x,y);
   sil_setClickHandler(source,reverse);
-  sil_drawTextLayer(background,font,"  Source       Copy         Instance",x,y+100,0);
-  sil_drawTextLayer(background,font,"click to reverse color",x,y+150,0);
+  sil_drawText(background,font,"  Source    Copy    Instance",x,y+100,0);
+  sil_drawText(background,font,"click to reverse color",x,y+150,0);
   copy=sil_addCopy(source,x+110,y);
   sil_setClickHandler(copy,reverse);
   instance=sil_addInstance(source,x+220,y);

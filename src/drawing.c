@@ -379,7 +379,7 @@ void sil_paintLayer(SILLYR *layer, BYTE red, BYTE green, BYTE blue, BYTE alpha) 
  *****************************************************************************/
 
 
-void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT rely, BYTE flags) {
+void sil_drawText(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT rely, BYTE flags) {
   int cursor=0;
   UINT cnt=0;
   char tch,prevtch;
@@ -403,6 +403,7 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
 
   tch=text[0];
   prevtch=0;
+  outline=sil_getOutlineFont(font);
   while((tch)&&(cursor+relx<(layer->fb->width))) {
     if (('\r'==tch)||('\n'==tch)) {
       /* end of line , lets accept all combo's of \r\n,\n,\r or even \n\r as one */
@@ -426,11 +427,9 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
       kerning=sil_getKerningFont(font,prevtch,tch);
       cursor+=kerning;
     }
-    outline=sil_getOutlineFont(font);
-    cursor+=outline*2;
 #ifndef SIL_LIVEDANGEROUS
     if (((cursor+relx+chardef->width)>=layer->fb->width)||((rely+chardef->yoffset+chardef->height)>=layer->fb->height)) {
-      log_verbose("drawing text outside layer area, skipping char");
+      log_info("drawing text outside layer area, skipping char %c",tch);
       tch=text[++cnt];
       continue;
     }
@@ -439,22 +438,25 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
       for (int y=0;y<chardef->height;y++) {
         sil_getPixelFont(font,x+chardef->x,y+chardef->y,&red,&green,&blue,&alpha);
         alpha=alpha*(font->alpha);
-        //if ((alpha>0) && (red+green+blue>0)) {
         if (alpha>0) {
           if (!(flags&SILTXT_KEEPCOLOR)) {
+            if (!(((red==blue)&&(blue==red)&&(red<128))&&(flags&SILTXT_KEEPBLACK))) {
+              alpha=((float)alpha/255)*gd.fg.alpha;
+            }
             red=((float)red/255)*gd.fg.red;
             green=((float)green/255)*gd.fg.green;
             blue=((float)blue/255)*gd.fg.blue;
-            alpha=((float)alpha/255)*gd.fg.alpha;
           }
           if (flags&SILTXT_PUNCHOUT) {
-            if (alpha>110) sil_putPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,0);
+            if (alpha>50) alpha=0;
+            sil_putPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,alpha);
           } else {
             sil_blendPixelLayer(layer,cursor+x+relx,y+rely+chardef->yoffset,red,green,blue,alpha);
           }
         }
       }
     }
+    cursor+=outline*2;
     if (flags&SILTXT_MONOSPACE) {
       cursor+=font->mspace;
     } else {
@@ -464,6 +466,71 @@ void sil_drawTextLayer(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT
     tch=text[++cnt];
   }
   sil_setErr(SILERR_ALLOK);
+}
+
+/*****************************************************************************
+
+   get the width of text to be drawn, can be used before drawText to get
+   boundaries. Height of text can be retrieved by sil_getHeightFont from font
+
+ *****************************************************************************/
+
+UINT sil_getTextWidth(SILFONT *font, char *text, BYTE flags) {
+  int cursor=0;
+  UINT cnt=0;
+  char tch,prevtch;
+  SILFCHAR *chardef;
+  int kerning=0;
+  UINT outline=0;
+  int maxx=0;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==font)||(NULL==font->image)) {
+    log_warn("drawing text on a layer using a nonintialized font");
+    sil_setErr(SILERR_NOTINIT);
+    return 0;
+  }
+#endif
+
+  tch=text[0];
+  prevtch=0;
+  outline=sil_getOutlineFont(font);
+  while(tch) {
+    if (('\r'==tch)||('\n'==tch)) {
+      /* end of line , lets accept all combo's of \r\n,\n,\r or even \n\r as one */
+      if (prevtch!='\n') {
+        prevtch='\n';
+        if (maxx<cursor) maxx=cursor;
+        cursor=0;
+      }
+      tch=text[++cnt];
+      continue;
+    }
+
+    chardef=sil_getCharFont(font,tch);
+    if (0==chardef) {
+      /* just ignore if we cant find how to draw this char */
+      tch=text[++cnt];
+      continue;
+    }
+    if (!(flags&SILTXT_NOKERNING) && !(flags&SILTXT_MONOSPACE)) {
+      kerning=sil_getKerningFont(font,prevtch,tch);
+      cursor+=kerning;
+    }
+    cursor+=outline*2;
+
+    if (flags&SILTXT_MONOSPACE) {
+      cursor+=font->mspace;
+    } else {
+      cursor+=chardef->xadvance;
+    }
+    prevtch=tch;
+    tch=text[++cnt];
+  }
+  if (maxx<cursor) maxx=cursor;
+
+  sil_setErr(SILERR_ALLOK);
+  return maxx;
 }
 
 
@@ -581,7 +648,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   if (x1 == x2) {
     if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
     while(y1<=y2) {
-      sil_putBigPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendBigPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     }
     return;
   }
@@ -589,7 +656,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   if (y1 == y2) {
     if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
     while(x1<=x2) {
-      sil_putBigPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendBigPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     } 
     return;
   }
@@ -605,7 +672,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   tDeltaXTimes2 = tDeltaX*2;
   tDeltaYTimes2 = tDeltaY*2;
 
-  sil_putBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+  sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
 
   if (tDeltaX > tDeltaY) {
     /* stepping over X axis */
@@ -613,13 +680,13 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
     while (x1 != x2) {
       x1 += tStepX;
       if (tError >= 0) {
-        if (overlap & SILLO_MAJOR) sil_putBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        if (overlap & SILLO_MAJOR) sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         y1 += tStepY;
-        if (overlap & SILLO_MINOR) sil_putBigPixelLayer(layer, x1-tStepX,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        if (overlap & SILLO_MINOR) sil_blendBigPixelLayer(layer, x1-tStepX,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         tError -= tDeltaXTimes2;
       }
       tError += tDeltaYTimes2;
-      sil_putBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     }
   } else {
     /* stepping over y axis */
@@ -627,16 +694,16 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
     while (y1 != y2) {
       y1 += tStepY;
       if (tError >= 0) {
-        if (overlap & SILLO_MAJOR) sil_putBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        if (overlap & SILLO_MAJOR) sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         x1 += tStepX;
-        if (overlap & SILLO_MINOR) sil_putBigPixelLayer(layer, x1,y1-tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        if (overlap & SILLO_MINOR) sil_blendBigPixelLayer(layer, x1,y1-tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         tError -= tDeltaYTimes2;
       }
       tError += tDeltaXTimes2;
       sil_drawPixel(layer,x1,y1);
     }
   }
-  sil_putBigPixelLayer(layer, x2,y2, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+  sil_blendBigPixelLayer(layer, x2,y2, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
   sil_setErr(SILERR_ALLOK);
 }
 
@@ -812,7 +879,7 @@ static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, 
   if (x1 == x2+1) {
     if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
     while(y1<=y2) {
-      sil_putBigPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendBigPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     }
     return;
   }
@@ -820,7 +887,7 @@ static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, 
   if (y1 == y2) {
     if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
     while(x1<=x2) {
-      sil_putBigPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendBigPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     } 
     return;
   }
@@ -1381,9 +1448,9 @@ void sil_drawRectangle(SILLYR *layer, UINT x, UINT y, UINT width, UINT height) {
   for (UINT yc=0;yc<height;yc++) {
     for (UINT xc=0;xc<width;xc++) {
       if (((x+xc)<layer->fb->width)&&((y+yc)<layer->fb->height)) {
-        if ((xc<gd.width)||(xc>width-gd.width)||(yc<gd.width)||(yc>height-gd.width)) {
+        if ((xc<gd.width)||(xc>=width-gd.width)||(yc<gd.width)||(yc>=height-gd.width)) {
           /* border */
-          sil_putPixelLayer(layer, x+xc, y+yc, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          sil_blendPixelLayer(layer, x+xc, y+yc, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         } else {
           sil_blendPixelLayer(layer, x+xc, y+yc, gd.bg.red, gd.bg.green, gd.bg.blue, gd.bg.alpha);
         }

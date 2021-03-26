@@ -419,27 +419,27 @@ int main() {
     return 19;
   }
 
-  printf("sil_drawTextLayer with kerning and original color ...\n");
-  sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5,SILTXT_KEEPCOLOR);
+  printf("sil_drawText with kerning and original color ...\n");
+  sil_drawText(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5,SILTXT_KEEPCOLOR);
 
   sil_setAlphaFont(font,0.5);
   printf("...and without kerning but with punchout...\n");
-  sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+(font->base),SILTXT_NOKERNING|SILTXT_PUNCHOUT);
+  sil_drawText(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+(font->base),SILTXT_NOKERNING|SILTXT_PUNCHOUT);
 
   printf("...and with alpha set, no blending ..\n");
-  sil_drawTextLayer(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+2*(font->base),0);
+  sil_drawText(fonttest,font,"The quick brown fox jumps over the lazy dog",5,5+2*(font->base),0);
   sil_setAlphaFont(font,1.0);
 
   printf("...and now with monospaced...\n");
-  sil_drawTextLayer(fonttest,font,"The Monospace 123456790",5,5+3*(font->base),SILTXT_MONOSPACE);
+  sil_drawText(fonttest,font,"The Monospace 123456790",5,5+3*(font->base),SILTXT_MONOSPACE);
 
   sil_setForegroundColor(0,0,255,128);
   printf("...and now with blue color...\n");
-  sil_drawTextLayer(fonttest,font2,"Lets turn the color halfway to BLUE",5,5+4*(font2->base),0);
+  sil_drawText(fonttest,font2,"Lets turn the color halfway to BLUE",5,5+4*(font2->base),0);
   sil_setForegroundColor(255,255,0,255);
   printf("...and now with yellow color & without Kerning...\n");
-  sil_drawTextLayer(fonttest,font2,"Lets turn the color to YELLOW",5,5+5*(font2->base),0);
-  sil_drawTextLayer(fonttest,font,"Lets turn the color to YELLOW",5,5+6*(font2->base),0);
+  sil_drawText(fonttest,font2,"Lets turn the color to YELLOW",5,5+5*(font2->base),0);
+  sil_drawText(fonttest,font,"Lets turn the color to YELLOW",5,5+6*(font2->base),0);
 
   printf("sil_addLayer drawing...\n");
 

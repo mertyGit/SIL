@@ -47,7 +47,7 @@ int main() {
       sil_drawPixel(top,10+x,y+35);
     }
   }
-  sil_drawTextLayer(top,font,"drawPixel",10,90,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"drawPixel",10,90,SILTXT_KEEPCOLOR);
   
 
   for (int x=0;x<255;x++) {
@@ -63,7 +63,7 @@ int main() {
       sil_blendPixel(top,10+x,y+185);
     }
   }
-  sil_drawTextLayer(top,font,"blendPixel",10,240,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"blendPixel",10,240,SILTXT_KEEPCOLOR);
 
 
   if (onlyDrawLine) {
@@ -73,37 +73,37 @@ int main() {
   }
   sil_setForegroundColor(SILCOLOR_LIME,255);
   sil_drawLine(top,1,50,30,40);
-  sil_drawTextLayer(top,font,"single line no AA (x8)",10,420,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"single line no AA (x8)",10,420,SILTXT_KEEPCOLOR);
 
 
   sil_drawLineAA(top,1,50+20,30,40+20);
-  sil_drawTextLayer(top,font,"single line with AA (x8)",10,580,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"single line with AA (x8)",10,580,SILTXT_KEEPCOLOR);
 
   sil_setDrawWidth(5);
   sil_drawLine(top,1+40,50,30+40,40);
-  sil_drawTextLayer(top,font,"linewidth=5 no AA (x8)",10+300,420,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"linewidth=5 no AA (x8)",10+300,420,SILTXT_KEEPCOLOR);
 
   sil_drawLineAA(top,1+40,50+20,30+40,40+20);
-  sil_drawTextLayer(top,font,"linewidth=5 with AA (x8)",10+300,580,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"linewidth=5 with AA (x8)",10+300,580,SILTXT_KEEPCOLOR);
   sil_setZoom(1);
 
   sil_setDrawWidth(1);
   sil_setBackgroundColor(SILCOLOR_BLACK,0);
   sil_drawCircle(top,10+650,370,40);
-  sil_drawTextLayer(top,font,"single circle,\nno AA",10+610,370+50,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"single circle,\nno AA",10+610,370+50,SILTXT_KEEPCOLOR);
 
   sil_setDrawWidth(5);
   sil_drawCircle(top,10+850,370,40);
-  sil_drawTextLayer(top,font,"linewidth=5\nno AA",10+810,370+50,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"linewidth=5\nno AA",10+810,370+50,SILTXT_KEEPCOLOR);
 
   sil_setDrawWidth(1);
   sil_setBackgroundColor(SILCOLOR_BLACK,0);
   sil_drawCircleAA(top,10+650,530,40);
-  sil_drawTextLayer(top,font,"single circle,\nwith AA",10+610,530+50,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"single circle,\nwith AA",10+610,530+50,SILTXT_KEEPCOLOR);
 
   sil_setDrawWidth(5);
   sil_drawCircleAA(top,10+850,530,40);
-  sil_drawTextLayer(top,font,"linewidth=5\nwith AA",10+810,530+50,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"linewidth=5\nwith AA",10+810,530+50,SILTXT_KEEPCOLOR);
 
 
 
@@ -125,7 +125,7 @@ int main() {
   sil_setBackgroundColor(SILCOLOR_NAVY,255);
   sil_drawRectangle(top,300,50,80,80);
 
-  sil_drawTextLayer(top,font,"drawRectangle",300+10,240,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"drawRectangle",300+10,240,SILTXT_KEEPCOLOR);
 
 
   sil_setDrawWidth(3);
@@ -146,7 +146,7 @@ int main() {
   sil_setBackgroundColor(SILCOLOR_NAVY,255);
   sil_drawCircleAA(top,640,100,40);
 
-  sil_drawTextLayer(top,font,"drawCircleAA",600+10,240,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"drawCircleAA",600+10,240,SILTXT_KEEPCOLOR);
 
   sil_setDrawWidth(3);
   sil_setForegroundColor(SILCOLOR_YELLOW,255);
@@ -159,7 +159,7 @@ int main() {
   sil_setDrawWidth(0);
   sil_setBackgroundColor(SILCOLOR_NAVY,255);
   sil_drawCircle(top,840,120,40);
-  sil_drawTextLayer(top,font,"drawCircle",800+10,240,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"drawCircle",800+10,240,SILTXT_KEEPCOLOR);
 
   sil_setDrawWidth(3);
   sil_setBackgroundColor(SILCOLOR_MAGENTA,100);
@@ -240,7 +240,7 @@ int main() {
   sil_drawLineAA(top,400,800,350,800);
   sil_drawLineAA(top,400,800,400,850);
   sil_drawLineAA(top,400,800,400,750);
-  sil_drawTextLayer(top,font,"Non-AA lines",10,900,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"Non-AA lines",10,900,SILTXT_KEEPCOLOR);
    
  /*
 
@@ -293,7 +293,7 @@ int main() {
   log_info("blue, quadrant IV - 1x2y");
   sil_drawLineAA(top,400+10,800+5,425+10,850+5);
 
-  sil_drawTextLayer(top,font,"AA lines",10+300,900,SILTXT_KEEPCOLOR);
+  sil_drawText(top,font,"AA lines",10+300,900,SILTXT_KEEPCOLOR);
 
 
   sil_updateDisplay();

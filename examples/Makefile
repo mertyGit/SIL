@@ -46,6 +46,7 @@ fb:  clean
 	$(MAKE) -C ../examples/ PROG=filters   DEST=$@
 	$(MAKE) -C ../examples/ PROG=ordercopy DEST=$@
 	$(MAKE) -C ../examples/ PROG=draw      DEST=$@
+	$(MAKE) -C ../examples/ PROG=text      DEST=$@
 
 clean: 
 	rm -rf ../examples/*.exe ../examples/*.o ../examples/combined ../examples/filters

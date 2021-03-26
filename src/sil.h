@@ -274,6 +274,7 @@ UINT sil_grayFilter(SILLYR *);
 #define SILTXT_PUNCHOUT         2
 #define SILTXT_MONOSPACE        4
 #define SILTXT_KEEPCOLOR        8
+#define SILTXT_KEEPBLACK       16
 
 /* kinds of line overlap */
 #define SILLO_NONE              0
@@ -284,7 +285,8 @@ UINT sil_grayFilter(SILLYR *);
 void sil_initDraw();
 UINT sil_PNGintoLayer(SILLYR *,char *, UINT,UINT);
 void sil_paintLayer(SILLYR *,BYTE,BYTE,BYTE,BYTE);
-void sil_drawTextLayer(SILLYR *,SILFONT *, char *, UINT, UINT, BYTE);
+void sil_drawText(SILLYR *,SILFONT *, char *, UINT, UINT, BYTE);
+UINT sil_getTextWidth(SILFONT *, char *, BYTE);
 void sil_getBackgroundColor(BYTE *,BYTE *, BYTE *, BYTE *);
 void sil_setBackgroundColor(BYTE,BYTE,BYTE,BYTE);
 void sil_getForegroundColor(BYTE *,BYTE *, BYTE *, BYTE *);

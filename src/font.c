@@ -407,7 +407,7 @@ UINT sil_getHeightFont(SILFONT *font) {
   }
 #endif
 
-  return font->lineHeight;
+  return font->lineHeight+font->outline;
 }
 
 
