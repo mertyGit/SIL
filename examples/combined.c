@@ -7,6 +7,7 @@
 #include "sil.h"
 #include "log.h"
 
+
 static SILLYR *fonttest,*drawing,*animation, *foreground,*background,*one,*two,*three,*test,*mirror, *ontop,*both,*bothnoblend;
 static UINT lw=1;
 
