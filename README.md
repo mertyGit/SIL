@@ -5,6 +5,9 @@ TOC
 * [Layers ?](#layers-)
 * [Why ?](#why-)
 * [Speed ?](#speed-)
+* [Advantages](#advantages)
+* [Disadvantages](#disadvantages]
+* [Building](#Building)
 
 ## Release Information
 
