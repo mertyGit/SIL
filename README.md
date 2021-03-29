@@ -46,5 +46,10 @@ But...there are multiple and multiple libraries out there....one must be doing a
 * Static display/window size; Usually it is written to write directly to a display with given resolution. So no windowing rescaling / auto adjustments and scrollbars. 
 * It is not written in  ....*Insert your own language here*.... . However, without doubt it isn't hard to integrate it with any language, since most languages do still use C(++)   libraries underneath. 
 
-
+### Derived work & Inspiration
+As most programmers, I'm sometimes to lazy to reinvent the wheel and why not use the broad available knowledge and experience out there :wink:. Since it is still open source, I used -part of- code or concepts of
+* [LodePNG](https://lodev.org/lodepng/) from Lode Vandevenne - Reading & Writing PNG's _without the need of external libraries_ is a breeze with this excellent piece of code. Using his code SIL can load PNG's directly into layers without much effort and can save the whole display as a single PNG.
+* -Adjusted- Anti-Aliasing algorithm "[thickline](https://github.com/ArminJo/STMF3-Discovery-Demos/blob/master/lib/graphics/src/thickLine.cpp)" written by Armin Joachimsmeyer (@ArminJo), also for an interseting platform, the STMF3. There are a lot examples of Xialin Wu's algorithm examples on the internet, but most of them are unusable if you want to draw thicker lines, leaving you strange moire or weird artifacts in the lines.
+* I used a paper of Dusheng Wang about [Anti-Aliasing drawing lines](http://wscg.zcu.cz/WSCG2006/Papers_2006/Poster/B11-full.pdf). I used this simple concept to work out my own "thick circle" algorithm.
+* For the non-aliased line and circle drawing I used the [Bresenham](https://www.geeksforgeeks.org/bresenhams-circle-drawing-algorithm/) algorithm's
 
