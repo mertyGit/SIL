@@ -1,5 +1,8 @@
 ![SIL LOGO](https://github.com/mertyGit/SIL/blob/master/docs/sillogo.png)
 
+TOC
+* [About](#about)
+
 ## Release Information
 
 Status: Still kinda Beta. Everything works but I'm still busy rearranging the code and functions to make it easier and simpler to work with.
@@ -19,16 +22,6 @@ POSSIBLE WISHLIST:
 - [ ] Creating an example simple game using SIL
 - [ ] More platforms ! ESP32+Displays TTGO environments are next on my list
 
-## Building
-Its just a bunch of .c and .h files. Just compile & link them together with your own "main.c" program - or what you have - . See Makefile and examples directory how to do that if you are not sure. Only include one of the "...display.c" files for the target environment. 
-Didn't try it in any IDE, I just used to program it in WSL2, linux in windows on the commandline. 
-At this moment, the following environments are supported:
-* winGDIdisplay.c : Windows 64bit (might work with 32bit too) environment, using WIN32 API and "plain old" GDI interface 
-* winSDLdisplay.c : Windows 64bit (might also work with other environments SDL is ported to) SDL will give you hardware acceleration. All layers will be placed as separate textures in videoram, making updating much, much faster.
-* x11display.c : Linux X-Windows environment. I used to write a lot of programs using XLib profesionally. Now I'm remembered why I hated it that much.
-* lnxFBdisplay.c : Using Framebuffer of linux environment (/dev/fb and /dev/event2 (touchscreen) should be present), like raspberry PI. Saves the unneeded overhead of X Windows
-
-Use the directive -D SIL_LIVEDANGEROUS to throw away guardrails and speed up your program if you dare to run with no-checking on uninitialized structs, out of bound arrays and NULL pointers. My code will work, but does yours ? ... 🤞
 
 
 ## About
@@ -84,4 +77,15 @@ As most programmers, I'm sometimes too lazy to reinvent the wheel so why not use
 * I used a paper of Dusheng Wang about [Anti-Aliasing drawing lines](http://wscg.zcu.cz/WSCG2006/Papers_2006/Poster/B11-full.pdf). I used this simple concept to work out my own "thick circle" algorithm.
 * For the non-aliased line and circle drawing I used the [Bresenham](https://www.geeksforgeeks.org/bresenhams-circle-drawing-algorithm/) algorithm's
 * Using the BMF font format (and tool) from [Angelcode](https://www.angelcode.com/products/bmfont/) for crisp _anti aliased_ fonts without resorting to cumbersome and slow .ttf font renderers. In short: all \*.fnt files are accompanied with a single file containing all characters you want from given font cramped together in a single .png. BMF font file will give you required information about the dimensions and locations within that png file and also information about kerning, spacing and so on.
+
+## Building
+Its just a bunch of .c and .h files. Just compile & link them together with your own "main.c" program - or what you have - . See Makefile and examples directory how to do that if you are not sure. Only include one of the "...display.c" files for the target environment. 
+Didn't try it in any IDE, I just used to program it in WSL2, linux in windows on the commandline. 
+At this moment, the following environments are supported:
+* winGDIdisplay.c : Windows 64bit (might work with 32bit too) environment, using WIN32 API and "plain old" GDI interface 
+* winSDLdisplay.c : Windows 64bit (might also work with other environments SDL is ported to) SDL will give you hardware acceleration. All layers will be placed as separate textures in videoram, making updating much, much faster.
+* x11display.c : Linux X-Windows environment. I used to write a lot of programs using XLib profesionally. Now I'm remembered why I hated it that much.
+* lnxFBdisplay.c : Using Framebuffer of linux environment (/dev/fb and /dev/event2 (touchscreen) should be present), like raspberry PI. Saves the unneeded overhead of X Windows
+
+Use the directive -D SIL_LIVEDANGEROUS to throw away guardrails and speed up your program if you dare to run with no-checking on uninitialized structs, out of bound arrays and NULL pointers. My code will work, but does yours ? ... 🤞
 
