@@ -2,6 +2,7 @@
 
 TOC
 * [About](#about)
+* [Layers](#layers?)
 
 ## Release Information
 
