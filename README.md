@@ -3,6 +3,7 @@
 ## Release Information
 
 Status: Still kinda Beta. Everything works but I'm still busy rearranging the code and functions to make it easier and simpler to work with.
+
 TODO:
 - [ ] Clean up code, remove code/internal functions not needed anymore
 - [ ] Clean up names of some functions. Some became.very.long.it.almost.looks.like.java.class.notations. Don't want to depend on IDE autofill
