@@ -8,6 +8,7 @@ TOC
 * [Advantages](#advantages)
 * [Disadvantages](#disadvantages)
 * [Building](#Building)
+* [Derived work, inspiration and praises](#derived-work-inspiration-and-praises)
 
 ## Release Information
 
