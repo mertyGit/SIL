@@ -1,5 +1,35 @@
 ![SIL LOGO](https://github.com/mertyGit/SIL/blob/master/docs/sillogo.png)
 
+## Release Information
+
+Status: Still kinda Beta. Everything works but I'm still busy rearranging the code and functions to make it easier and simpler to work with.
+TODO:
+- [ ] Clean up code, remove code/internal functions not needed anymore
+- [ ] Clean up names of some functions. Some became.very.long.it.almost.looks.like.java.class.notations. Don't want to depend on IDE autofill
+- [ ] Writing/Extending Documentation. All programmers love writing documentation. Really. 
+- [ ] Rotating layers 90 degrees without wasting much memory.
+- [ ] Testing SDL version on more platforms then windows.
+- [ ] Grouping of layers, move/hide a single group with one command instead of custom loop
+- [ ] "Headless" display. Only output can be a PNG
+
+POSSIBLE WISHLIST:
+- [ ] Keyhandling for X-Windows is clumpsy. Annoying auto-repeating hacks and all. Have to fix it..
+- [ ] Keyhandling doesn't make difference in pressing left of right Shift, Ctrl or Alt
+- [ ] Creating an example simple game using SIL
+- [ ] More platforms ! ESP32+Displays TTGO environments are next on my list
+
+## Building
+Its just a bunch of .c and .h files. Just compile & link them together with your own "main.c" program - or what you have - . See Makefile and examples directory how to do that if you are not sure. Only include one of the "...display.c" files for the target environment. 
+Didn't try it in any IDE, I just used to program it in WSL2, linux in windows on the commandline. 
+At this moment, the following environments are supported:
+* winGDIdisplay.c : Windows 64bit (might work with 32bit too) environment, using WIN32 API and "plain old" GDI interface 
+* winSDLdisplay.c : Windows 64bit (might also work with other environments SDL is ported to) SDL will give you hardware acceleration. All layers will be placed as separate textures in videoram, making updating much, much faster.
+* x11display.c : Linux X-Windows environment. I used to write a lot of programs using XLib profesionally. Now I'm remembered why I hated it that much.
+* lnxFBdisplay.c : Using Framebuffer of linux environment (/dev/fb and /dev/event2 (touchscreen) should be present), like raspberry PI. Saves the unneeded overhead of X Windows
+
+Use the directive -D SIL_LIVEDANGEROUS to throw away guardrails and speed up your program if you dare to run with no-checking on uninitialized structs, out of bound arrays and NULL pointers. My code will work, but does yours ? ... 🤞
+
+
 ## About
 
 **S**imple **I**nteractive **L**ayers, or "**SIL**" for short, is a small collection of C-files to create decent looking GUI's, without the dependency of memory exhausting bloated libraries or complex frameworks that do require a steep learning curve to overcome. It is especially targeted at non-hardware accelerated, low resolution touch-screen displays, driven by small SOC's or single board computers, like raspberry PI or ESP32, but can run with same look and feel on 'normal' windows and Linux desktops, to speed up development and testing without having to flash/upload it and test it on the platform target.
@@ -30,7 +60,7 @@ So, since it just written to supply a 2D touch GUI, in some cases presented by n
 
 ### But what about .... 
 
-But...there are multiple and multiple libraries out there....one must be doing a much, much better effort then this one. I'm pretty sure it is, actually, I peeked / borrowed code from a few of those. But I also like to tinker with it, adding new functionalities I, and mostly only myself, need and just try out graphic manipulations and wanted to have a simple environment for this for all the platforms and devices I work with. Besides...as an old fart that started programming C 35 years ago, I like to write "bare bone C", and if I have time, maybe move large sections of it to assembly, but I then need to target Intel, ARM and RISC-V environments... but who knows...
+But...there are multiple and multiple libraries out there....one must be doing a much, much better effort then this one. I'm pretty sure it is, actually, I peeked / borrowed code from a few of those. But I also like to tinker with it, adding new functionalities I, and mostly only myself, need and just try out graphic manipulations and wanted to have a simple environment for this for all the platforms and devices I work with. Besides...as an old fart that started programming C more then 35 years ago, I like to write "bare bone C", and if I have time, maybe move large sections of it to assembly, but I then need to target Intel, ARM and RISC-V environments... but who knows...
 
 ### Advantages
 * **Small**, and you can strip out more if you do not need some functionality (like filters, fonts, logging). I try to keep unnecesary memory allocations to a minimum. 
@@ -46,8 +76,8 @@ But...there are multiple and multiple libraries out there....one must be doing a
 * Static display/window size; Usually it is written to write directly to a display with given resolution. So no windowing rescaling / auto adjustments and scrollbars. 
 * It is not written in  ....*Insert your own language here*.... . However, without doubt it isn't hard to integrate it with any language, since most languages do still use C(++)   libraries underneath. 
 
-### Derived work & Inspiration
-As most programmers, I'm sometimes to lazy to reinvent the wheel and why not use the broad available knowledge and experience out there :wink:. Since it is still open source, I used -part of- code or concepts of
+### Derived work, Inspiration and Praises
+As most programmers, I'm sometimes too lazy to reinvent the wheel so why not use the broad available knowledge and experience out there :wink:. Since it is still open source, I used -part of- code or concepts of
 * [LodePNG](https://lodev.org/lodepng/) from Lode Vandevenne - Reading & Writing PNG's _without the need of external libraries_ is a breeze with this excellent piece of code. Using his code SIL can load PNG's directly into layers without much effort and can save the whole display as a single PNG.
 * -Adjusted- Anti-Aliasing algorithm "[thickline](https://github.com/ArminJo/STMF3-Discovery-Demos/blob/master/lib/graphics/src/thickLine.cpp)" written by Armin Joachimsmeyer (@ArminJo), also for an interseting platform, the STMF3. There are a lot examples of Xialin Wu's algorithm examples on the internet, but most of them are unusable if you want to draw thicker lines, leaving you strange moire or weird artifacts in the lines.
 * I used a paper of Dusheng Wang about [Anti-Aliasing drawing lines](http://wscg.zcu.cz/WSCG2006/Papers_2006/Poster/B11-full.pdf). I used this simple concept to work out my own "thick circle" algorithm.
