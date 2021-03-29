@@ -6,7 +6,7 @@ TOC
 * [Why ?](#why-)
 * [Speed ?](#speed-)
 * [Advantages](#advantages)
-* [Disadvantages](#disadvantages]
+* [Disadvantages](#disadvantages)
 * [Building](#Building)
 
 ## Release Information
