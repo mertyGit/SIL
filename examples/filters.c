@@ -33,7 +33,8 @@ int main() {
   sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
 
-  font=sil_loadFont("bahnschrift.fnt");
+  //font=sil_loadFont("architectsdaughter_thickoutline_20px.fnt");
+  font=sil_loadFont("sourcesanspro_16px.fnt");
 
   background=sil_addLayer(1000,1000,0,0,0);
 

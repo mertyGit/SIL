@@ -5,6 +5,12 @@
 #define BYTE unsigned char
 #define UINT unsigned int
 
+/* the useual helpers */
+#define SIL_MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define SIL_MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define SIL_ABS(x) ((x) < 0 ? -(x) : (x))
+
+
 /* sil.c */
 
 
