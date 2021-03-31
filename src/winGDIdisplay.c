@@ -235,6 +235,7 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   wc.hbrBackground = GetSysColorBrush(COLOR_3DFACE);
   wc.lpfnWndProc   = WndProc;
   wc.hCursor       = LoadCursor(0, IDC_ARROW);
+  wc.hIcon         = LoadIcon(hI, MAKEINTRESOURCE(1));
 
   /* since we set it to arrow in the class, use it as default for sil_setCursor */
   gdisp.ctype=SILCUR_ARROW;
