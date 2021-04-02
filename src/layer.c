@@ -82,8 +82,7 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   layer->internal=0;
   layer->id=glyr.idcount++;
   layer->texture=NULL;
-  layer->init=1;
-
+  layer->user=NULL;
   layer->hover=NULL;
   layer->click=NULL;
   layer->keypress=NULL;
@@ -92,10 +91,11 @@ SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
   layer->modifiers=0;
   layer->prevx=0;
   layer->prevy=0;
-
   layer->sprite.width=0;
   layer->sprite.height=0;
   layer->sprite.pos=0;
+
+  layer->init=1;
   sil_setErr(SILERR_ALLOK);
   return layer;
 }
@@ -143,6 +143,7 @@ SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
   newlayer->modifiers=0;
   newlayer->prevx=0;
   newlayer->prevy=0;
+  newlayer->user=NULL;
 
   /* add layer to double linked list of layers */
   newlayer->next=NULL;
@@ -468,6 +469,7 @@ void sil_destroyLayer(SILLYR *layer) {
     } else {
       layer->previous->next=layer->next;
     }
+    if (layer->user) free(layer->user);
     free(layer);
   } else {
     log_warn("removing non-existing or non-initialized layer");

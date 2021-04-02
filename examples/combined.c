@@ -187,6 +187,7 @@ UINT rotateit(SILEVENT *event) {
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 #else
 int main() {
+  void *hInstance=NULL;
 #endif
 
   unsigned char r,g,b;
@@ -198,11 +199,7 @@ int main() {
 
 
   printf("sil_init...\n");
-  #ifdef SIL_W32
-    sil_initSIL(1000,1000,"Testing SIL DISPLAY III",hInstance);
-  #else
-    sil_initSIL(1000,1000,"Testing SIL DISPLAY III",NULL);
-  #endif
+  sil_initSIL(1000,1000,"Testing SIL DISPLAY III",hInstance);
   sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
 

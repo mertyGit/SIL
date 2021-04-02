@@ -11,6 +11,7 @@
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 #else
 int main() {
+  void *hInstance=NULL;
 #endif
 
   SILEVENT *se=NULL;
@@ -22,11 +23,7 @@ int main() {
 
 
 
-  #ifdef SIL_W32
-    sil_initSIL(900,400,"Testing SIL font and texthandling",hInstance);
-  #else
-    sil_initSIL(900,400,"Testing SIL font and texthandling",NULL);
-  #endif
+  sil_initSIL(900,400,"Testing SIL font and texthandling",hInstance);
   sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
 

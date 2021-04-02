@@ -11,6 +11,7 @@
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 #else
 int main() {
+  void *hInstance=NULL;
 #endif
 
   SILEVENT *se=NULL;
@@ -20,11 +21,7 @@ int main() {
   BYTE onlyDrawLine=0;
 
 
-  #ifdef SIL_W32
-    sil_initSIL(1000,1040,"Testing SIL drawing primitives",hInstance);
-  #else
-    sil_initSIL(1000,1040,"Testing SIL drawing primitives",NULL);
-  #endif
+  sil_initSIL(1000,1040,"Testing SIL drawing primitives",hInstance);
   sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
 

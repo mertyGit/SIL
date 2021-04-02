@@ -147,6 +147,7 @@ typedef struct _SILLYR {
   UINT prevx;
   UINT prevy;
   SILSPRITE sprite;
+  void *user;
 } SILLYR;
 
 /* this one is in sil.c, not layer.c but needs SILEVENT defined */
