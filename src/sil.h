@@ -91,6 +91,7 @@ void sil_destroyFB(SILFB *);
 #define SILFLAG_BUTTONDOWN     4
 #define SILFLAG_DRAGGABLE      8
 #define SILFLAG_VIEWPOSSTAY   16
+#define SILFLAG_FREEUSER      32
 
 /* bitmask for internal */
 #define SILFLAG_ALPHACHANGED   1

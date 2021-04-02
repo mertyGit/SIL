@@ -469,7 +469,7 @@ void sil_destroyLayer(SILLYR *layer) {
     } else {
       layer->previous->next=layer->next;
     }
-    if (layer->user) free(layer->user);
+    if ((layer->flags&SILFLAG_FREEUSER)&&(layer->user)) free(layer->user);
     free(layer);
   } else {
     log_warn("removing non-existing or non-initialized layer");
