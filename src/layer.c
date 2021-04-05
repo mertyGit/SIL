@@ -170,6 +170,7 @@ void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
   }
 #endif
   layer->hover=hover;
+  sil_setErr(SILERR_ALLOK);
 }
 
 void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
@@ -181,6 +182,7 @@ void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
   }
 #endif
   layer->click=click;
+  sil_setErr(SILERR_ALLOK);
 }
 
 void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT (*keypress)(SILEVENT *)) {
@@ -196,6 +198,7 @@ void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT
   layer->keypress=keypress;
   layer->key=key;
   layer->modifiers=modifiers;
+  sil_setErr(SILERR_ALLOK);
 }
 
 void sil_setDragHandler(SILLYR *layer, UINT (*drag)(SILEVENT *)) {
@@ -208,6 +211,7 @@ void sil_setDragHandler(SILLYR *layer, UINT (*drag)(SILEVENT *)) {
 #endif
   layer->drag=drag;
   sil_setFlags(layer,SILFLAG_DRAGGABLE);
+  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -269,6 +273,7 @@ void sil_putBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, B
       sil_putPixelLayer(layer,(x*lvl)+cx,(y*lvl)+cy,red,green,blue,alpha);
     }
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -284,6 +289,7 @@ void sil_blendBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green,
       sil_blendPixelLayer(layer,(x*lvl)+cx,(y*lvl)+cy,red,green,blue,alpha);
     }
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -452,6 +458,7 @@ static int hasInstance(SILLYR *layer) {
     }
     search=search->next;
   }
+  sil_setErr(SILERR_ALLOK);
   return cnt;
 }
 
@@ -460,15 +467,11 @@ static int hasInstance(SILLYR *layer) {
  *****************************************************************************/
 void sil_destroyLayer(SILLYR *layer) {
   if ((layer)&&(layer->init)) {
-
     if (0==hasInstance(layer)) sil_destroyFB(layer->fb);
-
     layer->init=0;
-    if (layer==glyr.bottom) {
-      glyr.bottom=layer->next;
-    } else {
-      layer->previous->next=layer->next;
-    }
+    sil_toBottom(layer);
+    glyr.bottom=layer->next;
+    layer->next->previous=NULL;
     if ((layer->flags&SILFLAG_FREEUSER)&&(layer->user)) free(layer->user);
     free(layer);
   } else {
@@ -600,6 +603,7 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
   layer->view.miny=0;
   layer->view.width=tmpfb->width;
   layer->view.height=tmpfb->height;
+  sil_setErr(SILERR_ALLOK);
   return 0;
 }
 
@@ -733,6 +737,7 @@ void LayersToFB(SILFB *fb) {
     }
     layer=layer->next;
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -752,6 +757,7 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
     }
     layer=layer->previous;
   }
+  sil_setErr(SILERR_ALLOK);
   return NULL;
 }
 
@@ -771,6 +777,7 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
     }
     layer=layer->previous;
   }
+  sil_setErr(SILERR_ALLOK);
   return NULL;
 }
 
@@ -793,6 +800,7 @@ SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
     }
     layer=layer->previous;
   }
+  sil_setErr(SILERR_ALLOK);
   return NULL;
 }
 
@@ -840,6 +848,7 @@ void sil_nextSprite(SILLYR *layer) {
     layer->sprite.pos=0;
   }
   sil_setSprite(layer,layer->sprite.pos);
+  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -867,6 +876,7 @@ void sil_prevSprite(SILLYR *layer) {
     layer->sprite.pos=maxpos-1;
   }
   sil_setSprite(layer,layer->sprite.pos);
+  sil_setErr(SILERR_ALLOK);
 }
 
 void sil_setSprite(SILLYR *layer,UINT pos) {
@@ -907,6 +917,7 @@ void sil_setSprite(SILLYR *layer,UINT pos) {
     pos--;
   }
   sil_setView(layer,x,y,layer->sprite.width,layer->sprite.height);
+  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -972,6 +983,7 @@ void sil_toBottom(SILLYR *layer) {
   layer->previous=NULL;
   glyr.bottom->previous=layer;
   glyr.bottom=layer;
+  sil_setErr(SILERR_ALLOK);
 }
 
 void sil_toAbove(SILLYR *layer,SILLYR *target) {
@@ -1027,6 +1039,7 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
   /* target->previous == layer is only possible here */
   /* so just swap ...                            */
   sil_swap(layer,target);
+  sil_setErr(SILERR_ALLOK);
   return;
 
 }
@@ -1084,6 +1097,7 @@ void sil_toBelow(SILLYR *layer,SILLYR *target) {
   /* target->next == layer is only possible here */
   /* so just swap ...                            */
   sil_swap(layer,target);
+  sil_setErr(SILERR_ALLOK);
   return;
 }
 
@@ -1157,6 +1171,7 @@ void sil_swap(SILLYR *layer,SILLYR *target) {
   layer->previous    = tprevious;
   if (tprevious) tprevious->next  = layer;
   if (lnext)     lnext->previous  = target;
+  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -1209,6 +1224,7 @@ SILLYR *sil_addCopy(SILLYR *layer,UINT relx,UINT rely) {
   }
   memcpy(ret->fb->buf,layer->fb->buf,layer->fb->size);
   copylayerinfo(layer,ret);
+  sil_setErr(SILERR_ALLOK);
 
   return ret;
 }
@@ -1246,5 +1262,28 @@ SILLYR *sil_addInstance(SILLYR *layer,UINT relx,UINT rely) {
   /* if there is still a copy of it left                            */
   layer->internal|=SILFLAG_INSTANCIATED;
   ret->internal|=SILFLAG_INSTANCIATED;
+  sil_setErr(SILERR_ALLOK);
   return ret;
+}
+
+/*****************************************************************************
+
+  Hide layer, shorter version of setting the INVISIBLE flag
+
+ *****************************************************************************/
+void sil_hide(SILLYR *layer) {
+  sil_setFlags(layer,SILFLAG_INVISIBLE);
+  sil_setErr(SILERR_ALLOK);
+}
+
+
+/*****************************************************************************
+
+  Show layer, shorter version of resetting the INVISIBLE flag
+
+ *****************************************************************************/
+
+void sil_show(SILLYR *layer) {
+  sil_clearFlags(layer,SILFLAG_INVISIBLE);
+  sil_setErr(SILERR_ALLOK);
 }

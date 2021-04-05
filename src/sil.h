@@ -191,6 +191,8 @@ void sil_toBelow(SILLYR *,SILLYR *);
 void sil_toTop(SILLYR *);
 void sil_toBottom(SILLYR *);
 void sil_swap(SILLYR *,SILLYR *);
+void sil_hide(SILLYR *);
+void sil_show(SILLYR *);
 SILLYR *sil_addCopy(SILLYR *,UINT,UINT);
 SILLYR *sil_addInstance(SILLYR *,UINT,UINT);
 
