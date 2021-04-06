@@ -743,6 +743,7 @@ void LayersToFB(SILFB *fb) {
 
 SILLYR *sil_findHighestClick(UINT x,UINT y) {
   SILLYR *layer;
+  BYTE red,green,blue,alpha;
 
   layer=sil_getTop();
   while (layer) {
@@ -752,7 +753,8 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
           (x<layer->relx+(layer->view.minx+layer->view.width)) &&
           (y>=layer->rely+layer->view.miny) &&
           (y<layer->rely+(layer->view.miny+layer->view.height))) {
-        return layer;
+        sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
+        if (alpha>0) return layer;
       }
     }
     layer=layer->previous;
@@ -763,6 +765,7 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
 
 SILLYR *sil_findHighestHover(UINT x,UINT y) {
   SILLYR *layer;
+  BYTE red,green,blue,alpha;
 
   layer=sil_getTop();
   while (layer) {
@@ -772,7 +775,8 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
           (x<layer->relx+(layer->view.minx+layer->view.width)) &&
           (y>=layer->rely+layer->view.miny) &&
           (y<layer->rely+(layer->view.miny+layer->view.height))) {
-        return layer;
+        sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
+        if (alpha>0) return layer;
       }
     }
     layer=layer->previous;
