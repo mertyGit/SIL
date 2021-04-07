@@ -20,7 +20,7 @@ TODO:
 - [ ] Writing/Extending Documentation. All programmers love writing documentation. Really. 
 - [ ] Rotating layers 90 degrees without wasting much memory.
 - [ ] Testing SDL version on more platforms then windows.
-- [ ] Grouping of layers, move/hide a single group with one command instead of custom loop
+- [X] Grouping of layers, move/hide a single group with one command instead of custom loop
 - [ ] "Headless" display. Only output can be a PNG
 
 POSSIBLE WISHLIST:
