@@ -205,9 +205,16 @@ typedef struct _SILGROUP {
 SILGROUP *sil_createGroup();
 void sil_addLayerGroup(SILGROUP *,SILLYR *);
 void sil_removeLayerGroup(SILGROUP *,SILLYR *);
+UINT sil_checkLayerGroup(SILGROUP *,SILLYR *);
 void sil_destroyGroup(SILGROUP *);
 void sil_hideGroup(SILGROUP *);
 void sil_showGroup(SILGROUP *);
+void sil_moveGroup(SILGROUP *,int,int);
+void sil_nextSpriteGroup(SILGROUP *);
+void sil_prevSpriteGroup(SILGROUP *);
+void sil_setSpriteGroup(SILGROUP *,UINT);
+void sil_resetViewGroup(SILGROUP *);
+
 
 /* font.c */
 

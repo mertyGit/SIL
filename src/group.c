@@ -136,6 +136,7 @@ void sil_showGroup(SILGROUP *group) {
     if (walk->layer) sil_show(walk->layer);
     walk=walk->next;
   }
+  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -153,4 +154,119 @@ void sil_hideGroup(SILGROUP *group) {
     if (walk->layer) sil_hide(walk->layer);
     walk=walk->next;
   }
+  sil_setErr(SILERR_ALLOK);
+}
+
+/*****************************************************************************
+
+  Move all layers relative to current postions (so x,y can be negative )
+
+ *****************************************************************************/
+
+void sil_moveGroup(SILGROUP *group,int x, int y) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_moveLayer(walk->layer,x,y);
+    walk=walk->next;
+  }
+  sil_setErr(SILERR_ALLOK);
+}
+
+
+/*****************************************************************************
+
+  all layers in group switch to next sprite
+
+ *****************************************************************************/
+
+void sil_nextSpriteGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_nextSprite(walk->layer);
+    walk=walk->next;
+  }
+  sil_setErr(SILERR_ALLOK);
+}
+
+/*****************************************************************************
+
+  all layers in group switch to previous sprite
+
+ *****************************************************************************/
+
+void sil_prevSpriteGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_prevSprite(walk->layer);
+    walk=walk->next;
+  }
+  sil_setErr(SILERR_ALLOK);
+}
+
+/*****************************************************************************
+
+  all layers in group switch to given sprite #
+
+ *****************************************************************************/
+
+void sil_setSpriteGroup(SILGROUP *group,UINT num) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_setSprite(walk->layer,num);
+    walk=walk->next;
+  }
+  sil_setErr(SILERR_ALLOK);
+}
+
+/*****************************************************************************
+
+  check if given layer is part of the group; returns amount of occurences 
+  in group for this layer
+
+ *****************************************************************************/
+
+UINT sil_checkLayerGroup(SILGROUP *group,SILLYR *layer) {
+  SILGROUP *walk;
+  UINT cnt=0;
+
+  if (NULL==group) return 0;
+  walk=group;
+  while(walk) {
+    if ((walk->layer) && (walk->layer==layer)) cnt++;
+    walk=walk->next;
+  }
+  sil_setErr(SILERR_ALLOK);
+  return cnt;
+}
+
+/*****************************************************************************
+
+  Resets the view of all layers in group
+
+ *****************************************************************************/
+
+
+void sil_resetViewGroup(SILGROUP *group) {
+  SILGROUP *walk;
+  UINT cnt=0;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_resetView(walk->layer);
+    walk=walk->next;
+  }
+  sil_setErr(SILERR_ALLOK);
 }
