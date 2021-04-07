@@ -34,7 +34,7 @@ static GLYR glyr={NULL,NULL,0}; /* holds all global variables used only within l
 
  *****************************************************************************/
 
-SILLYR *sil_addLayer(UINT width, UINT height, UINT relx, UINT rely, BYTE type) {
+SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
   SILLYR *layer=NULL;
   UINT err=0;
 
@@ -650,7 +650,7 @@ SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
     return NULL;
   }
   /* first create layer */
-  layer=sil_addLayer(width,height,x,y,SILTYPE_ABGR);
+  layer=sil_addLayer(x,y,width,height,SILTYPE_ABGR);
   if (NULL==layer) {
     log_warn("Can't create layer for loaded PNG file");
     sil_setErr(SILERR_WRONGFORMAT);
@@ -1221,7 +1221,7 @@ SILLYR *sil_addCopy(SILLYR *layer,UINT relx,UINT rely) {
     return NULL;
   }
 #endif
-  ret=sil_addLayer(layer->fb->width,layer->fb->height,relx,rely,layer->fb->type);
+  ret=sil_addLayer(relx,rely,layer->fb->width,layer->fb->height,layer->fb->type);
   if (NULL==ret) {
     log_warn("Can't create extra layer for addCopy");
     return NULL;
@@ -1253,7 +1253,7 @@ SILLYR *sil_addInstance(SILLYR *layer,UINT relx,UINT rely) {
   }
 #endif
   /* create layer of size 1x1, since fb will be thrown away later */
-  ret=sil_addLayer(1,1,relx,rely,layer->fb->type);
+  ret=sil_addLayer(relx,rely,1,1,layer->fb->type);
   if (NULL==ret) {
     log_warn("Can't create extra layer for addCopy");
     return NULL;

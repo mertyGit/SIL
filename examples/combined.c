@@ -204,8 +204,7 @@ int main() {
 
 
   printf("sil_addLayer background...\n");
-  background=sil_addLayer(1000,1000,0,0,SILTYPE_565RGB);
-  //background=sil_addLayer(1000,1000,0,0,SILTYPE_ABGR);
+  background=sil_addLayer(0,0,1000,1000,SILTYPE_565RGB);
   if (NULL==background) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 2;
@@ -278,7 +277,7 @@ int main() {
 
 
   printf("sil_addLayer foreground...\n");
-  foreground=sil_addLayer(500,500,40,40,SILTYPE_ARGB);
+  foreground=sil_addLayer(40,40,500,500,SILTYPE_ARGB);
   if (NULL==foreground) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 8;
@@ -301,7 +300,7 @@ int main() {
 
 
   printf("sil_addLayer ontop...\n");
-  ontop=sil_addLayer(256,256,50,450,SILTYPE_ARGB);
+  ontop=sil_addLayer(50,450,256,256,SILTYPE_ARGB);
   if (NULL==ontop) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 10;
@@ -319,7 +318,7 @@ int main() {
   }
 
   printf("sil_addLayer both...\n");
-  both=sil_addLayer(200,200,550,50,SILTYPE_ARGB);
+  both=sil_addLayer(550,50,200,200,SILTYPE_ARGB);
   if (NULL==both) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 11;
@@ -341,7 +340,7 @@ int main() {
   }
 
   printf("sil_addLayer bothnoblend...\n");
-  bothnoblend=sil_addLayer(200,200,750,50,SILTYPE_ARGB);
+  bothnoblend=sil_addLayer(750,50,200,200,SILTYPE_ARGB);
   if (NULL==bothnoblend) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 14;
@@ -393,7 +392,7 @@ int main() {
 
 
   printf("sil_addLayer fonttest...\n");
-  fonttest=sil_addLayer(500,200,50,710,SILTYPE_ARGB);
+  fonttest=sil_addLayer(50,710,500,200,SILTYPE_ARGB);
   if (NULL==fonttest) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 18;
@@ -441,7 +440,7 @@ int main() {
   printf("sil_addLayer drawing...\n");
 
   printf("sil_addLayer drawing...\n");
-  drawing=sil_addLayer(400,200,600,710,SILTYPE_ARGB);
+  drawing=sil_addLayer(600,710,400,200,SILTYPE_ARGB);
   if (NULL==drawing) {
     printf("%s\n",sil_err2Txt(sil_getErr()));
     return 20;

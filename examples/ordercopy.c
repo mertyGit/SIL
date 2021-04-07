@@ -92,7 +92,7 @@ int main() {
 
   font=sil_loadFont("architectsdaughter_thickoutline_20px.fnt");
 
-  background=sil_addLayer(1000,1000,0,0,0);
+  background=sil_addLayer(0,0,1000,1000,0);
   sil_setKeyHandler(background,0,0,0,keyhandler);
 
 

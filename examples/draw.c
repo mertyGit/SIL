@@ -26,9 +26,9 @@ int main() {
 
 
   font=sil_loadFont("architectsdaughter_thickoutline_24px.fnt");
-  background=sil_addLayer(1000,1040,0,0,0);
+  background=sil_addLayer(0,0,1000,1040,0);
   sil_paintLayer(background,30,60,120,255);
-  top=sil_addLayer(1000,1040,0,0,0);
+  top=sil_addLayer(0,0,1000,1040,0);
 
 
   for (int x=0;x<255;x++) {

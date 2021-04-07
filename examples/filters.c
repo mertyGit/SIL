@@ -33,7 +33,7 @@ int main() {
   //font=sil_loadFont("architectsdaughter_thickoutline_20px.fnt");
   font=sil_loadFont("sourcesanspro_16px.fnt");
 
-  background=sil_addLayer(1000,1000,0,0,0);
+  background=sil_addLayer(0,0,1000,1000,0);
 
   lyr=sil_PNGtoNewLayer("testpic1.png",x,y);
   sil_drawText(background,font,"no filter",x,y+100,0);

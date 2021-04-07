@@ -191,7 +191,7 @@ SILFONT *sil_loadFont(char *name) {
 
   font=calloc(1,sizeof(SILFONT));
   if (NULL==font) {
-    log_info("ERR: Can't allocate memory for addLayer");
+    log_info("ERR: Can't allocate memory for Font");
     sil_setErr(SILERR_NOMEM);
     return NULL;
   }

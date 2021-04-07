@@ -33,9 +33,9 @@ int main() {
   ado28=sil_loadFont("architectsdaughter_thickoutline_28px.fnt");
   ssp16=sil_loadFont("sourcesanspro_16px.fnt");
 
-  background=sil_addLayer(900,400,0,0,0);
+  background=sil_addLayer(0,0,900,400,0);
   sil_paintLayer(background,SILCOLOR_LIGHT_STEEL_BLUE,255);
-  top=sil_addLayer(900,400,0,0,0);
+  top=sil_addLayer(0,0,900,400,0);
 
   sil_setForegroundColor(SILCOLOR_YELLOW,255);
   y=10;
