@@ -28,7 +28,7 @@ ifeq ($(DEST),fb)
 endif
 DEBUG = -g
 DEPS = ../src/sil.h ../src/log.h ../src/lodepng.h
-OBJ = log.o sil.o framebuffer.o layer.o drawing.o filter.o lodepng.o font.o
+OBJ = log.o sil.o framebuffer.o layer.o drawing.o filter.o lodepng.o font.o group.o
 CFLAGS +=-I ../src/
 
 $(PROG)$E: $(PROG).o $(OBJ) $(DISP).o 

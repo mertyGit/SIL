@@ -10,6 +10,7 @@
 
 static SILLYR *fonttest,*drawing,*animation, *foreground,*background,*one,*two,*three,*test,*mirror, *ontop,*both,*bothnoblend;
 static UINT lw=1;
+static SILGROUP *grouptest;
 
 void drawlines() {
   printf("(re-) painting drawing...\n");
@@ -105,6 +106,14 @@ UINT keyhandler(SILEVENT *event) {
       switch(event->key) {
         case SILKY_ESC:
           sil_quitLoop();
+          break;
+        case SILKY_G:
+          sil_showGroup(grouptest);
+          return 1;
+          break;
+        case SILKY_H:
+          sil_hideGroup(grouptest);
+          return 1;
           break;
         case SILKY_UP:
           sil_setDrawWidth(++lw);
@@ -202,6 +211,12 @@ int main() {
   sil_initSIL(1000,1000,"Testing SIL DISPLAY III",hInstance);
   sil_setLog(NULL,LOG_INFO|LOG_DEBUG|LOG_VERBOSE);
 
+  printf("sil_createGroup...\n");
+  grouptest=sil_createGroup();
+  if (NULL==grouptest) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 1;
+  }
 
   printf("sil_addLayer background...\n");
   background=sil_addLayer(0,0,1000,1000,SILTYPE_565RGB);
@@ -238,6 +253,8 @@ int main() {
     return 4;
   }
   sil_setKeyHandler(one,SILKY_2,0,SILKT_SINGLE,togglevisible);
+  sil_addLayerGroup(grouptest,one);
+  
 
   printf("darken on one\n");
   sil_brightnessFilter(one,-50);
@@ -249,6 +266,7 @@ int main() {
     return 5;
   }
   sil_setKeyHandler(two,SILKY_3,0,SILKT_SINGLE,togglevisible);
+  sil_addLayerGroup(grouptest,two);
 
   printf("lighten on two\n");
   sil_brightnessFilter(two,50);
@@ -261,6 +279,7 @@ int main() {
   }
   sil_blurFilter(three);
   sil_setKeyHandler(three,SILKY_4,0,SILKT_SINGLE,togglevisible);
+  sil_addLayerGroup(grouptest,three);
 
   printf("sil_PNGtoNewLayer test..\n");
   test=sil_PNGtoNewLayer("testpic5.png",500,350);
@@ -271,6 +290,7 @@ int main() {
   sil_setKeyHandler(test,SILKY_5,0,SILKT_SINGLE,togglevisible);
   sil_setHoverHandler(test,flipit);
   sil_setClickHandler(test,rotateit);
+  sil_addLayerGroup(grouptest,test);
 
   printf("sil_setViewLayer test..\n");
   sil_setView(test,1,1,98,98);
@@ -348,6 +368,7 @@ int main() {
   sil_setFlags(bothnoblend,SILFLAG_NOBLEND);
   sil_borderFilter(bothnoblend);
   sil_setKeyHandler(bothnoblend,SILKY_9,0,SILKT_SINGLE,togglevisible);
+  sil_addLayerGroup(grouptest,bothnoblend);
 
   printf("sil_PNGtoLayer bothnoblend left ...\n");
   err=sil_PNGintoLayer(bothnoblend,"testpic8.png",0,0);
@@ -370,6 +391,7 @@ int main() {
   }
   sil_setView(test,20,20,60,60);
   sil_setHoverHandler(test,showme);
+  sil_addLayerGroup(grouptest,test);
 
   printf("mirroring layer 10");
   mirror=sil_mirrorLayer(test,700,400);
@@ -387,6 +409,7 @@ int main() {
   sil_setView(test,20,20,60,60);
   sil_setFlags(test,SILFLAG_VIEWPOSSTAY);
   sil_setHoverHandler(test,showme);
+  sil_addLayerGroup(grouptest,test);
 
 
 
@@ -463,6 +486,8 @@ int main() {
   printf("sil_mainLoop...\n");
   sil_mainLoop();
 
+  printf("sil_destroyGroup...\n");
+  sil_destroyGroup(grouptest);
 
   printf("sil_destroyFont...\n");
   sil_destroyFont(font);

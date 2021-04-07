@@ -196,6 +196,19 @@ void sil_show(SILLYR *);
 SILLYR *sil_addCopy(SILLYR *,UINT,UINT);
 SILLYR *sil_addInstance(SILLYR *,UINT,UINT);
 
+/* group.c */
+typedef struct _SILGROUP {
+  SILLYR *layer;
+  struct _SILGROUP *next;
+} SILGROUP;
+
+SILGROUP *sil_createGroup();
+void sil_addLayerGroup(SILGROUP *,SILLYR *);
+void sil_removeLayerGroup(SILGROUP *,SILLYR *);
+void sil_destroyGroup(SILGROUP *);
+void sil_hideGroup(SILGROUP *);
+void sil_showGroup(SILGROUP *);
+
 /* font.c */
 
 #define SILFONT_MAXWIDTH   256  /* max width of a single line in a .fnt file */
