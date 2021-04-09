@@ -290,6 +290,7 @@ int main() {
   sil_setKeyHandler(test,SILKY_5,0,SILKT_SINGLE,togglevisible);
   sil_setHoverHandler(test,flipit);
   sil_setClickHandler(test,rotateit);
+  sil_setFlags(test,SILFLAG_MOUSEALLPIX);
   sil_addLayerGroup(grouptest,test);
 
   printf("sil_setViewLayer test..\n");

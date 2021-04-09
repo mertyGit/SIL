@@ -160,7 +160,22 @@ SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
   return newlayer;
 }
 
+/*****************************************************************************
+  
+  Set handler for "hover", when mousepointer is above the given layer, it will 
+  trigger the given hoverhandler. Handlers receive the event, including 
+  targeted layer and should return '0' for "do nothing" or '1' for 
+  "update display".
 
+  event->type can be of:
+  MOUSE_MOVE   : Mousepointer is moving with the view (and above visible pixels)
+  MOUSE_LEFT   : Mousepointer left the view of the layer
+  MOUSE_ENTER  : Mousepointer enters the view of the layer
+
+  event->x, event->y will be the coordinates withing the layer of the mouse 
+  pointer.
+
+ *****************************************************************************/
 void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -173,6 +188,23 @@ void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
   sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+  
+  Set handler for "click", when mousepointer is above the given layer AND 
+  mousebutton has been pressed, it will trigger the given clickhandler. 
+  Handlers receive the event, including targeted layer and should return '0' 
+  for "do nothing" or '1' for "update display".
+  Mousebuttons are 1,2 and 3. Left, Middle(or Mousewheel button) Right
+
+  event->type can be of:
+  MOUSE_DOWN  : mousebutton is clicked, event->val contains mousebutton number
+  MOUSE_UP    : mousebutton is released, event->val contains mousebutton number
+  MOUSEWHEEL  : mousewheel is rotated, event->val 1:up , 2:down
+  
+
+
+ *****************************************************************************/
+
 void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -184,6 +216,47 @@ void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
   layer->click=click;
   sil_setErr(SILERR_ALLOK);
 }
+
+/*****************************************************************************
+  
+  Set handler for keypresses. Key=key to trigger on, modifiers=shift, alt, ctrl
+  that has to be pressed as well. If both are set to zero, it will be a
+  "catch all". So you can have a single keyhandler for the whole program, 
+  oterwise the highest - visible- layer with matching key/modifiers will be 
+  triggered.
+  Flags can be:
+  - SILKT_SINGLE : only react on first/single keypress event (no autorepeat)
+  - SILKT_ONLYUP : only react on the release of the key
+  (no need to have both set, since keyrelease is only once )
+
+  events can be:
+  KEY_DOWN : key has been pressed (or is still being pressed)
+  KEY_UP   : key has been released
+
+  event->x,event->y 
+  will give the last know position of the mouse, but might
+  not be reliable.
+  
+  event->code 
+  will be the "native" keycode (without translation, figuring out
+  what might be the real markings on the keycap) . Code differs 
+  per platform and even per type of keyboardlayout.
+
+  event->val
+  will be the "guessed" character, base on modifier keys like shift and caps
+  like event->key can be SILKY_C , modifiers has SILKM_SHIFT => resulting val will be 
+  the ascii char "C".
+  
+  event->key 
+  is translated to "common" SILKY_xxxx code, and is the same on all
+  platforms.
+
+  event->modifiers
+  are flags representing shift,alt,ctrl and caps status. 
+  (SILKM_SHIFT, SILKM_ALT, SILKM_CTRL and SILKM_CAPS )
+
+ *****************************************************************************/
+
 
 void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT (*keypress)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
@@ -200,6 +273,24 @@ void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT
   layer->modifiers=modifiers;
   sil_setErr(SILERR_ALLOK);
 }
+
+
+/*****************************************************************************
+
+  Set handler for "drag". Drag is actually combination of 2 events: 
+  mouseclick & move. The handler will recieve the event with the "proposed" 
+  new x,y coordinates of the layer. Returning 0 will ignore the move, returning
+  1 will set the layer at the proposed coordinates and updates the display.
+  
+  This way you can define "boundaries" for dragging layers or even handle 
+  your own "dragging/shifting/moving" algorithm and returning 0.
+  Note that when you moved the layer on your own, the dragging routine doesn't
+  see that and still presumes it is dragging from the original coordinates if 
+  mouse button isn't released, which might result in strange behaviour.
+  To prevent this, clearflag "SILFLAG_BUTTONDOWN" to have the user release
+  and click again to drag again.
+
+ *****************************************************************************/
 
 void sil_setDragHandler(SILLYR *layer, UINT (*drag)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
@@ -607,6 +698,19 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
   return 0;
 }
 
+/*****************************************************************************
+
+  Creat a new layer based on given PNG filename and place it on location x,y
+  This function is way faster then "PNGintoLayer" which will load and put in 
+  an existing layer. It will not use a temporary framebuffer but will claim 
+  the created framebuffer from the lodepng function as part of the layer.
+
+  Width and Height of layer are automatically adjusted to size of png file.
+  Note that although pngfiles can have different colordepths and bit alignment,
+  all layers will be generated with SILTYPE_ABGR, so 1 byte per color + alpha
+
+ *****************************************************************************/
+
 SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
   SILLYR *layer=NULL;
   BYTE *image =NULL;
@@ -740,6 +844,24 @@ void LayersToFB(SILFB *fb) {
   sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+
+  if mousebutton has been clicked, find the highest layer that is right under 
+  the mousepointer and 
+  - layer is visible
+  - has a clickhandler attached to it or is marked "draggable" by 
+    either a draghandler or set manually
+  - pointer is within view of layer
+  - pointer is above a visible, non-transparant, pixel 
+    (you can turn this check off via setting of SILFLAG_MOUSEALLPIX)
+
+  if a layer has been found that has the flag SILFLAG_MOUSESHIELD, it will 
+  not traverse further down, "shielding" all mouse events to layers under it.
+  Generally used for messages/pop-ups mechanisms, to prevent clicking outside
+  it.
+
+ *****************************************************************************/
+
 
 SILLYR *sil_findHighestClick(UINT x,UINT y) {
   SILLYR *layer;
@@ -753,15 +875,42 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
           (x<layer->relx+(layer->view.minx+layer->view.width)) &&
           (y>=layer->rely+layer->view.miny) &&
           (y<layer->rely+(layer->view.miny+layer->view.height))) {
+        /* return inmediatly when all pixels within view can be considered as target */
+        if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
+        /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
         sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
         if (alpha>0) return layer;
       }
     }
-    layer=layer->previous;
+    /* if we find layer with flag "MOUSESHIELD" , we stop searching */
+    /* therefore blocking/shielding any mouseevent for layer under  */
+    /* this layer                                                   */
+    if (!(layer->flags&SILFLAG_MOUSESHIELD)) {
+      layer=layer->previous;
+    } else {
+      layer=NULL; 
+    }
   }
   sil_setErr(SILERR_ALLOK);
   return NULL;
 }
+
+/*****************************************************************************
+
+  if mouse has been moved, find the highest layer that is right under 
+  the mousepointer and 
+  - layer is visible
+  - has a hoverhandler attached to it 
+  - pointer is within view of layer
+  - pointer is above a visible, non-transparant, pixel 
+    (you can turn this check off via setting of SILFLAG_MOUSEALLPIX)
+
+  if a layer has been found that has the flag SILFLAG_MOUSESHIELD, it will 
+  not traverse further down, "shielding" all mouse events to layers under it.
+  Generally used for messages/pop-ups mechanisms, to prevent clicking outside
+  it.
+
+ *****************************************************************************/
 
 SILLYR *sil_findHighestHover(UINT x,UINT y) {
   SILLYR *layer;
@@ -775,15 +924,34 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
           (x<layer->relx+(layer->view.minx+layer->view.width)) &&
           (y>=layer->rely+layer->view.miny) &&
           (y<layer->rely+(layer->view.miny+layer->view.height))) {
+        /* return inmediatly when all pixels within view can be considered as target */
+        if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
+        /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
         sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
         if (alpha>0) return layer;
       }
     }
-    layer=layer->previous;
+    /* if we find layer with flag "MOUSESHIELD" , we stop searching */
+    /* therefore blocking/shielding any mouseevent for layer under  */
+    /* this layer                                                   */
+    if (!(layer->flags&SILFLAG_MOUSESHIELD)) {
+      layer=layer->previous;
+    } else {
+      layer=NULL; 
+    }
   }
   sil_setErr(SILERR_ALLOK);
   return NULL;
 }
+
+/*****************************************************************************
+   
+   A key has been pressed and find the highest layer that is waiting for the 
+   given key and modifiers. 
+   Note that all layers - even invisible - can receive keyevents
+   handlers who has key=0, modifiers=0 set, will catch all keyevents.
+
+ *****************************************************************************/
 
 
 SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
@@ -808,6 +976,18 @@ SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
   return NULL;
 }
 
+/*****************************************************************************
+
+  Initialize given layer as "SpriteSheet", containing different images/frames
+  - hence called 'sprites'- in a single image. hparts and vparts are the amount
+  of sprites horizontally and vertically respectively.
+  Every sprite should have the same with and height - and distance to eachother -
+  in the file.
+  The "showing" of the sprite is done via setting the view of the layer to just
+  a single sprite within the whole image.
+
+ *****************************************************************************/
+
 void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
   UINT x=0,y=0;
 
@@ -827,6 +1007,13 @@ void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
   /* set view accordingly */
   sil_setSprite(layer,0);
 }
+
+/*****************************************************************************
+
+  Move view of layer to next sprite (counting from left upper corner to 
+  right down corner). If there isn't, sprite will be set to first again
+
+ *****************************************************************************/
 
 
 void sil_nextSprite(SILLYR *layer) {
@@ -855,6 +1042,13 @@ void sil_nextSprite(SILLYR *layer) {
   sil_setErr(SILERR_ALLOK);
 }
 
+/*****************************************************************************
+
+  Move view of layer to previous sprite (counting from left upper corner to 
+  right down corner). If there isn't, sprite will be set to last sprite 
+
+ *****************************************************************************/
+
 
 void sil_prevSprite(SILLYR *layer) {
   UINT maxpos=0;
@@ -882,6 +1076,13 @@ void sil_prevSprite(SILLYR *layer) {
   sil_setSprite(layer,layer->sprite.pos);
   sil_setErr(SILERR_ALLOK);
 }
+
+/*****************************************************************************
+
+  Set view of layer to sprite with index "pos" (counting from 0, left upper 
+  corner to right down corner). 
+
+ *****************************************************************************/
 
 void sil_setSprite(SILLYR *layer,UINT pos) {
   UINT maxpos=0;
@@ -962,6 +1163,7 @@ void sil_toTop(SILLYR *layer) {
 
 }
 
+
 void sil_toBottom(SILLYR *layer) {
   SILLYR *tnext;
   SILLYR *tprevious;
@@ -989,6 +1191,7 @@ void sil_toBottom(SILLYR *layer) {
   glyr.bottom=layer;
   sil_setErr(SILERR_ALLOK);
 }
+
 
 void sil_toAbove(SILLYR *layer,SILLYR *target) {
   SILLYR *lnext;
@@ -1048,6 +1251,7 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
 
 }
 
+
 void sil_toBelow(SILLYR *layer,SILLYR *target) {
   SILLYR *lnext;
   SILLYR *lprevious;
@@ -1104,6 +1308,12 @@ void sil_toBelow(SILLYR *layer,SILLYR *target) {
   sil_setErr(SILERR_ALLOK);
   return;
 }
+
+/*****************************************************************************
+
+  Swap the position of layers in the stack
+
+ *****************************************************************************/
 
 
 void sil_swap(SILLYR *layer,SILLYR *target) {
