@@ -214,6 +214,8 @@ void sil_nextSpriteGroup(SILGROUP *);
 void sil_prevSpriteGroup(SILGROUP *);
 void sil_setSpriteGroup(SILGROUP *,UINT);
 void sil_resetViewGroup(SILGROUP *);
+void sil_topGroup(SILGROUP *);
+void sil_bottomGroup(SILGROUP *);
 
 
 /* font.c */

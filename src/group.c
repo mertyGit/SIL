@@ -270,3 +270,43 @@ void sil_resetViewGroup(SILGROUP *group) {
   }
   sil_setErr(SILERR_ALLOK);
 }
+
+/*****************************************************************************
+
+  brings all layers of group to top
+
+ *****************************************************************************/
+
+
+void sil_topGroup(SILGROUP *group) {
+  SILGROUP *walk;
+  UINT cnt=0;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_toTop(walk->layer);
+    walk=walk->next;
+  }
+  sil_setErr(SILERR_ALLOK);
+}
+
+/*****************************************************************************
+
+  brings all layers of group to bottom
+
+ *****************************************************************************/
+
+
+void sil_bottomGroup(SILGROUP *group) {
+  SILGROUP *walk;
+  UINT cnt=0;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_toBottom(walk->layer);
+    walk=walk->next;
+  }
+  sil_setErr(SILERR_ALLOK);
+}
