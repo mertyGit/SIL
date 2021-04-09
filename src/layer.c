@@ -881,15 +881,12 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
         sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
         if (alpha>0) return layer;
       }
+      /* if we find layer with flag "MOUSESHIELD" , we stop searching */
+      /* therefore blocking/shielding any mouseevent for layer under  */
+      /* this layer                                                   */
+      if (layer->flags&(SILFLAG_MOUSESHIELD)) return NULL;
     }
-    /* if we find layer with flag "MOUSESHIELD" , we stop searching */
-    /* therefore blocking/shielding any mouseevent for layer under  */
-    /* this layer                                                   */
-    if (!(layer->flags&SILFLAG_MOUSESHIELD)) {
-      layer=layer->previous;
-    } else {
-      layer=NULL; 
-    }
+    layer=layer->previous;
   }
   sil_setErr(SILERR_ALLOK);
   return NULL;
@@ -930,15 +927,12 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
         sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
         if (alpha>0) return layer;
       }
+      /* if we find layer with flag "MOUSESHIELD" , we stop searching */
+      /* therefore blocking/shielding any mouseevent for layer under  */
+      /* this layer                                                   */
+      if (layer->flags&(SILFLAG_MOUSESHIELD)) return NULL;
     }
-    /* if we find layer with flag "MOUSESHIELD" , we stop searching */
-    /* therefore blocking/shielding any mouseevent for layer under  */
-    /* this layer                                                   */
-    if (!(layer->flags&SILFLAG_MOUSESHIELD)) {
-      layer=layer->previous;
-    } else {
-      layer=NULL; 
-    }
+    layer=layer->previous;
   }
   sil_setErr(SILERR_ALLOK);
   return NULL;
