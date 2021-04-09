@@ -1495,3 +1495,20 @@ void sil_show(SILLYR *layer) {
   sil_clearFlags(layer,SILFLAG_INVISIBLE);
   sil_setErr(SILERR_ALLOK);
 }
+
+/*****************************************************************************
+
+  clear layer, faster then painting it with color + alpha 0
+
+ *****************************************************************************/
+
+void sil_clearLayer(SILLYR *layer) {
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("clearing layer that isn't initialized or with empty fb");
+    sil_setErr(SILERR_NOTINIT);
+    return ;
+  }
+#endif
+  sil_clearFB(layer->fb);
+}

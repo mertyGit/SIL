@@ -197,6 +197,7 @@ void sil_hide(SILLYR *);
 void sil_show(SILLYR *);
 SILLYR *sil_addCopy(SILLYR *,UINT,UINT);
 SILLYR *sil_addInstance(SILLYR *,UINT,UINT);
+void sil_clearLayer(SILLYR *);
 
 /* group.c */
 typedef struct _SILGROUP {
