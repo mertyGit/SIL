@@ -53,4 +53,4 @@ fb:  clean
 	$(MAKE) -C ../examples/ PROG=text      DEST=$@
 
 clean: 
-	rm -rf ../examples/*.exe *.o ../examples/combined ../examples/filters
+	rm -rf ../examples/*.exe *.o ../examples/*.o ../examples/combined ../examples/filters
