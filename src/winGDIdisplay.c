@@ -377,7 +377,7 @@ void sil_stopTimerDisplay() {
 
 void sil_setCursor(BYTE type) {
   /* only load if cursor has been changed */
-  if ((type!=gdisp.ctype)||(type!=SILCUR_ARROW)) {
+  if (type!=gdisp.ctype) {
     switch(type) {
       case SILCUR_ARROW:
         gdisp.cursor=LoadCursor(NULL,IDC_ARROW);
@@ -530,6 +530,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_DESTROY:
       gdisp.se.type=SILDISP_QUIT;
       PostQuitMessage(0);
+      return 0;
+      break;
+
+    case WM_SETCURSOR:
       return 0;
       break;
   }
