@@ -870,16 +870,17 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
   layer=sil_getTop();
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      if (((NULL!=layer->click)||(sil_checkFlags(layer,SILFLAG_DRAGGABLE))) &&
-          (x>=layer->relx+layer->view.minx) &&
+      if ((NULL!=layer->click)||(sil_checkFlags(layer,SILFLAG_DRAGGABLE))) {
+        if ((x>=layer->relx+layer->view.minx) &&
           (x<layer->relx+(layer->view.minx+layer->view.width)) &&
           (y>=layer->rely+layer->view.miny) &&
           (y<layer->rely+(layer->view.miny+layer->view.height))) {
-        /* return inmediatly when all pixels within view can be considered as target */
-        if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
-        /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
-        sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
-        if (alpha>0) return layer;
+          /* return inmediatly when all pixels within view can be considered as target */
+          if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
+          /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
+          sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
+          if (alpha>0) return layer;
+        }
       }
       /* if we find layer with flag "MOUSESHIELD" , we stop searching */
       /* therefore blocking/shielding any mouseevent for layer under  */
@@ -916,21 +917,23 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
   layer=sil_getTop();
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      if ((NULL!=layer->hover) &&
-          (x>=layer->relx+layer->view.minx) &&
+      if (NULL!=layer->hover) {
+        if ((x>=layer->relx+layer->view.minx) &&
           (x<layer->relx+(layer->view.minx+layer->view.width)) &&
           (y>=layer->rely+layer->view.miny) &&
           (y<layer->rely+(layer->view.miny+layer->view.height))) {
-        /* return inmediatly when all pixels within view can be considered as target */
-        if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
-        /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
-        sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
-        if (alpha>0) return layer;
+          /* return inmediatly when all pixels within view can be considered as target */
+          if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
+          /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
+          sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
+          if (alpha>0) return layer;
+        }
       }
       /* if we find layer with flag "MOUSESHIELD" , we stop searching */
       /* therefore blocking/shielding any mouseevent for layer under  */
       /* this layer                                                   */
-      if (layer->flags&(SILFLAG_MOUSESHIELD)) return NULL;
+
+      if (layer->flags&(SILFLAG_MOUSESHIELD)) { return NULL; }
     }
     layer=layer->previous;
   }
