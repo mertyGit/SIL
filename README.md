@@ -12,8 +12,14 @@ TOC
 
 ## News
 
-<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot1.png" width="600">
-Created my first real-test-program "SHifting MAdness" (SHIMA for short). You can find the it in the [SHIMA repository](https://github.com/mertyGit/shima) .
+Created my first real-test-program "SHifting MAdness" (SHIMA for short). 
+You can find the it in the [SHIMA repository](https://github.com/mertyGit/shima) .
+
+
+<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot1.png" width="200"><BR>
+<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot2.png" width="200"><BR>
+<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot4.png" width="200"><BR>
+
 
 ## Release Information
 
