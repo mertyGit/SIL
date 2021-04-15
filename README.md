@@ -110,4 +110,18 @@ Use the directive -D SIL_LIVEDANGEROUS to throw away guardrails and speed up you
 
 ## Examples
 
+Check the examples directory and use 'make' to create the example programs.
+For different platforms use 'make gdi' (default) for standaard Windows environments, 'make sdl' for windows + SDL2 library/DLL , x11 for linux, fb for linux/Raspberry PI without the need of X Windows.
+
+"Combine" : 
+
 ![combined](https://github.com/mertyGit/SIL/blob/master/docs/combined_example.png)
+
+"Draw" :
+![Draw](https://github.com/mertyGit/SIL/blob/master/docs/draw_example.png)
+
+"Text" :
+![Text](https://github.com/mertyGit/SIL/blob/master/docs/text_example.png)
+
+"Filters" :
+![Filters](https://github.com/mertyGit/SIL/blob/master/docs/filters_example.png)
