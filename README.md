@@ -110,4 +110,4 @@ Use the directive -D SIL_LIVEDANGEROUS to throw away guardrails and speed up you
 
 ## Examples
 
-[combined](https://github.com/mertyGit/SIL/blob/master/docs/combined_example.png)
+![combined](https://github.com/mertyGit/SIL/blob/master/docs/combined_example.png)
