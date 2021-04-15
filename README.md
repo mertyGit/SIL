@@ -10,23 +10,34 @@ TOC
 * [Building](#Building)
 * [Derived work, inspiration and praises](#derived-work-inspiration-and-praises)
 
+## News
+
+Created my first real-test-program "SHifting MAdness" (SHIMA for short). 
+You can find the it in the [SHIMA repository](https://github.com/mertyGit/shima) .
+There you can find the [first beta release](https://github.com/mertyGit/shima/releases/download/beta1.0/Shima_Windows_v1_Beta.zip). At the moment Windows only, but final version will be ported to linux and also Mac). If you like sliding puzzles, give it a go ! (or better yet: create your own and send them to me for inclusion !)
+
+
+<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot1.png" width="300">&nbsp;<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot2.png" width="300">&nbsp;<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot4.png" width="300">&nbsp;<BR>
+
+
 ## Release Information
 
 Status: Still kinda Beta. Everything works but I'm still busy rearranging the code and functions to make it easier and simpler to work with.
 
 TODO:
 - [ ] Clean up code, remove code/internal functions not needed anymore
-- [ ] Clean up names of some functions. Some became.very.long.it.almost.looks.like.java.class.notations. Don't want to depend on IDE autofill
+- [X] Clean up names of some functions. Some became.very.long.it.almost.looks.like.java.class.notations. Don't want to depend on IDE autofill
 - [ ] Writing/Extending Documentation. All programmers love writing documentation. Really. 
 - [ ] Rotating layers 90 degrees without wasting much memory.
 - [ ] Testing SDL version on more platforms then windows.
 - [X] Grouping of layers, move/hide a single group with one command instead of custom loop
 - [ ] "Headless" display. Only output can be a PNG
+- [X] Mousepointer is switching back and forward from arrow to hand when hovering
 
 POSSIBLE WISHLIST:
 - [ ] Keyhandling for X-Windows is clumpsy. Annoying auto-repeating hacks and all. Have to fix it..
 - [ ] Keyhandling doesn't make difference in pressing left of right Shift, Ctrl or Alt
-- [ ] Creating an example simple game using SIL
+- [X] Creating an example simple game using SIL
 - [ ] More platforms ! ESP32+Displays TTGO environments are next on my list
 
 
