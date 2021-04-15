@@ -248,7 +248,7 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
     0,     /* WS_EX_... possibilities                          */
     wc.lpszClassName,wc.lpszClassName, /* should be the same ? */
     WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
-    0,0,   /* initial position of window (left upper corner)   */
+    CW_USEDEFAULT, CW_USEDEFAULT,   /* initial position of window (left upper corner)   */
     gdisp.fb->width+6,gdisp.fb->height+30,
     NULL,NULL,NULL,NULL /* no hWndParent,hMenu,hInstance or lpParam to set */
   );
