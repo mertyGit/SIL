@@ -276,6 +276,11 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   gdisp.win.bitmapInfo->bmiColors[2].rgbBlue    = 0xff;
   GetWindowRect(gdisp.win.window,&sz);
   AdjustWindowRect(&sz,WS_OVERLAPPEDWINDOW  & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,FALSE);
+
+  /* fix for hanging mousepointer */
+  sil_setCursor(SILCUR_HAND);
+  sil_setCursor(SILCUR_ARROW);
+
   return SILERR_ALLOK;
 
 }
