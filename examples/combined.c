@@ -101,6 +101,7 @@ void drawlines() {
 }
 
 UINT keyhandler(SILEVENT *event) {
+  SILLYR *lyr;
   switch(event->type) {
     case SILDISP_KEY_DOWN:
       switch(event->key) {
@@ -131,8 +132,17 @@ UINT keyhandler(SILEVENT *event) {
       break;
     case SILDISP_KEY_UP:
       if  (SILKY_PRINTSCREEN==event->key) {
-        log_info("saving screen to 'printscreen.png'");
-        sil_saveDisplay("printscreen.png",1000,1000,0,0);
+        log_info("saving display to 'displaydmump.png'");
+        sil_saveDisplay("displaydump.png",1000,1000,0,0);
+#ifdef SIL_W32
+        log_info("saving complete screen to 'screendmump.png'");
+        lyr=sil_screenCapture();
+        if (lyr) {
+          sil_saveLayer(lyr,"screendump.png");
+          sil_destroyLayer(lyr);
+        }
+#endif
+        
       }
       break;
   }

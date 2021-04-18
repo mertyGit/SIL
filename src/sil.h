@@ -327,6 +327,7 @@ void sil_setBackgroundColor(BYTE,BYTE,BYTE,BYTE);
 void sil_getForegroundColor(BYTE *,BYTE *, BYTE *, BYTE *);
 void sil_setForegroundColor(BYTE,BYTE,BYTE,BYTE);
 UINT sil_saveDisplay(char *,UINT,UINT,UINT,UINT);
+UINT sil_saveLayer(SILLYR *,char *);
 void sil_drawLine(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawLineAA(SILLYR *, UINT, UINT, UINT, UINT);
 void sil_drawBigLine(SILLYR *, UINT, UINT, UINT, UINT);
@@ -367,6 +368,7 @@ SILEVENT *sil_getEventDisplay();
 void sil_setTimerDisplay(UINT);
 void sil_stopTimerDisplay();
 void sil_setCursor(BYTE);
+SILLYR *sil_screenCapture();
 
 /* bitmasks for keymodifiers/special keys */
 #define SILKM_SHIFT  1

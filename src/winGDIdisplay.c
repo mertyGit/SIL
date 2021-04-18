@@ -540,3 +540,63 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
   return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
+
+/* capture screen and put it in a layer for further use */
+SILLYR *sil_screenCapture() {
+  HDC hdc,hdcc;
+  SILLYR *lyr=NULL;
+  BITMAPINFOHEADER bi;
+  HBITMAP hbwin;
+  DWORD bsize;
+  HANDLE gl;
+  BYTE *bmp;
+  int scale,screenx,screeny,width,height;
+
+  /* get and create handles */
+  hdc = GetDC(0);
+  hdcc = CreateCompatibleDC(hdc);
+
+  /* get screen size */
+  SetStretchBltMode(hdcc,COLORONCOLOR);
+  scale=1;
+  screenx=GetSystemMetrics(SM_XVIRTUALSCREEN);
+  screeny=GetSystemMetrics(SM_YVIRTUALSCREEN);
+  width=GetSystemMetrics(SM_CXVIRTUALSCREEN);
+  height=GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+  /* init bitmap */
+  bi.biSize = sizeof(BITMAPINFOHEADER);
+  bi.biWidth = width;
+  bi.biHeight = -height;
+  bi.biPlanes = 1;
+  bi.biBitCount = 32;
+  bi.biCompression = BI_RGB;
+  bi.biSizeImage = 0;
+  bi.biXPelsPerMeter = 0;
+  bi.biYPelsPerMeter = 0;
+  bi.biClrUsed = 0;
+  bi.biClrImportant = 0;
+  hbwin =  CreateCompatibleBitmap(hdc,width,height);
+
+
+  /* Create layer */
+  lyr=sil_addLayer(0,0,width,height,SILTYPE_ARGB);
+  if (NULL==lyr) {
+    log_warn("Can't create layer for screenshot");
+    return NULL;
+  }
+
+
+
+  /* get screen */
+  SelectObject(hdcc,hbwin);
+  StretchBlt(hdcc,0,0,width,height,hdc,screenx,screeny,width,height,SRCCOPY);
+  GetDIBits(hdcc,hbwin,0,height,lyr->fb->buf, (BITMAPINFO*)&bi,DIB_RGB_COLORS);
+
+
+
+  /* delete and release handles */
+  DeleteDC(hdcc);
+  ReleaseDC(gdisp.win.window,hdc);
+  return lyr;
+}

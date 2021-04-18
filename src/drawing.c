@@ -597,6 +597,10 @@ UINT sil_saveDisplay(char *filename,UINT width, UINT height, UINT wx, UINT wy) {
 
   /* write to file */
   err=lodepng_encode24_file(filename, fb->buf, width, height);
+
+  /* destroy buffer */
+  if (fb) sil_destroyFB(fb);
+
   if (err) {
     switch (err) {
       case 79:
@@ -616,6 +620,66 @@ UINT sil_saveDisplay(char *filename,UINT width, UINT height, UINT wx, UINT wy) {
   sil_setErr(SILERR_ALLOK);
   return SILERR_ALLOK;
 }
+
+
+/*****************************************************************************
+
+  Save content of layer to given .png file
+
+ *****************************************************************************/
+
+UINT sil_saveLayer(SILLYR *lyr, char *filename) {
+  int err;
+  UINT width,height;
+  SILLYR *tmp;
+  SILFB *fb;
+  BYTE r,g,b,a;
+
+  width=lyr->fb->width;
+  height=lyr->fb->height;
+
+  /* create temporary buffer */
+  fb=sil_initFB(width,height,SILTYPE_888BGR);
+  if (NULL==fb) {
+    log_warn("Can't initialize framebuffer in order to dump to png file");
+    return SILERR_NOTINIT;
+  }
+
+  /* copy pixel info */
+  for (int y=0;y<height;y++) {
+    for (int x=0;x<width;x++) {
+      sil_getPixelLayer(lyr,x,y,&r,&g,&b,&a);
+      sil_putPixelFB(fb,x,y,r,g,b,a);
+    }
+  }
+
+
+  /* write to file */
+  err=lodepng_encode24_file(filename, fb->buf, width, height);
+
+  /* destroy buffer */
+  if (fb) sil_destroyFB(fb);
+
+  if (err) {
+    switch (err) {
+      case 79:
+        /* common error, wrong filename, no rights */
+        log_warn("Can't open '%s' for writing (%d)",filename,err);
+        err=SILERR_CANTOPENFILE;
+        break;
+      default:
+        /* something wrong with encoding png */
+        log_warn("Can't encode PNG file '%s' (%d)",filename,err);
+        err=SILERR_CANTDECODEPNG;
+        break;
+    }
+    return err;
+  }
+
+  sil_setErr(SILERR_ALLOK);
+  return SILERR_ALLOK;
+}
+
 
 /*****************************************************************************
 
