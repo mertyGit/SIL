@@ -656,7 +656,7 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
 
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("resetView on layer that isn't initialized, or with uninitialized FB");
+    log_warn("resize on layer that isn't initialized, or with uninitialized FB");
     sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
   }

@@ -34,8 +34,11 @@ TODO:
 - [X] Grouping of layers, move/hide a single group with one command instead of custom loop
 - [ ] "Headless" display. Only output can be a PNG
 - [X] Mousepointer is switching back and forward from arrow to hand when hovering
+- [ ] Resizing/Scaling of layers
+- [ ] Using single fileformat containing multiple PNG files for ease of deployment
 
 POSSIBLE WISHLIST:
+- [ ] Adding JPEG as supported formats
 - [ ] Keyhandling for X-Windows is clumpsy. Annoying auto-repeating hacks and all. Have to fix it..
 - [ ] Keyhandling doesn't make difference in pressing left of right Shift, Ctrl or Alt
 - [X] Creating an example simple game using SIL

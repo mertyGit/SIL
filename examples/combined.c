@@ -132,7 +132,7 @@ UINT keyhandler(SILEVENT *event) {
       break;
     case SILDISP_KEY_UP:
       if  (SILKY_PRINTSCREEN==event->key) {
-        log_info("saving display to 'displaydmump.png'");
+        log_info("saving display to 'displaydump.png'");
         sil_saveDisplay("displaydump.png",1000,1000,0,0);
 #ifdef SIL_W32
         log_info("saving complete screen to 'screendmump.png'");
