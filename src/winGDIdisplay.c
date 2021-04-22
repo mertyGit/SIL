@@ -583,7 +583,6 @@ SILLYR *sil_screenCapture() {
   bi.biClrImportant = 0;
   hbwin =  CreateCompatibleBitmap(hdc,width,height);
 
-
   /* Create layer */
   lyr=sil_addLayer(0,0,width,height,SILTYPE_ARGB);
   if (NULL==lyr) {
@@ -591,14 +590,10 @@ SILLYR *sil_screenCapture() {
     return NULL;
   }
 
-
-
   /* get screen */
   SelectObject(hdcc,hbwin);
   StretchBlt(hdcc,0,0,width,height,hdc,screenx,screeny,width,height,SRCCOPY);
   GetDIBits(hdcc,hbwin,0,height,lyr->fb->buf, (BITMAPINFO*)&bi,DIB_RGB_COLORS);
-
-
 
   /* delete and release handles */
   DeleteDC(hdcc);

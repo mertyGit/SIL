@@ -135,7 +135,7 @@ UINT keyhandler(SILEVENT *event) {
         log_info("saving display to 'displaydump.png'");
         sil_saveDisplay("displaydump.png",1000,1000,0,0);
 #ifdef SIL_W32
-        log_info("saving complete screen to 'screendmump.png'");
+        log_info("saving complete screen to 'screendump.png'");
         lyr=sil_screenCapture();
         if (lyr) {
           sil_saveLayer(lyr,"screendump.png");
