@@ -39,6 +39,7 @@ TODO:
 
 POSSIBLE WISHLIST:
 - [ ] Adding JPEG as supported formats
+- [ ] Retrieving information about PNG files without loading them
 - [ ] Keyhandling for X-Windows is clumpsy. Annoying auto-repeating hacks and all. Have to fix it..
 - [ ] Keyhandling doesn't make difference in pressing left of right Shift, Ctrl or Alt
 - [X] Creating an example simple game using SIL
