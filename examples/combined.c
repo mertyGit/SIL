@@ -423,6 +423,31 @@ int main() {
   sil_addLayerGroup(grouptest,test);
 
 
+  printf("sil_rescale test width 12");
+  test=sil_PNGtoNewLayer("testpic12.png",750,510);
+  if (NULL==test) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 17;
+  }
+
+  test=sil_PNGtoNewLayer("testpic12.png",650,510);
+  if (NULL==test) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 17;
+  }
+  sil_rescale(test,60,60);
+
+  test=sil_PNGtoNewLayer("testpic12.png",860,510);
+  if (NULL==test) {
+    printf("%s\n",sil_err2Txt(sil_getErr()));
+    return 17;
+  }
+  sil_rescale(test,135,90);
+
+
+
+
+
 
 
   printf("sil_addLayer fonttest...\n");

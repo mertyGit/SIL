@@ -1552,3 +1552,74 @@ void sil_blendPixel(SILLYR *layer, UINT x, UINT y) {
 }
 
 
+
+/*****************************************************************************
+
+   rescale layer to new width x height
+
+ *****************************************************************************/
+
+void sil_rescale(SILLYR *layer, UINT newwidth,UINT newheight) {
+  SILFB *tmpfb;
+  BYTE red,green,blue,alpha;
+  double scaleh,scalew;
+
+#ifndef SIL_LIVEDANGEROUS
+  if (NULL==layer) {
+    log_warn("Trying to rescale non-existing layer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+  if (NULL==layer->fb) {
+    log_warn("Trying to rescale layer with no framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+  if (0==layer->fb->size) {
+    log_warn("Rescaling layer without initialized framebuffer");
+    sil_setErr(SILERR_WRONGFORMAT);
+    return ;
+  }
+#endif
+  /* no use to rescale with one of the dimensions "0", is it ? */
+  if ((0==newwidth)||(0==newheight)) {
+    sil_setErr(SILERR_WRONGFORMAT);
+    return;
+  }
+
+  /* create a temporary framebuffer for given width and height */
+  tmpfb=sil_initFB(newwidth,newheight,layer->fb->type);
+
+  scalew=(double)newwidth/(double)layer->fb->width;
+  scaleh=(double)newheight/(double)layer->fb->height;
+
+  for (int y=0;y<newheight;y++) {
+    for (int x=0;x<newwidth;x++) {
+      sil_getPixelLayer(layer,(UINT)(x/scalew),(UINT)(y/scaleh),&red,&green,&blue,&alpha);
+      sil_putPixelFB(tmpfb,x,y,red,green,blue,alpha);
+    }
+  }
+
+  /* throw away old framebuffer */
+  free(layer->fb->buf);
+
+  /* and copy info from temp framebuffer in it */
+  layer->fb->buf=tmpfb->buf;
+  layer->fb->width=tmpfb->width;
+  layer->fb->height=tmpfb->height;
+  layer->fb->type=tmpfb->type;
+  layer->fb->size=tmpfb->size;
+  layer->view.minx=0;
+  layer->view.miny=0;
+  layer->view.width=tmpfb->width;
+  layer->view.height=tmpfb->height;
+
+  
+  sil_setErr(SILERR_ALLOK);
+}
+
+
+
+
+
+

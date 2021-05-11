@@ -341,6 +341,7 @@ void sil_setDrawWidth(UINT);
 UINT sil_getDrawWidth();
 void sil_setZoom(BYTE);
 BYTE sil_getZoom();
+void sil_rescale(SILLYR *, UINT,UINT);
 
 /* x11display.c  / winSDLdisplay.c / winGDIdisplay.c / lnxdisplay.c */
 

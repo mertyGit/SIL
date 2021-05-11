@@ -34,7 +34,7 @@ TODO:
 - [X] Grouping of layers, move/hide a single group with one command instead of custom loop
 - [ ] "Headless" display. Only output can be a PNG
 - [X] Mousepointer is switching back and forward from arrow to hand when hovering
-- [ ] Resizing/Scaling of layers
+- [X] Resizing/Scaling of layers
 - [ ] Using single fileformat containing multiple PNG files for ease of deployment
 
 POSSIBLE WISHLIST:
