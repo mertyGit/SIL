@@ -29,8 +29,7 @@ static GLYR glyr={NULL,NULL,0}; /* holds all global variables used only within l
       width x height of layer, 
       x,y  position of layer relative to display (top left)
       type = RGB type (SILTYPE_...) 
-  Out: pointer to created layer or NULL if error occured (if so ; check 
-       sil_getErr for more details)
+  Out: pointer to created layer or NULL if error occured
 
  *****************************************************************************/
 
@@ -42,7 +41,6 @@ SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
   layer=calloc(1,sizeof(SILLYR));
   if (NULL==layer) {
     log_info("ERR: Can't allocate memory for addLayer");
-    sil_setErr(SILERR_NOMEM);
     return NULL;
   }
 
@@ -96,7 +94,6 @@ SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
   layer->sprite.pos=0;
 
   layer->init=1;
-  sil_setErr(SILERR_ALLOK);
   return layer;
 }
 
@@ -114,14 +111,12 @@ SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
 
   if (NULL==layer) {
     log_warn("mirroring layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return NULL;
   }
 
   newlayer=calloc(1,sizeof(SILLYR));
   if (NULL==newlayer) {
     log_info("ERR: Can't allocate memory for addLayer");
-    sil_setErr(SILERR_NOMEM);
     return NULL;
   }
 
@@ -156,7 +151,6 @@ SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
   }
   glyr.top=newlayer;
 
-  sil_setErr(SILERR_ALLOK);
   return newlayer;
 }
 
@@ -180,12 +174,10 @@ void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("setting handler on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   layer->hover=hover;
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -209,12 +201,10 @@ void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("setting handler on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   layer->click=click;
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -262,7 +252,6 @@ void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("setting handler on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -271,7 +260,6 @@ void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT
   layer->keypress=keypress;
   layer->key=key;
   layer->modifiers=modifiers;
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -296,13 +284,11 @@ void sil_setDragHandler(SILLYR *layer, UINT (*drag)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("setting handler on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   layer->drag=drag;
   sil_setFlags(layer,SILFLAG_DRAGGABLE);
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -317,13 +303,11 @@ void sil_moveLayer(SILLYR *layer,int x,int y) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("moving a layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   layer->relx+=x;
   layer->rely+=y;
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -337,13 +321,11 @@ void sil_placeLayer(SILLYR *layer, UINT x,UINT y) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("placing a layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   layer->relx=x;
   layer->rely=y;
-  sil_setErr(SILERR_ALLOK);
 }
 /*****************************************************************************
 
@@ -364,7 +346,6 @@ void sil_putBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, B
       sil_putPixelLayer(layer,(x*lvl)+cx,(y*lvl)+cy,red,green,blue,alpha);
     }
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -380,7 +361,6 @@ void sil_blendBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green,
       sil_blendPixelLayer(layer,(x*lvl)+cx,(y*lvl)+cy,red,green,blue,alpha);
     }
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -395,14 +375,12 @@ void sil_putPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("putPixel on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   /* don't draw if outside of dimensions of framebuffer */
   if ((x >= layer->fb->width)||(y >= layer->fb->height)) return;
   sil_putPixelFB(layer->fb, x,y,red,green,blue,alpha);
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -421,7 +399,6 @@ void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BY
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("blendPixelLayer on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -440,7 +417,6 @@ void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BY
     }
   }
   sil_putPixelLayer(layer,x,y,red,green,blue,alpha);
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -463,7 +439,6 @@ void sil_getPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE *red, BYTE *green, BY
       sil_getPixelFB(layer->fb,x,y,red,green,blue,alpha);
     }
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -478,35 +453,29 @@ void sil_setFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setFlags on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   layer->flags|=flags;
-  sil_setErr(SILERR_ALLOK);
 }
 
 void sil_clearFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("clearFlags on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   layer->flags&=~flags;
-  sil_setErr(SILERR_ALLOK);
 }
 
 UINT sil_checkFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("checkFlags on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
   }
 #endif
-  sil_setErr(SILERR_ALLOK);
   if ((layer->flags&flags)==flags) return 1;
   return 0;
 }
@@ -517,7 +486,6 @@ UINT sil_checkFlags(SILLYR *layer,BYTE flags) {
  *****************************************************************************/
 
 SILLYR *sil_getBottom() {
-  sil_setErr(SILERR_ALLOK);
   return glyr.bottom;
 }
 
@@ -526,7 +494,6 @@ SILLYR *sil_getBottom() {
  *****************************************************************************/
 
 SILLYR *sil_getTop() {
-  sil_setErr(SILERR_ALLOK);
   return glyr.top;
 }
 
@@ -549,7 +516,6 @@ static int hasInstance(SILLYR *layer) {
     }
     search=search->next;
   }
-  sil_setErr(SILERR_ALLOK);
   return cnt;
 }
 
@@ -568,7 +534,6 @@ void sil_destroyLayer(SILLYR *layer) {
   } else {
     log_warn("removing non-existing or non-initialized layer");
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -579,7 +544,6 @@ void sil_setAlphaLayer(SILLYR *layer, float alpha) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setAlpha on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -587,7 +551,6 @@ void sil_setAlphaLayer(SILLYR *layer, float alpha) {
   if (alpha<=0) alpha=0;
   layer->alpha=alpha;
   layer->internal|=SILFLAG_ALPHACHANGED;
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -600,7 +563,6 @@ void sil_setView(SILLYR *layer,UINT minx,UINT miny,UINT width,UINT height) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setView on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -616,7 +578,6 @@ void sil_setView(SILLYR *layer,UINT minx,UINT miny,UINT width,UINT height) {
     layer->relx+=minx;
     layer->rely+=miny;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -627,7 +588,6 @@ void sil_resetView(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("resetView on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -639,7 +599,6 @@ void sil_resetView(SILLYR *layer) {
   layer->view.miny=0;
   layer->view.width=layer->fb->width;
   layer->view.height=layer->fb->height;
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -657,7 +616,6 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("resize on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
   }
 #endif
@@ -670,7 +628,7 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
   tmpfb=sil_initFB(width,height,layer->fb->type);
   if (NULL==tmpfb) {
     log_info("ERR: Can't create temporary framebuffer for resizing");
-    return sil_getErr();
+    return SILERR_NOMEM;
   }
 
 
@@ -694,7 +652,6 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
   layer->view.miny=0;
   layer->view.width=tmpfb->width;
   layer->view.height=tmpfb->height;
-  sil_setErr(SILERR_ALLOK);
   return 0;
 }
 
@@ -749,7 +706,6 @@ SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
         err=SILERR_CANTDECODEPNG;
         break;
     }
-    sil_setErr(err);
     if (image) free(image);
     return NULL;
   }
@@ -757,7 +713,6 @@ SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
   layer=sil_addLayer(x,y,width,height,SILTYPE_ABGR);
   if (NULL==layer) {
     log_warn("Can't create layer for loaded PNG file");
-    sil_setErr(SILERR_WRONGFORMAT);
     if (image) free(image);
     return NULL;
   }
@@ -765,7 +720,6 @@ SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
   /* free the framebuffer memory */
   if (!(( layer->fb) && (layer->fb->buf))) {
     log_warn("Created layer for PNG has incorrect or missing framebuffer");
-    sil_setErr(SILERR_NOTINIT);
     if (image) free(image);
     return NULL;
   }
@@ -774,7 +728,6 @@ SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
   /* and swap the buf with the loaded image */
   layer->fb->buf=image;
 
-  sil_setErr(SILERR_ALLOK);
   return layer;
 }
 
@@ -798,7 +751,6 @@ void LayersToFB(SILFB *fb) {
 #ifndef SIL_LIVEDANGEROUS
   if (0==fb->size) {
     log_warn("Trying to merge layers to uninitialized framebuffer");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -841,7 +793,6 @@ void LayersToFB(SILFB *fb) {
     }
     layer=layer->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -889,7 +840,6 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
     }
     layer=layer->previous;
   }
-  sil_setErr(SILERR_ALLOK);
   return NULL;
 }
 
@@ -937,7 +887,6 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
     }
     layer=layer->previous;
   }
-  sil_setErr(SILERR_ALLOK);
   return NULL;
 }
 
@@ -969,7 +918,6 @@ SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
     }
     layer=layer->previous;
   }
-  sil_setErr(SILERR_ALLOK);
   return NULL;
 }
 
@@ -991,7 +939,6 @@ void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("initSpriteSheet on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1018,13 +965,11 @@ void sil_nextSprite(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 
   if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
     log_warn("spritesheet isn't initialized, or wrong format");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1036,7 +981,6 @@ void sil_nextSprite(SILLYR *layer) {
     layer->sprite.pos=0;
   }
   sil_setSprite(layer,layer->sprite.pos);
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -1053,13 +997,11 @@ void sil_prevSprite(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 
   if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
     log_warn("spritesheet isn't initialized, or wrong format");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1071,7 +1013,6 @@ void sil_prevSprite(SILLYR *layer) {
     layer->sprite.pos=maxpos-1;
   }
   sil_setSprite(layer,layer->sprite.pos);
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -1089,13 +1030,11 @@ void sil_setSprite(SILLYR *layer,UINT pos) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 
   if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
     log_warn("spritesheet isn't initialized, or wrong format");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1119,7 +1058,6 @@ void sil_setSprite(SILLYR *layer,UINT pos) {
     pos--;
   }
   sil_setView(layer,x,y,layer->sprite.width,layer->sprite.height);
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -1139,7 +1077,6 @@ void sil_toTop(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("trying to change stacking order on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1168,7 +1105,6 @@ void sil_toBottom(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("trying to change stacking order on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1186,7 +1122,6 @@ void sil_toBottom(SILLYR *layer) {
   layer->previous=NULL;
   glyr.bottom->previous=layer;
   glyr.bottom=layer;
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -1199,7 +1134,6 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==target)) {
     log_warn("trying to change stacking order on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1243,7 +1177,6 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
   /* target->previous == layer is only possible here */
   /* so just swap ...                            */
   sil_swap(layer,target);
-  sil_setErr(SILERR_ALLOK);
   return;
 
 }
@@ -1258,7 +1191,6 @@ void sil_toBelow(SILLYR *layer,SILLYR *target) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==target)) {
     log_warn("trying to change stacking order on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1302,7 +1234,6 @@ void sil_toBelow(SILLYR *layer,SILLYR *target) {
   /* target->next == layer is only possible here */
   /* so just swap ...                            */
   sil_swap(layer,target);
-  sil_setErr(SILERR_ALLOK);
   return;
 }
 
@@ -1322,7 +1253,6 @@ void sil_swap(SILLYR *layer,SILLYR *target) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("trying to change stacking order on layer that isn't initialized");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -1382,7 +1312,6 @@ void sil_swap(SILLYR *layer,SILLYR *target) {
   layer->previous    = tprevious;
   if (tprevious) tprevious->next  = layer;
   if (lnext)     lnext->previous  = target;
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -1424,7 +1353,6 @@ SILLYR *sil_addCopy(SILLYR *layer,UINT relx,UINT rely) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("addCopy on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return NULL;
   }
 #endif
@@ -1435,7 +1363,6 @@ SILLYR *sil_addCopy(SILLYR *layer,UINT relx,UINT rely) {
   }
   memcpy(ret->fb->buf,layer->fb->buf,layer->fb->size);
   copylayerinfo(layer,ret);
-  sil_setErr(SILERR_ALLOK);
 
   return ret;
 }
@@ -1455,7 +1382,6 @@ SILLYR *sil_addInstance(SILLYR *layer,UINT relx,UINT rely) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("addCopy on layer that isn't initialized, or with uninitialized FB");
-    sil_setErr(SILERR_NOTINIT);
     return NULL;
   }
 #endif
@@ -1473,7 +1399,6 @@ SILLYR *sil_addInstance(SILLYR *layer,UINT relx,UINT rely) {
   /* if there is still a copy of it left                            */
   layer->internal|=SILFLAG_INSTANCIATED;
   ret->internal|=SILFLAG_INSTANCIATED;
-  sil_setErr(SILERR_ALLOK);
   return ret;
 }
 
@@ -1484,7 +1409,6 @@ SILLYR *sil_addInstance(SILLYR *layer,UINT relx,UINT rely) {
  *****************************************************************************/
 void sil_hide(SILLYR *layer) {
   sil_setFlags(layer,SILFLAG_INVISIBLE);
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -1496,7 +1420,6 @@ void sil_hide(SILLYR *layer) {
 
 void sil_show(SILLYR *layer) {
   sil_clearFlags(layer,SILFLAG_INVISIBLE);
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -1509,7 +1432,6 @@ void sil_clearLayer(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("clearing layer that isn't initialized or with empty fb");
-    sil_setErr(SILERR_NOTINIT);
     return ;
   }
 #endif

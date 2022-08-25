@@ -70,7 +70,6 @@ static char *strValue(SILFONT *font, char *key) {
   /* if font isn't initialized properly, get out */
   if (NULL==font) {
     log_warn("searching key/value in a non-initialized font");
-    sil_setErr(SILERR_NOTINIT);
     return NULL;
   }
 #endif
@@ -118,10 +117,8 @@ static char *strValue(SILFONT *font, char *key) {
     search++;
   }
   if (font->scratch[0]) {
-    sil_setErr(SILERR_ALLOK);
     return font->scratch;
   } else {
-    sil_setErr(SILERR_WRONGFORMAT);
     return NULL;
   }
 }
@@ -139,7 +136,6 @@ static int intValue(SILFONT *font, char *key) {
   if (p!=NULL) {
     ret=(int)strtol(p,NULL,10);
   }
-  sil_setErr(SILERR_ALLOK);
   return ret;
 }
 
@@ -156,11 +152,9 @@ static BYTE isSection(SILFONT *font, char *section) {
   /* if font isn't initialized properly, get out */
   if (NULL==font) {
     log_warn("looking for section in a non-initialized font");
-    sil_setErr(SILERR_NOTINIT);
     return 0;
   }
 #endif
-  sil_setErr(SILERR_ALLOK);
   if (0==strncmp(font->line,section,strlen(section))) {
     /* make sure keyword ends here; not triggering 'chars' when looking for 'char' */
     if (font->line[strlen(section)]=='\t') {
@@ -192,7 +186,6 @@ SILFONT *sil_loadFont(char *name) {
   font=calloc(1,sizeof(SILFONT));
   if (NULL==font) {
     log_info("ERR: Can't allocate memory for Font");
-    sil_setErr(SILERR_NOMEM);
     return NULL;
   }
   initFont(font); 
@@ -253,7 +246,6 @@ SILFONT *sil_loadFont(char *name) {
           } else {
             /* more char definitions then given in count on forehand */
             log_warn("File (%s) do have more character definitions then stated at beginning",name);
-            sil_setErr(SILERR_WRONGFORMAT);
             free(font);
             return NULL;
           }
@@ -269,7 +261,6 @@ SILFONT *sil_loadFont(char *name) {
           } else {
             /* more kerning definitions then given in count on forehand */
             log_warn("File (%s) do have more kerning definitions then stated at beginning",name);
-            sil_setErr(SILERR_WRONGFORMAT);
             free(font);
             return NULL;
           }
@@ -315,7 +306,6 @@ SILFONT *sil_loadFont(char *name) {
                   err=SILERR_CANTDECODEPNG;
                   break;
               }
-              sil_setErr(SILERR_WRONGFORMAT);
             }
           }
           found=1;
@@ -365,7 +355,6 @@ SILFONT *sil_loadFont(char *name) {
     err=SILERR_CANTOPENFILE;
   }
   if (SILERR_ALLOK!=err) {
-    sil_setErr(err);
     /* throw away font if there was an error during decoding */
     free(font);
   }
@@ -387,7 +376,6 @@ SILFCHAR *sil_getCharFont(SILFONT *font, char c) {
   /* if font isn't initialized properly, get out */
   if ((NULL==font)||(NULL==font->image)) {
     log_warn("retrieving charecter information from a non-initialized font");
-    sil_setErr(SILERR_NOTINIT);
     return 0;
   }
 #endif
@@ -402,7 +390,6 @@ UINT sil_getHeightFont(SILFONT *font) {
   /* if font isn't initialized properly, get out */
   if ((NULL==font)||(NULL==font->image)) {
     log_warn("retrieving charecter information from a non-initialized font");
-    sil_setErr(SILERR_NOTINIT);
     return 0;
   }
 #endif
@@ -425,7 +412,6 @@ int sil_getKerningFont(SILFONT *font, char first, char second) {
   /* if font isn't initialized properly, get out */
   if ((NULL==font)||(NULL==font->image)) {
     log_warn("retrieving kerning information from a non-initialized font");
-    sil_setErr(SILERR_NOTINIT);
     return 0;
   }
 #endif
@@ -435,7 +421,6 @@ int sil_getKerningFont(SILFONT *font, char first, char second) {
       return font->kdefs[i].amount;
     }
   }
-  sil_setErr(SILERR_ALLOK);
   return 0;
 }
 
@@ -456,7 +441,6 @@ void sil_getPixelFont(SILFONT *font,UINT x,UINT y, BYTE *red, BYTE *green, BYTE 
   /* if font isn't initialized properly, get out */
   if ((NULL==font)||(NULL==font->image)) {
     log_warn("retrieving pixels from a non-initialized font");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -468,7 +452,6 @@ void sil_getPixelFont(SILFONT *font,UINT x,UINT y, BYTE *red, BYTE *green, BYTE 
     *blue =font->image[pos+2];
     *alpha=font->image[pos+3];
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -481,14 +464,12 @@ void sil_setAlphaFont(SILFONT *font, float alpha) {
   /* if font isn't initialized properly, get out */
   if ((NULL==font)||(NULL==font->image)) {
     log_warn("setting alpha in a non-initialized font");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
   if (alpha>1) alpha=1;
   if (alpha<=0) alpha=0;
   font->alpha=alpha;
-  sil_setErr(SILERR_ALLOK);
 }
 
 

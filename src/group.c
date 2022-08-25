@@ -26,12 +26,10 @@ SILGROUP *sil_createGroup() {
   group=calloc(1,sizeof(SILGROUP));
   if (NULL==group) {
     log_warn("ERR: Can't allocate memory for createGroup");
-    sil_setErr(SILERR_NOMEM);
     return NULL;
   }
   group->layer=NULL;
   group->next=NULL;
-  sil_setErr(SILERR_ALLOK);
   return group;
 }
 
@@ -47,7 +45,6 @@ void sil_addLayerGroup(SILGROUP *group, SILLYR *layer) {
 
   if (NULL==group) {
     log_warn("adding layer to non-initialized group");
-    sil_setErr(SILERR_NOMEM);
     return;
   }
 
@@ -61,7 +58,6 @@ void sil_addLayerGroup(SILGROUP *group, SILLYR *layer) {
   walk->next=new;
   new->layer=layer;
 
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -78,13 +74,11 @@ void sil_removeLayerGroup(SILGROUP *group, SILLYR *layer) {
 
   if (NULL==group) {
     log_warn("removing layer from non-initialized group");
-    sil_setErr(SILERR_NOMEM);
     return;
   }
 
   if (NULL==layer) {
     log_warn("removing non-existing layer from group");
-    sil_setErr(SILERR_NOMEM);
     return;
   }
  
@@ -98,7 +92,6 @@ void sil_removeLayerGroup(SILGROUP *group, SILLYR *layer) {
     if (found) free(found);
   }
 
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -118,7 +111,6 @@ void sil_destroyGroup(SILGROUP *group) {
     free(group);
     group=next;
   } while(next);
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -136,7 +128,6 @@ void sil_showGroup(SILGROUP *group) {
     if (walk->layer) sil_show(walk->layer);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -154,7 +145,6 @@ void sil_hideGroup(SILGROUP *group) {
     if (walk->layer) sil_hide(walk->layer);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -172,7 +162,6 @@ void sil_moveGroup(SILGROUP *group,int x, int y) {
     if (walk->layer) sil_moveLayer(walk->layer,x,y);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -191,7 +180,6 @@ void sil_nextSpriteGroup(SILGROUP *group) {
     if (walk->layer) sil_nextSprite(walk->layer);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -209,7 +197,6 @@ void sil_prevSpriteGroup(SILGROUP *group) {
     if (walk->layer) sil_prevSprite(walk->layer);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -227,7 +214,6 @@ void sil_setSpriteGroup(SILGROUP *group,UINT num) {
     if (walk->layer) sil_setSprite(walk->layer,num);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -247,7 +233,6 @@ UINT sil_checkLayerGroup(SILGROUP *group,SILLYR *layer) {
     if ((walk->layer) && (walk->layer==layer)) cnt++;
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
   return cnt;
 }
 
@@ -268,7 +253,6 @@ void sil_resetViewGroup(SILGROUP *group) {
     if (walk->layer) sil_resetView(walk->layer);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -288,7 +272,6 @@ void sil_topGroup(SILGROUP *group) {
     if (walk->layer) sil_toTop(walk->layer);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -308,5 +291,4 @@ void sil_bottomGroup(SILGROUP *group) {
     if (walk->layer) sil_toBottom(walk->layer);
     walk=walk->next;
   }
-  sil_setErr(SILERR_ALLOK);
 }

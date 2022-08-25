@@ -45,7 +45,6 @@ SILFB *sil_initFB(UINT width, UINT height, BYTE type) {
 
   if ((0==width)||(0==height)||(0==type)) {
       log_warn("can't initialize framebuffer; One or more parameters are zero");
-      sil_setErr(SILERR_WRONGFORMAT);
       return NULL;
   }
 
@@ -85,14 +84,12 @@ SILFB *sil_initFB(UINT width, UINT height, BYTE type) {
       break;
   }
   if (0==size) {
-    sil_setErr(SILERR_WRONGFORMAT);
     return NULL;
   }
 
   fb=calloc(1,sizeof(SILFB));
   if (NULL==fb) {
     log_info("ERR: Can't allocate memory for framebuffer struct");
-    sil_setErr(SILERR_NOMEM);
     return NULL;
   }
 
@@ -100,7 +97,6 @@ SILFB *sil_initFB(UINT width, UINT height, BYTE type) {
   if (NULL==fb->buf) {
     free(fb);
     log_info("ERR: Can't allocate memory for buffer of framebuffer");
-    sil_setErr(SILERR_NOMEM);
     return NULL;
   }
   fb->size=size;
@@ -108,7 +104,6 @@ SILFB *sil_initFB(UINT width, UINT height, BYTE type) {
   fb->height=height;
   fb->type=type;
   fb->changed=1;
-  sil_setErr(SILERR_ALLOK);
   return fb;
 }
 
@@ -134,17 +129,14 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==fb) {
     log_warn("trying to putpixel on non-initialized FB ");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
   if (NULL==fb->buf) {
     log_warn("trying to a non-allocated FB buffer ");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
   if (0==fb->size) {
     log_warn("trying to putpixel on zero size size FB buffer ");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -238,7 +230,6 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
       break;
   }
   fb->changed=1;
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -265,12 +256,10 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==fb) {
     log_warn("trying to getpixel an non-initialized FB ");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
   if ((0==fb->size)||(NULL==fb->buf)) {
     log_warn("trying to getpixel an zero size or non-allocated FB buffer ");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 
@@ -390,7 +379,6 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
       *alpha=buf[x*4+3+width*y*4];
       break;
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -406,10 +394,8 @@ void sil_clearFB(SILFB *fb) {
   /* size is used to check for initialization of variables inside FB context */
   if ((fb)&&(fb->size)) {
     memset(fb->buf,0,fb->size);
-    sil_setErr(SILERR_ALLOK);
   } else {
     log_warn("trying to clear a non-initialized FB ");
-    sil_setErr(SILERR_NOTINIT);
   }
 }
 
@@ -426,15 +412,12 @@ void sil_destroyFB(SILFB *fb) {
   if (fb) {
     if (fb->size && fb->buf) {
       free(fb->buf);
-      sil_setErr(SILERR_ALLOK);
     } else {
       log_warn("trying to destroy an empty FB buffer ");
-      sil_setErr(SILERR_NOTINIT);
     }
     free(fb);
     fb=NULL;
   } else {
     log_warn("trying to destroy a non-initialized FB ");
-    sil_setErr(SILERR_NOTINIT);
   }
 }

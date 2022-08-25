@@ -66,7 +66,6 @@ static GDISP gdisp;
 UINT sil_getTypefromDisplay() {
   if (NULL==gdisp.fb) {
     log_warn("trying to get display color type from non-initialized display");
-    sil_setErr(SILERR_NOTINIT);
     return 0;
   }
   return gdisp.fb->type;
@@ -222,7 +221,6 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   gdisp.fb=sil_initFB(width, height, SILTYPE_ARGB);
   if (NULL==gdisp.fb) {
     log_info("ERR: Can't create framebuffer for display");
-    sil_setErr(SILERR_NOMEM);
     return SILERR_NOMEM;
   }
 
@@ -255,7 +253,6 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
 
   if (NULL==gdisp.win.window) {
     printf("ERROR: Can't create window (%d)\n",GetLastError());
-    sil_setErr(SILERR_NOTINIT);
 
     return SILERR_NOTINIT;
   }

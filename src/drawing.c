@@ -255,22 +255,18 @@ UINT sil_PNGintoLayer(SILLYR *layer,char * filename,UINT relx,UINT rely) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("Trying to load PNG into non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return SILERR_WRONGFORMAT;
   }
   if (NULL==layer->fb) {
     log_warn("Trying to load PNG into layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return SILERR_WRONGFORMAT;
   }
   if (0==layer->fb->size) {
     log_warn("Trying to load PNG into layer with uninitialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return SILERR_WRONGFORMAT;
   }
   if ((relx>layer->fb->width)||(rely>layer->fb->height)) {
     log_warn("Trying to load PNG into layer outside of dimensions");
-    sil_setErr(SILERR_WRONGFORMAT);
     return SILERR_WRONGFORMAT;
   }
 
@@ -298,7 +294,6 @@ UINT sil_PNGintoLayer(SILLYR *layer,char * filename,UINT relx,UINT rely) {
         err=SILERR_CANTDECODEPNG;
         break;
     }
-    sil_setErr(err);
     if (image) free(image);
     return err;
   }
@@ -335,7 +330,6 @@ UINT sil_PNGintoLayer(SILLYR *layer,char * filename,UINT relx,UINT rely) {
   /* remove temporary framebuffer */
   if (image) free(image);
 
-  sil_setErr(SILERR_ALLOK);
   return SILERR_ALLOK;
 }
 
@@ -351,7 +345,6 @@ void sil_paintLayer(SILLYR *layer, BYTE red, BYTE green, BYTE blue, BYTE alpha) 
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("painting a layer that isn't initialized or has unitialized framebuffer");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -361,7 +354,6 @@ void sil_paintLayer(SILLYR *layer, BYTE red, BYTE green, BYTE blue, BYTE alpha) 
       sil_putPixelLayer(layer,x,y,red,green,blue,alpha); 
     }
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -391,12 +383,10 @@ void sil_drawText(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT rely
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
     log_warn("drawing text on a layer that isn't initialized or has unitialized framebuffer");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
   if ((NULL==font)||(NULL==font->image)) {
     log_warn("drawing text on a layer using a nonintialized font");
-    sil_setErr(SILERR_NOTINIT);
     return;
   }
 #endif
@@ -465,7 +455,6 @@ void sil_drawText(SILLYR *layer, SILFONT *font, char *text, UINT relx, UINT rely
     prevtch=tch;
     tch=text[++cnt];
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -487,7 +476,6 @@ UINT sil_getTextWidth(SILFONT *font, char *text, BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==font)||(NULL==font->image)) {
     log_warn("drawing text on a layer using a nonintialized font");
-    sil_setErr(SILERR_NOTINIT);
     return 0;
   }
 #endif
@@ -529,7 +517,6 @@ UINT sil_getTextWidth(SILFONT *font, char *text, BYTE flags) {
   }
   if (maxx<cursor) maxx=cursor;
 
-  sil_setErr(SILERR_ALLOK);
   return maxx;
 }
 
@@ -617,7 +604,6 @@ UINT sil_saveDisplay(char *filename,UINT width, UINT height, UINT wx, UINT wy) {
     return err;
   }
 
-  sil_setErr(SILERR_ALLOK);
   return SILERR_ALLOK;
 }
 
@@ -676,7 +662,6 @@ UINT sil_saveLayer(SILLYR *lyr, char *filename) {
     return err;
   }
 
-  sil_setErr(SILERR_ALLOK);
   return SILERR_ALLOK;
 }
 
@@ -768,7 +753,6 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
     }
   }
   sil_blendBigPixelLayer(layer, x2,y2, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -793,23 +777,19 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (NULL==layer->fb) {
     log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (0==layer->fb->size) {
     log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
 
   if ((x1>=layer->fb->width)||(y1>=layer->fb->height)||(x2>=layer->fb->width)||(y2>=layer->fb->height)) {
     log_warn("Drawing outside boundary of layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return;
   }
 #endif
@@ -917,7 +897,6 @@ void sil_drawLine(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
     }
   }
 
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -1036,7 +1015,6 @@ static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, 
       tError += tDeltaXTimes2;
     }
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 /*****************************************************************************
@@ -1059,23 +1037,19 @@ void sil_drawLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (NULL==layer->fb) {
     log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (0==layer->fb->size) {
     log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
 
   if ((x1>=layer->fb->width)||(y1>=layer->fb->height)||(x2>=layer->fb->width)||(y2>=layer->fb->height)) {
     log_warn("Drawing outside boundary of layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return;
   }
 #endif
@@ -1207,7 +1181,6 @@ void sil_drawLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2) {
     drawSingleLineAA(layer,bx1, by1, ex1, ey1,SILLO_MAJOR|SILLO_MINOR);
     drawSingleLineAA(layer,bx2, by2, ex2, ey2,SILLO_MAJOR|SILLO_MINOR);
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -1306,30 +1279,25 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (NULL==layer->fb) {
     log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (0==layer->fb->size) {
     log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
 
   if (((xm+r+gd.width/2)>layer->fb->width) ||((xm-(r+gd.width/2))<0)||
       ((ym+r+gd.width/2)>layer->fb->height)||((ym-(r+gd.width/2))<0)) {
     log_warn("Drawing falls outside layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
 
   if ((r<2)||(r<gd.width)) {
     log_warn("Circle too small to draw on layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return;
   }
 #endif
@@ -1364,7 +1332,6 @@ void sil_drawCircle(SILLYR *layer, UINT xm, UINT ym, UINT r) {
       }
     }
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -1383,30 +1350,25 @@ void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (NULL==layer->fb) {
     log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (0==layer->fb->size) {
     log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
 
   if (((xm+r+gd.width/2)>layer->fb->width) ||((xm-(r+gd.width/2))<0)||
       ((ym+r+gd.width/2)>layer->fb->height)||((ym-(r+gd.width/2))<0)) {
     log_warn("Drawing falls outside layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
 
   if ((r<2)||(r<gd.width+1)) {
     log_warn("Circle to small to draw on layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return;
   }
 #endif
@@ -1478,7 +1440,6 @@ void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
       }
     }
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -1494,17 +1455,14 @@ void sil_drawRectangle(SILLYR *layer, UINT x, UINT y, UINT width, UINT height) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("Trying to draw non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (NULL==layer->fb) {
     log_warn("Trying to draw on layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (0==layer->fb->size) {
     log_warn("Drawing on layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
 #endif
@@ -1521,7 +1479,6 @@ void sil_drawRectangle(SILLYR *layer, UINT x, UINT y, UINT width, UINT height) {
       }
     }
   }
-  sil_setErr(SILERR_ALLOK);
 }
 
 
@@ -1567,23 +1524,19 @@ void sil_rescale(SILLYR *layer, UINT newwidth,UINT newheight) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
     log_warn("Trying to rescale non-existing layer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (NULL==layer->fb) {
     log_warn("Trying to rescale layer with no framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
   if (0==layer->fb->size) {
     log_warn("Rescaling layer without initialized framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return ;
   }
 #endif
   /* no use to rescale with one of the dimensions "0", is it ? */
   if ((0==newwidth)||(0==newheight)) {
-    sil_setErr(SILERR_WRONGFORMAT);
     return;
   }
 
@@ -1615,7 +1568,6 @@ void sil_rescale(SILLYR *layer, UINT newwidth,UINT newheight) {
   layer->view.height=tmpfb->height;
 
   
-  sil_setErr(SILERR_ALLOK);
 }
 
 

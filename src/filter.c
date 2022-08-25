@@ -17,17 +17,14 @@
 static UINT precheck(SILLYR *layer) {
   if ((NULL==layer)||(0==layer->init)) {
     log_warn("Trying to apply filter against non-existing or non-initialized layer");
-    sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
   }
   if (NULL==layer->fb) {
     log_warn("Trying to apply filter against layer with no framebuffer");
-    sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
   }
   if (0==layer->fb->size) {
     log_warn("Trying to apply filter against layer with zero size framebuffer");
-    sil_setErr(SILERR_WRONGFORMAT);
     return SILERR_WRONGFORMAT;
   }
   return SILERR_ALLOK;
@@ -59,7 +56,6 @@ UINT sil_cropAlphaFilter(SILLYR *layer) {
   }
   err=sil_resizeLayer(layer,minx,miny,maxx-minx+1,maxy-miny+1);
 
-  sil_setErr(err);
   return err;
 }
 
@@ -92,7 +88,6 @@ UINT sil_cropFirstpixelFilter(SILLYR *layer) {
   }
   err=sil_resizeLayer(layer,minx,miny,maxx-minx+1,maxy-miny+1);
 
-  sil_setErr(err);
   return err;
 }
 
@@ -144,7 +139,6 @@ UINT sil_brightnessFilter(SILLYR *layer, int amount) {
     }
   }
 
-  sil_setErr(err);
   return err;
 }
 
@@ -165,7 +159,7 @@ UINT sil_blurFilter(SILLYR *layer ) {
   dest=sil_initFB(layer->fb->width,layer->fb->height,layer->fb->type);
   if (NULL==dest) {
     log_info("ERR: Cant create framebuffer for blur filter");
-    return sil_getErr();
+    return SILERR_NOMEM;
   }
   for (int x=0;x<layer->fb->width;x++) {
     for (int y=0;y<layer->fb->height;y++) {
@@ -260,7 +254,6 @@ UINT sil_blurFilter(SILLYR *layer ) {
   if (layer->fb->buf) free(layer->fb->buf);
   layer->fb->buf=dest->buf;
   
-  sil_setErr(err);
   return err;
 }
 
@@ -281,7 +274,6 @@ UINT sil_borderFilter(SILLYR *layer ) {
     sil_putPixelLayer(layer,layer->fb->width-1,y,255*(y%2),255*(y%2),255*(y%2),255);
   }
 
-  sil_setErr(err);
   return err;
 }
 
@@ -305,7 +297,6 @@ UINT sil_alphaFirstpixelFilter(SILLYR *layer ) {
       }
     }
   }
-  sil_setErr(err);
   return err;
 }
 
@@ -328,7 +319,6 @@ UINT sil_flipxFilter(SILLYR *layer ) {
     }
   }
 
-  sil_setErr(err);
   return err;
 }
 
@@ -350,7 +340,6 @@ UINT sil_flipyFilter(SILLYR *layer ) {
       sil_putPixelLayer(layer,(layer->fb->width)-x-1,y,red,green,blue,alpha); 
     }
   }
-  sil_setErr(err);
   return err;
 }
 
@@ -370,7 +359,6 @@ UINT sil_rotateColorFilter(SILLYR *layer ) {
     }
   }
 
-  sil_setErr(err);
   return err;
 }
 
@@ -390,7 +378,6 @@ UINT sil_reverseColorFilter(SILLYR *layer ) {
     }
   }
 
-  sil_setErr(err);
   return err;
 }
 
@@ -413,7 +400,6 @@ UINT sil_grayFilter(SILLYR *layer ) {
     }
   }
 
-  sil_setErr(err);
   return err;
 }
 

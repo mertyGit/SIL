@@ -522,7 +522,6 @@ UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
   gdisp.fb=sil_initFB(width, height, SILTYPE_ARGB);
   if (NULL==gdisp.fb) {
     log_info("ERR: Can't create framebuffer for display");
-    sil_setErr(SILERR_NOTINIT);
     return SILERR_NOTINIT;
   }
 
@@ -574,7 +573,6 @@ UINT sil_initDisplay(void *dummy, UINT width, UINT height, char * title) {
   gdisp.con=XConnectionNumber(gdisp.display);
 
   gdisp.visual=DefaultVisual(gdisp.display,gdisp.screen);
-  sil_setErr(SILERR_NOTINIT);
   return SILERR_ALLOK;
 }
 

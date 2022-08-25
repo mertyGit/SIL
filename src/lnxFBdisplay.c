@@ -66,7 +66,6 @@ static GDISP gdisp;
 UINT sil_getTypefromDisplay() {
   if (NULL==gdisp.fb) {
     log_warn("trying to get display color type from non-initialized display");
-    sil_setErr(SILERR_NOTINIT);
     return 0;
   }
   return gdisp.fb->type;
@@ -172,7 +171,6 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   gdisp.fb=sil_initFB(gdisp.vinfo.xres, gdisp.vinfo.yres, type);
   if (NULL==gdisp.fb) {
     log_info("ERR: Can't create framebuffer for display");
-    sil_setErr(SILERR_NOMEM);
     return SILERR_NOMEM;
   }
 
@@ -311,7 +309,6 @@ SILEVENT *sil_getEventDisplay() {
         /* not garbage ? */
         if (rd<(int)sizeof(struct input_event)) {
           log_warn("Wrong size of event returned from touchscreen");
-          sil_setErr(SILERR_WRONGFORMAT);
           gdisp.se.type=SILDISP_NOTHING;
           return &gdisp.se;
         }

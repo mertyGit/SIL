@@ -5,9 +5,10 @@ ifeq ($(DEST),gdi)
   CC = x86_64-w64-mingw32-gcc
   ICO = ico.rco
 endif
-ifeq ($(DEST),sdl) 
+ifeq ($(DEST),winsdl) 
   E = .exe
-  DISP = winSDLdisplay
+  DISP = SDLdisplay
+  # REMOVE "-mconsole" to don't get debugging/logging console (!)
   CFLAGS= -mconsole -I/usr/local/x86_64-w64-mingw32/include/ -L/usr/local/x86_64-w64-mingw32/lib/ -lSDL2main -lSDL2 -DSDL_MAIN_HANDLED 
   CC = x86_64-w64-mingw32-gcc 
   ICO = ico.rco
@@ -41,7 +42,7 @@ $(PROG).o: $(PROG).c $(DEPS)
 	$(CC) $(DEBUG) -c $< -o $@ $(CFLAGS)
 
 gdi: clean
-sdl: clean
+winsdl: clean
 x11: clean
 fb:  clean
 

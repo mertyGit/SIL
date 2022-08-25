@@ -33,7 +33,6 @@
 
 UINT sil_initSIL(UINT, UINT, char *, void *);
 UINT sil_setLog(char *logname, BYTE flags);
-void sil_setErr(UINT);
 void sil_destroySIL();
 UINT sil_getErr();
 const char *sil_err2Txt(UINT errorcode);

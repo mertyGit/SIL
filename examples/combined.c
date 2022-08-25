@@ -224,14 +224,12 @@ int main() {
   printf("sil_createGroup...\n");
   grouptest=sil_createGroup();
   if (NULL==grouptest) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 1;
   }
 
   printf("sil_addLayer background...\n");
   background=sil_addLayer(0,0,1000,1000,SILTYPE_565RGB);
   if (NULL==background) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 2;
   }
 
@@ -243,14 +241,12 @@ int main() {
   printf("sil_PNGintoLayer background...\n");
   err=sil_PNGintoLayer(background,"testimage.png",0,0);
   if (err) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 3;
   }
 
   printf("loading dancing banana...\n");
   animation=sil_PNGtoNewLayer("dancingbanana.png",320,80);
   if (NULL==animation) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 3;
   }
   sil_initSpriteSheet(animation,8,2);
@@ -259,7 +255,6 @@ int main() {
   printf("sil_PNGtoNewLayer one...\n");
   one=sil_PNGtoNewLayer("testpic2.png",500,500);
   if (NULL==one) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 4;
   }
   sil_setKeyHandler(one,SILKY_2,0,SILKT_SINGLE,togglevisible);
@@ -272,7 +267,6 @@ int main() {
   printf("sil_PNGtoNewLayer two...\n");
   two=sil_PNGtoNewLayer("testpic3.png",550,550);
   if (NULL==two) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 5;
   }
   sil_setKeyHandler(two,SILKY_3,0,SILKT_SINGLE,togglevisible);
@@ -284,7 +278,6 @@ int main() {
   printf("sil_PNGtoNewLayer three..\n");
   three=sil_PNGtoNewLayer("testpic4.png",600,600);
   if (NULL==three) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 6;
   }
   sil_blurFilter(three);
@@ -294,7 +287,6 @@ int main() {
   printf("sil_PNGtoNewLayer test..\n");
   test=sil_PNGtoNewLayer("testpic5.png",500,350);
   if (NULL==test) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 7;
   }
   sil_setKeyHandler(test,SILKY_5,0,SILKT_SINGLE,togglevisible);
@@ -310,7 +302,6 @@ int main() {
   printf("sil_addLayer foreground...\n");
   foreground=sil_addLayer(40,40,500,500,SILTYPE_ARGB);
   if (NULL==foreground) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 8;
   }
   sil_setKeyHandler(foreground,SILKY_1,0,SILKT_SINGLE,togglevisible);
@@ -319,7 +310,6 @@ int main() {
   printf("sil_PNGtoLayer foreground...\n");
   err=sil_PNGintoLayer(foreground,"testpic1.png",0,0);
   if (NULL==foreground) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 9;
   }
 
@@ -333,7 +323,6 @@ int main() {
   printf("sil_addLayer ontop...\n");
   ontop=sil_addLayer(50,450,256,256,SILTYPE_ARGB);
   if (NULL==ontop) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 10;
   }
   sil_setKeyHandler(ontop,SILKY_6,0,SILKT_SINGLE,togglevisible);
@@ -351,7 +340,6 @@ int main() {
   printf("sil_addLayer both...\n");
   both=sil_addLayer(550,50,200,200,SILTYPE_ARGB);
   if (NULL==both) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 11;
   }
   sil_borderFilter(both);
@@ -373,7 +361,6 @@ int main() {
   printf("sil_addLayer bothnoblend...\n");
   bothnoblend=sil_addLayer(750,50,200,200,SILTYPE_ARGB);
   if (NULL==bothnoblend) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 14;
   }
   sil_setFlags(bothnoblend,SILFLAG_NOBLEND);
@@ -397,7 +384,6 @@ int main() {
   printf("sil_PNGtoNewLayer 10..\n");
   test=sil_PNGtoNewLayer("testpic10.png",700,300);
   if (NULL==test) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 17;
   }
   sil_setView(test,20,20,60,60);
@@ -414,7 +400,6 @@ int main() {
   printf("sil_PNGtoNewLayer 11..\n");
   test=sil_PNGtoNewLayer("testpic11.png",800,300);
   if (NULL==test) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 17;
   }
   sil_setView(test,20,20,60,60);
@@ -426,21 +411,18 @@ int main() {
   printf("sil_rescale test width 12");
   test=sil_PNGtoNewLayer("testpic12.png",750,510);
   if (NULL==test) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
     return 17;
   }
 
   test=sil_PNGtoNewLayer("testpic12.png",650,510);
   if (NULL==test) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
-    return 17;
+    return 18;
   }
   sil_rescale(test,60,60);
 
   test=sil_PNGtoNewLayer("testpic12.png",860,510);
   if (NULL==test) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
-    return 17;
+    return 19;
   }
   sil_rescale(test,135,90);
 
@@ -453,8 +435,7 @@ int main() {
   printf("sil_addLayer fonttest...\n");
   fonttest=sil_addLayer(50,710,500,200,SILTYPE_ARGB);
   if (NULL==fonttest) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
-    return 18;
+    return 20;
   }
   printf("painting fonttest ...\n");
   sil_paintLayer(fonttest,180,40,40,255);
@@ -465,13 +446,11 @@ int main() {
   printf("sil_loadFont...\n");
   font=sil_loadFont("architectsdaughter_thickoutline_20px.fnt");
   if (NULL==font) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
-    return 19;
+    return 21;
   }
   font2=sil_loadFont("architectsdaughter_24px.fnt");
   if (NULL==font2) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
-    return 19;
+    return 22;
   }
 
   printf("sil_drawText with kerning and original color ...\n");
@@ -501,8 +480,7 @@ int main() {
   printf("sil_addLayer drawing...\n");
   drawing=sil_addLayer(600,710,400,200,SILTYPE_ARGB);
   if (NULL==drawing) {
-    printf("%s\n",sil_err2Txt(sil_getErr()));
-    return 20;
+    return 23;
   }
   drawlines();
 
