@@ -15,8 +15,13 @@ ifeq ($(DEST),winsdl)
   ICO = ico.rco
 endif
 ifeq ($(DEST),lnxsdl) 
-  DISP = SDLdisplay
   CFLAGS=  -lSDL2main -lSDL2 -DSDL_MAIN_HANDLED 
+  DISP = SDLdisplay
+  CC = gcc
+endif
+ifeq ($(DEST),macsdl) 
+  DISP = SDLdisplay
+  CFLAGS=  -L/opt/homebrew/lib -I/opt/homebrew/include/ -lSDL2main -lSDL2 -DSDL_MAIN_HANDLED 
   CC = gcc
 endif
 ifeq ($(DEST),x11) 
