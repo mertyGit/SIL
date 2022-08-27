@@ -107,19 +107,25 @@ As most programmers, I'm sometimes too lazy to reinvent the wheel so why not use
 
 ## Building
 Its just a bunch of .c and .h files. Just compile & link them together with your own "main.c" program - or what you have - . See Makefile and examples directory how to do that if you are not sure. Only include one of the "...display.c" files for the target environment. 
-Didn't try it in any IDE, I just used to program it in WSL2, linux in windows on the commandline. 
+Didn't try it in any IDE, I just used to program it in linux, MSYS2 for windows and Homebrew on mac on the commandline. 
 At this moment, the following environments are supported:
-* winGDIdisplay.c : Windows 64bit (might work with 32bit too) environment, using WIN32 API and "plain old" GDI interface 
-* winSDLdisplay.c : Windows 64bit (might also work with other environments SDL is ported to) SDL will give you hardware acceleration. All layers will be placed as separate textures in videoram, making updating much, much faster.
-* x11display.c : Linux X-Windows environment. I used to write a lot of programs using XLib profesionally. Now I'm remembered why I hated it that much.
+
+* winGDIdisplay.c : (target for examples: 'make gdi') Windows 64bit (might work with 32bit too) environment, using WIN32 API and "plain old" GDI interface. Therefore uses GDI dll that (still) comes with every windows version.
+
+* SDLdisplay.c : (target for examples: 'make winsdl''make macsdl' or 'make lnxsdl') SDL will give you hardware acceleration. All layers will be placed, and being tracked, as separate textures in videoram, making updating much, much faster. Dragging and moving layers is a breeze if you have some kind of GPU being utilized by SDL. The only bottle neck is pushing updated layers/textures to your video card. Also SDL will work on linux, windows and mac environments (including intel, ARM or M1). Make sure you have the latest SDL2 libraries and developer files installed and the compiler is able to find them. On windows, make sure SDL2.dll is located in path of program.
+
+* x11display.c : Linux X-Windows environment. I used to write a lot of programs using XLib profesionally. Now I'm remembered why I hated it that much.If you want more speed, switch to linux SDL combination. With newest SDL2, even works with wayland. Be aware of nasty bugs in displayhandling of microsoft if you use out-of-the-box WSL2 though.. 
+
 * lnxFBdisplay.c : Using Framebuffer of linux environment (/dev/fb and /dev/event2 (touchscreen) should be present), like raspberry PI. Saves the unneeded overhead of X Windows
+
+See Makefile in examples directory for parameters you could use for your environment. Be aware of different filelocations for for instance SDL, Windows or X11 libraries. 
 
 Use the directive -D SIL_LIVEDANGEROUS to throw away guardrails and speed up your program if you dare to run with no-checking on uninitialized structs, out of bound arrays and NULL pointers. My code will work, but does yours ? ... 🤞
 
 ## Examples
 
 Check the examples directory and use 'make' to create the example programs.
-For different platforms use 'make gdi' (default) for standaard Windows environments, 'make sdl' for windows + SDL2 library/DLL , x11 for linux, fb for linux/Raspberry PI without the need of X Windows.
+For different platforms use 'make gdi' for windows+gdi, 'make winsdl''make macsdl''make lnxsdl' for using SDL for the appropiate platforms, 'make x11' for linux, 'make fb' for barebones linux + framebuffer.
 
 "Combine" : 
 
