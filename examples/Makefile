@@ -14,6 +14,11 @@ ifeq ($(DEST),winsdl)
   CC = x86_64-w64-mingw32-gcc 
   ICO = ico.rco
 endif
+ifeq ($(DEST),lnxsdl) 
+  DISP = SDLdisplay
+  CFLAGS=  -lSDL2main -lSDL2 -DSDL_MAIN_HANDLED 
+  CC = gcc
+endif
 ifeq ($(DEST),x11) 
   E = 
   DISP = x11display
@@ -44,6 +49,7 @@ $(PROG).o: $(PROG).c $(DEPS)
 
 gdi: clean
 winsdl: clean
+lnxsdl: clean
 x11: clean
 fb:  clean
 
