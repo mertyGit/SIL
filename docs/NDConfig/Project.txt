@@ -72,6 +72,7 @@ Copyright: © Remco Schellekens
 # ------------------------------------------------------------------------
 
 Source Folder: ..\..\src
+   Name: SIL
 
 
 # This is where you tell Natural Docs which folders it should scan for source
@@ -131,6 +132,9 @@ Source Folder: ..\..\src
 
 # Images
 # ------------------------------------------------------------------------
+
+Image Folder: ..
+
 
 # This is where you tell Natural Docs which folders it should look for images
 # in.  When you put something like (see diagram.jpg) in a comment Natural Docs

@@ -13,23 +13,27 @@
 
 /* sil.c */
 
+/* 
+  Group: SIL Errorcodes
+  SILERR_ALLOK         -  No error                           
+  SILERR_CANTOPENFILE  -  Can't open file                     
+  SILERR_NOMEM         -  can't allocate memory               
+  SILERR_CANTDECODEPNG -  Can't decode PNG                    
+  SILERR_NOFILEFOUND   -  No Filename in font file found      
+  SILERR_NOCHARS       -  can't find chars in fontfile       
+  SILERR_WRONGFORMAT   -  something wrong during decoding     
+  SILERR_NOTINIT       -  Paramaters that are not initialized 
 
-/* logging level of all sil functions */
-#define SIL_QUIET   1
-#define SIL_FATAL   2
-#define SIL_ERROR   3
-#define SIL_WARNING 4
-#define SIL_DEBUG   5
+*/
 
-/* general errors */
-#define SILERR_ALLOK         0 /* No error                            */
-#define SILERR_CANTOPENFILE  1 /* Can't open file                     */
-#define SILERR_NOMEM         2 /* can't allocate memory               */
-#define SILERR_CANTDECODEPNG 3 /* Can't decode PNG                    */
-#define SILERR_NOFILEFOUND   4 /* No Filename in font file found      */
-#define SILERR_NOCHARS       5 /* can't find chars in fontfile        */
-#define SILERR_WRONGFORMAT   6 /* something wrong during decoding     */
-#define SILERR_NOTINIT       7 /* Paramaters that are not initialized */
+#define SILERR_ALLOK         0 
+#define SILERR_CANTOPENFILE  1 
+#define SILERR_NOMEM         2 
+#define SILERR_CANTDECODEPNG 3 
+#define SILERR_NOFILEFOUND   4 
+#define SILERR_NOCHARS       5 
+#define SILERR_WRONGFORMAT   6 
+#define SILERR_NOTINIT       7 
 
 UINT sil_initSIL(UINT, UINT, char *, void *);
 UINT sil_setLog(char *logname, BYTE flags);

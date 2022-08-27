@@ -6,6 +6,72 @@
 
 */
 
+/* About: Using SIL 
+  
+    The standard flow of a program that is using SIL is like this:
+    
+    - start of your application
+    - Initialize SIL -> <sil_initSIL()>
+    - (optional) Set logging -> <sil_setLog()>
+    - Create/load/place - initial - layers 
+    - (optional) attach your own handlers to layers -> <sil_setKeyHandler()> <sil_setClickHandler()>
+    <sil_setHoverHandler()><sil_setDragHandler()>
+    - (optional) set timer handler & timer -> <sil_setTimeHandler()> <sil_setTimeval()>
+    - Send 1st update to display -> <sil_updateDisplay()>
+    - Enter SIL mainloop until quit is requested -> <sil_mainLoop()> & <sil_quit()>
+    - clean-up SIL resources -> <sil_destroySIL()>
+    - end of your application
+  
+  
+
+*/
+/* About: Example basic program
+
+  This will create a program that will show a small window with a white area 
+  and green filled rectange in it 
+
+    (see basicprogram.png)
+
+--- Code
+#include <stdio.h>
+#include "sil.h"
+#include "log.h"
+
+int main() {
+  SILLYR *drawing;
+
+  // Initialize SIL; Create a window of 200x200 with title "basic example"
+  sil_initSIL(200,200,"basic example",NULL);
+
+  // Create layer in this window at position 10,10 and dimension 150x150
+  drawing=sil_addLayer(10,10,150,150,SILTYPE_ABGR);
+
+  // paint background of layer white, no transparancy
+  sil_paintLayer(drawing,SILCOLOR_WHITE,255);
+  // set foreground color - in this case the border - to dark green, no transparancy
+  sil_setForegroundColor(SILCOLOR_DARK_GREEN,255);
+  // set background color - in this fill of rectangle - to green, opacity at 50
+  sil_setBackgroundColor(SILCOLOR_GREEN,50);
+  // set width of lines (for border) to 4
+  sil_setDrawWidth(4);
+  // Draw a rectangle inside layer "drawing" at 15,15 and dimension 100x100
+  sil_drawRectangle(drawing,15,15,100,100);
+
+  // update display (window in this case)
+  sil_updateDisplay();
+
+  // Wait till event makes it quit, like alt+F4 or closing window
+  sil_mainLoop();
+
+  // Cleanup
+  sil_destroySIL();
+}
+  
+---
+
+ */
+  
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "sil.h"
@@ -65,7 +131,7 @@ UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance) {
   return ret;
 }
 
-/* Function: sil_initLog
+/* Function: sil_setLog
 
   Initialize logging parameters 
 
@@ -439,7 +505,7 @@ void sil_setTimerHandler(UINT (*timer)(SILEVENT *)) {
 
 /*
 Function: sil_setTimeval
-  set timer to given amount of seconds
+  set timer to given amount of miliseconds
 
 Parameters:
   UINT amount - delay in seconds until timer handler is called. use '0' to 
@@ -458,8 +524,8 @@ void sil_setTimeval(UINT amount) {
 }
 
 /*
-Function: sil_setTimeval
-  If you have trouble remembering things, retrieve the amount of seconds you did set your timer to
+Function: sil_getTimeval
+  If you have trouble remembering things, retrieve the amount of miliseconds you did set your timer to
 
 Returns:
   UINT - amount of seconds

@@ -55,8 +55,10 @@ $(PROG).o: $(PROG).c $(DEPS)
 gdi: clean
 winsdl: clean
 lnxsdl: clean
+macsdl: clean
 x11: clean
 fb:  clean
+
 
 %: 
 	$(MAKE) -C ../examples/ PROG=combined  DEST=$@
@@ -64,6 +66,7 @@ fb:  clean
 	$(MAKE) -C ../examples/ PROG=ordercopy DEST=$@
 	$(MAKE) -C ../examples/ PROG=draw      DEST=$@
 	$(MAKE) -C ../examples/ PROG=text      DEST=$@
+	$(MAKE) -C ../examples/ PROG=basic     DEST=$@
 
 clean: 
 	rm -rf ../examples/*.exe ../examples/*.o ../src/*.o ../examples/*.o ../examples/combined ../examples/filters ../examples/*dump.png ../examples/printscreen.png

@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("exa",["Information"],[["Example",,[[,"Example basic program",,,0,"File:sil.c:Example_basic_program"]]]]);
