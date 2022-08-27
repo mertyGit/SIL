@@ -13,12 +13,16 @@ TOC
 
 ## News
 
-Created my first real-test-program "SHifting MAdness" (SHIMA for short). 
+I'm back. Actually, I used my library in lot of projects over the time and also decided to build a more sophisticated (but still simple) GUI components on top for "normal" PC environments, using SDL only, called "SILAC". Doing so, I extended SIL a bit, fixed some small bugs and annoiances and I'm now in the proces to merge those changes back into this repository. Also, to my suprise, SDL versions can be run everywhere without changing anything on code level, just make sure you have latest SDL2 libs & development files installed and tell the compiler where to find them. On my macbook air with A1 compiles by using homebrew to install SDL2 and gcc. (clang should not be a problem, but prefer gcc)
+
+## Examples
+
+This was one of my first real-test-programs using SIL "SHifting MAdness" (SHIMA for short). 
 You can find the it in the [SHIMA repository](https://github.com/mertyGit/shima) .
 There you can find the [first beta release](https://github.com/mertyGit/shima/releases/download/beta1.0/Shima_Windows_v1_Beta.zip). At the moment Windows only, but final version will be ported to linux and also Mac). If you like sliding puzzles, give it a go ! (or better yet: create your own and send them to me for inclusion !)
 
 
-<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot1.png" width="300">&nbsp;<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot2.png" width="300">&nbsp;<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot4.png" width="300">&nbsp;<BR>
+<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot1.png" width="200">&nbsp;<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot2.png" width="200">&nbsp;<img src="https://github.com/mertyGit/shima/releases/download/beta1.0/shima_1beta_screenshot4.png" width="200">&nbsp;<BR>
 
 
 ## Release Information
@@ -30,7 +34,7 @@ TODO:
 - [X] Clean up names of some functions. Some became.very.long.it.almost.looks.like.java.class.notations. Don't want to depend on IDE autofill
 - [ ] Writing/Extending Documentation. All programmers love writing documentation. Really. 
 - [ ] Rotating layers 90 degrees without wasting much memory.
-- [ ] Testing SDL version on more platforms then windows.
+- [X] Testing SDL version on more platforms then windows.
 - [X] Grouping of layers, move/hide a single group with one command instead of custom loop
 - [ ] "Headless" display. Only output can be a PNG
 - [X] Mousepointer is switching back and forward from arrow to hand when hovering
