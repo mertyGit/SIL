@@ -1,6 +1,7 @@
 ifeq ($(DEST),gdi) 
   E = .exe
   DISP = winGDIdisplay
+  # REMOVE "-mconsole" to don't get debugging/logging console (!)
   CFLAGS = -mconsole -lgdi32 -DSIL_W32 
   CC = x86_64-w64-mingw32-gcc
   ICO = ico.rco
@@ -54,5 +55,5 @@ fb:  clean
 	$(MAKE) -C ../examples/ PROG=text      DEST=$@
 
 clean: 
-	rm -rf ../examples/*.exe *.o ../examples/*.o ../examples/combined ../examples/filters ../examples/*dump.png ../examples/printscreen.png
+	rm -rf ../examples/*.exe ../examples/*.o ../src/*.o ../examples/*.o ../examples/combined ../examples/filters ../examples/*dump.png ../examples/printscreen.png
 	rm -rf ../examples/draw ../examples/combined ../examples/filters ../examples/ordercopy ../examples/text

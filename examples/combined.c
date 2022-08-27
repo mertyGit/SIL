@@ -13,8 +13,6 @@ static UINT lw=1;
 static SILGROUP *grouptest;
 
 void drawlines() {
-  printf("(re-) painting drawing...\n");
-  printf("width %d\n",lw);
   sil_paintLayer(drawing,30,30,30,255);
   sil_borderFilter(drawing);
 
