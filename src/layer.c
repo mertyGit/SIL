@@ -85,10 +85,9 @@ SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
   layer->click=NULL;
   layer->keypress=NULL;
   layer->drag=NULL;
+  layer->pointer=NULL;
   layer->key=0;
   layer->modifiers=0;
-  layer->prevx=0;
-  layer->prevy=0;
   layer->sprite.width=0;
   layer->sprite.height=0;
   layer->sprite.pos=0;
@@ -134,10 +133,9 @@ SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
   newlayer->click=NULL;
   newlayer->keypress=NULL;
   newlayer->drag=NULL;
+  newlayer->pointer=NULL;
   newlayer->key=0;
   newlayer->modifiers=0;
-  newlayer->prevx=0;
-  newlayer->prevy=0;
   newlayer->user=NULL;
 
   /* add layer to double linked list of layers */
@@ -150,6 +148,8 @@ SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
     newlayer->previous=NULL;
   }
   glyr.top=newlayer;
+  layer->fb->changed=1;
+  layer->fb->resized=1;
 
   return newlayer;
 }
@@ -611,7 +611,7 @@ void sil_resetView(SILLYR *layer) {
 UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) {
   SILFB *tmpfb;
   BYTE red,green,blue,alpha;
-  UINT err=0;
+  UINT maxx,maxy;
 
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
@@ -633,8 +633,12 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
 
 
   /* copy selected part */
-  for (int x=minx;x<minx+width;x++) {
-    for (int y=miny;y<miny+height;y++) {
+  maxx=minx+width;
+  maxy=miny+height;
+  if (maxx>layer->fb->width) maxx=layer->fb->width;
+  if (maxy>layer->fb->height) maxy=layer->fb->height;
+  for (int x=minx;x<maxx;x++) {
+    for (int y=miny;y<maxy;y++) {
         sil_getPixelFB(layer->fb,x,y,&red,&green,&blue,&alpha);
         sil_putPixelFB(tmpfb,x-minx,y-miny,red,green,blue,alpha);
     }
@@ -648,11 +652,16 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
   layer->fb->height=tmpfb->height;
   layer->fb->type=tmpfb->type;
   layer->fb->size=tmpfb->size;
+  layer->fb->changed=1;
+  layer->fb->resized=1;
+  /*
   layer->view.minx=0;
   layer->view.miny=0;
   layer->view.width=tmpfb->width;
   layer->view.height=tmpfb->height;
-  return 0;
+  */
+
+  return SILERR_ALLOK;
 }
 
 /*****************************************************************************
@@ -817,19 +826,23 @@ void LayersToFB(SILFB *fb) {
 SILLYR *sil_findHighestClick(UINT x,UINT y) {
   SILLYR *layer;
   BYTE red,green,blue,alpha;
+  int xl,xr,yt,yb;
 
   layer=sil_getTop();
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
       if ((NULL!=layer->click)||(sil_checkFlags(layer,SILFLAG_DRAGGABLE))) {
-        if ((x>=layer->relx+layer->view.minx) &&
-          (x<layer->relx+(layer->view.minx+layer->view.width)) &&
-          (y>=layer->rely+layer->view.miny) &&
-          (y<layer->rely+(layer->view.miny+layer->view.height))) {
+        /* calculate boundaries of layers where x,y must fall into */
+        xl=layer->relx-(int)(layer->view.minx);
+        xr=layer->relx+(int)(layer->view.width);
+        yt=layer->rely-(int)(layer->view.miny);
+        yb=layer->rely+(int)(layer->view.height);
+        if ((x>=xl) && (x<xr) && (y>=yt) && (y<yb)) {
           /* return inmediatly when all pixels within view can be considered as target */
           if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
           /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
-          sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
+          sil_getPixelLayer(layer,x-(layer->relx)+(layer->view.minx),
+              y-(layer->rely)+(layer->view.miny),&red,&green,&blue,&alpha);
           if (alpha>0) return layer;
         }
       }
@@ -863,19 +876,23 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
 SILLYR *sil_findHighestHover(UINT x,UINT y) {
   SILLYR *layer;
   BYTE red,green,blue,alpha;
+  int xl,xr,yt,yb;
 
   layer=sil_getTop();
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
       if (NULL!=layer->hover) {
-        if ((x>=layer->relx+layer->view.minx) &&
-          (x<layer->relx+(layer->view.minx+layer->view.width)) &&
-          (y>=layer->rely+layer->view.miny) &&
-          (y<layer->rely+(layer->view.miny+layer->view.height))) {
+        /* calculate boundaries of layers where x,y must fall into */
+        xl=layer->relx-(int)(layer->view.minx);
+        xr=layer->relx+(int)(layer->view.width);
+        yt=layer->rely-(int)(layer->view.miny);
+        yb=layer->rely+(int)(layer->view.height);
+        if ((x>=xl) && (x<xr) && (y>=yt) && (y<yb)) {
           /* return inmediatly when all pixels within view can be considered as target */
           if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
           /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
-          sil_getPixelLayer(layer,x-layer->relx,y-layer->rely,&red,&green,&blue,&alpha);
+          sil_getPixelLayer(layer,x-(layer->relx)+(layer->view.minx),
+              y-(layer->rely)+(layer->view.miny),&red,&green,&blue,&alpha);
           if (alpha>0) return layer;
         }
       }

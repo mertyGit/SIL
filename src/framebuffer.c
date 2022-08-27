@@ -104,6 +104,7 @@ SILFB *sil_initFB(UINT width, UINT height, BYTE type) {
   fb->height=height;
   fb->type=type;
   fb->changed=1;
+  fb->resized=0;
   return fb;
 }
 

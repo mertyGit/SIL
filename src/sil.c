@@ -18,6 +18,7 @@ typedef struct _GSIL {
  UINT init;
  UINT (*timer)(SILEVENT *);
  UINT amount;
+ UINT dragged;
 } GSIL;
 static GSIL gv;
 
@@ -104,6 +105,98 @@ void sil_quitLoop() {
   gv.quit=1;
 }
 
+static void checkMove(SILEVENT *se) {
+  SILLYR *al=NULL;
+  SILLYR *tmp=NULL;
+  BYTE buttons;
+
+  al=gv.ActiveLayer;
+
+  if ((al)&&(al->drag)) {
+    /* are we dragging something ?                   */
+    /* just get latest mousebutton status to be sure */
+    buttons=sil_getMouse(NULL,NULL);
+    if (buttons&SIL_BTN_LEFT) {
+      /* yup we are still dragging */
+      /* calculate new position    */
+      se->x=al->relx+se->dx;
+      se->y=al->rely+se->dy;
+  
+      gv.dragged=1;
+  
+      /* send out to drag handler */
+      se->type=SILDISP_MOUSE_DRAG;
+      se->layer=al;
+      if (al->drag(se)) {
+        /* if returns > 0, it will process proposed move */
+        al->relx=se->x;
+        al->rely=se->y;
+        sil_updateDisplay();
+      }
+      return;
+    } 
+  }
+
+  /* can we click it ?  */
+  tmp=sil_findHighestClick(se->x,se->y);
+  if (tmp) {
+    if (tmp->pointer) {
+      tmp->pointer(se);
+    } else {
+      sil_setCursor(SILCUR_HAND);
+    }
+  }
+
+
+  /* no drag, but something to send hover events to ? */
+  se->layer=sil_findHighestHover(se->x,se->y);
+  if (NULL==se->layer) {
+    /* nope, so just reset cursor if it wasn't clickable either */
+    if (NULL==tmp) sil_setCursor(SILCUR_ARROW);
+    /* if there was an a active layer, tell it goodbye */ 
+    if ((al)&&(al->hover)) {
+      se->layer=al;
+      se->type=SILDISP_MOUSE_LEFT;
+      if (!sil_checkFlags(al,SILFLAG_INVISIBLE)) {
+        if (al->hover(se)) sil_updateDisplay();
+      }
+    }
+    gv.ActiveLayer=NULL;
+    return;
+  }
+  
+  /* still above active layer ? */
+  if ((al)&&(al->hover)) {
+    if (al==se->layer) {
+      /* just sent MOVE event */
+      se->type=SILDISP_MOUSE_MOVE;
+      if (al->hover(se)) sil_updateDisplay();
+      return;
+    } else {
+      /* nope, send active layer leaving notice */
+      tmp=se->layer;
+      se->layer=al;
+      se->type=SILDISP_MOUSE_LEFT;
+      if (!sil_checkFlags(al,SILFLAG_INVISIBLE)) {
+        if (al->hover(se)) sil_updateDisplay();
+      }
+      se->layer=tmp;
+    }
+  }
+
+  /* so..at this point it is not active layer */
+  /* but it has hover, so must be entering    */
+  se->type=SILDISP_MOUSE_ENTER;
+  if (se->layer->hover(se)) sil_updateDisplay();
+  gv.ActiveLayer=se->layer;
+  if (se->layer->pointer) {
+    se->layer->pointer(se);
+  } else {
+    sil_setCursor(SILCUR_HAND);
+  }
+   
+}
+
 /* Function: sil_mainLoop
    Wait for events from timer, mouse and/or keyboard to handle. 
    this loop will continiously process incoming display events and redeligate them to the 
@@ -148,99 +241,98 @@ void sil_quitLoop() {
 
  */
 void sil_mainLoop() {
-  SILLYR *tmp;
   SILEVENT *se;
+  SILLYR *al=NULL;
 
   do {
-    se=sil_getEventDisplay(0);
+    se=sil_getEventDisplay();
     if (NULL==se) break; /* should not happen */
+    al=gv.ActiveLayer;
+
     switch (se->type) {
+
       case SILDISP_TIMER:
         gv.amount=0;
         if (gv.timer) 
           if (gv.timer(se)) sil_updateDisplay();
         break;
+
       case SILDISP_MOUSE_UP:
-          if (gv.ActiveLayer) sil_clearFlags(gv.ActiveLayer,SILFLAG_BUTTONDOWN);
+        if (al) {
+          if (al->click) {
+            se->layer=al;
+            if (al->click(se)) {
+              sil_updateDisplay();
+            }
+          }
+        }
+        gv.dragged=0;
+        se->layer=sil_findHighestClick(se->x,se->y);
+        if (se->layer) {
+          gv.ActiveLayer=se->layer;
+          if (se->layer->pointer) {
+            se->layer->pointer(se);
+          } else {
+            sil_setCursor(SILCUR_HAND);
+          }
+          if (se->layer->click) {
+            if (se->layer->click(se)) sil_updateDisplay();
+          }
+        } else {
+          /* no layer found, check if hover is enabled */
+          se->layer=sil_findHighestHover(se->x,se->y);
+          if (se->layer) {
+            if (se->layer->pointer) {
+              se->layer->pointer(se);
+            } else {
+              sil_setCursor(SILCUR_HAND);
+            }
+          } else {
+            sil_setCursor(SILCUR_ARROW);
+            gv.ActiveLayer=NULL;
+          }
+        }
+        break;
+
       case SILDISP_MOUSE_DOWN:
+        se->layer=sil_findHighestClick(se->x,se->y);
+        if (se->layer) {
+          gv.ActiveLayer=se->layer;
+          if (se->layer->pointer) {
+            se->layer->pointer(se);
+          } else {
+            sil_setCursor(SILCUR_HAND);
+          }
+          if (se->layer->click) {
+            if (se->layer->click(se)) sil_updateDisplay();
+          }
+        } else {
+          /* no layer found, just revert to standard mousepointer */
+          sil_setCursor(SILCUR_ARROW);
+          gv.ActiveLayer=NULL;
+        }
+        break;
+
       case SILDISP_MOUSEWHEEL:
         se->layer=sil_findHighestClick(se->x,se->y);
         if (se->layer) {
-          sil_setCursor(SILCUR_HAND);
           gv.ActiveLayer=se->layer;
-          se->x-=se->layer->relx;
-          se->y-=se->layer->rely;
-          if (SILDISP_MOUSE_UP==se->type) sil_clearFlags(gv.ActiveLayer,SILFLAG_BUTTONDOWN);
-          if (SILDISP_MOUSE_DOWN==se->type) {
-            sil_setFlags(gv.ActiveLayer,SILFLAG_BUTTONDOWN);
-            gv.ActiveLayer->prevx=se->x;
-            gv.ActiveLayer->prevy=se->y;
+          if (se->layer->pointer) {
+            se->layer->pointer(se);
+          } else {
+            sil_setCursor(SILCUR_HAND);
           }
           if (se->layer->click) {
             if (se->layer->click(se)) sil_updateDisplay();
           }
         } else {
           sil_setCursor(SILCUR_ARROW);
+          gv.ActiveLayer=NULL;
         }
         break;
 
       case SILDISP_MOUSE_MOVE:
-        /* Set mouse pointer if it has click or draggable */
-        if ((gv.ActiveLayer)&&(sil_checkFlags(gv.ActiveLayer,SILFLAG_DRAGGABLE|SILFLAG_BUTTONDOWN))) {
-          sil_setCursor(SILCUR_HAND);
-          /* if it is draggable and mousebutton is down, just move it */
-          se->x=(int)(se->x)-(int)gv.ActiveLayer->prevx;
-          se->y=(int)(se->y)-(int)gv.ActiveLayer->prevy;
-          if (gv.ActiveLayer->drag) {
-            se->type=SILDISP_MOUSE_DRAG;
-            se->layer=gv.ActiveLayer;
-            if (gv.ActiveLayer->drag(se)) {
-              gv.ActiveLayer->relx=se->x;
-              gv.ActiveLayer->rely=se->y;
-              sil_updateDisplay();
-            }
-          } else {
-            /* no draghandler defined, just drag it */
-            gv.ActiveLayer->relx=se->x;
-            gv.ActiveLayer->rely=se->y;
-            sil_updateDisplay();
-          }
-          /*  */
-        } else {
-          if (sil_findHighestClick(se->x,se->y)) { 
-            sil_setCursor(SILCUR_HAND);
-          } else {
-            sil_setCursor(SILCUR_ARROW);
-          }
-          se->layer=sil_findHighestHover(se->x,se->y);
-          if ((gv.ActiveLayer)&&(gv.ActiveLayer!=se->layer)) {
-            /* even if mouse button is still pressed, if mousepointer isn't above layer */
-            /* it doesn't make sense to keep this flag up for the "old" layer           */
-            sil_clearFlags(gv.ActiveLayer,SILFLAG_BUTTONDOWN);
-            if (gv.ActiveLayer->hover) {
-              tmp=se->layer;
-              se->type=SILDISP_MOUSE_LEFT;
-              se->layer=gv.ActiveLayer;
-              /* don't send LEFT event when old activelayer became invisible */
-              if (!sil_checkFlags(gv.ActiveLayer,SILFLAG_INVISIBLE)) {
-                if (gv.ActiveLayer->hover(se)) sil_updateDisplay();
-              }
-              se->layer=tmp;
-              gv.ActiveLayer=NULL;
-            }
-          }
-          if (se->layer) {
-            se->x-=se->layer->relx;
-            se->y-=se->layer->rely;
-            if (gv.ActiveLayer!=se->layer) {
-              se->type=SILDISP_MOUSE_ENTER;
-              if (se->layer->hover(se)) sil_updateDisplay();
-            }
-            se->type=SILDISP_MOUSE_MOVE;
-            gv.ActiveLayer=se->layer;
-            if (se->layer->hover(se)) sil_updateDisplay();
-          }
-        }
+        checkMove(se);
         break;
 
       case SILDISP_KEY_DOWN:
@@ -258,6 +350,7 @@ void sil_mainLoop() {
           }
         }
         break;
+
       case SILDISP_KEY_UP:
         se->layer=sil_findHighestKeyPress(se->key, se->modifiers);
         if (se->layer) {

@@ -40,6 +40,7 @@ void sil_quitLoop();
 void sil_mainLoop();
 void sil_setTimeval(UINT);
 UINT sil_getTimeval();
+
   
 
 /* framebuffer.c */
@@ -68,6 +69,7 @@ typedef struct _SILFB {
   BYTE type;
   UINT size;
   BYTE changed;
+  BYTE resized;
 } SILFB;
 
 
@@ -87,7 +89,6 @@ void sil_destroyFB(SILFB *);
 
 #define SILFLAG_INVISIBLE      1
 #define SILFLAG_NOBLEND        2
-#define SILFLAG_BUTTONDOWN     4
 #define SILFLAG_DRAGGABLE      8
 #define SILFLAG_VIEWPOSSTAY   16
 #define SILFLAG_FREEUSER      32
@@ -105,8 +106,10 @@ void sil_destroyFB(SILFB *);
 typedef struct _SILEVENT {
   BYTE type;
   UINT val;
-  UINT x;
-  UINT y;
+  int x;
+  int y;
+  int dx;
+  int dy;
   UINT code;
   UINT key;
   BYTE modifiers;
@@ -144,10 +147,9 @@ typedef struct _SILLYR {
   UINT (*click   )(SILEVENT *);
   UINT (*keypress)(SILEVENT *);
   UINT (*drag    )(SILEVENT *);
+  UINT (*pointer )(SILEVENT *);
   UINT key;
   BYTE modifiers;
-  UINT prevx;
-  UINT prevy;
   SILSPRITE sprite;
   void *user;
 } SILLYR;
@@ -357,8 +359,13 @@ void sil_rescale(SILLYR *, UINT,UINT);
 #define SILDISP_MOUSE_ENTER 10
 #define SILDISP_MOUSE_DRAG  11
 #define SILDISP_TIMER       12
+#define SILDISP_RESIZED     13
 
 
+/* buttons for mouse clicks */
+#define SIL_BTN_LEFT     1
+#define SIL_BTN_MIDDLE   2
+#define SIL_BTN_RIGHT    4
 
 UINT sil_initDisplay(void *, UINT, UINT ,char *);
 void sil_updateDisplay();
@@ -369,6 +376,12 @@ void sil_setTimerDisplay(UINT);
 void sil_stopTimerDisplay();
 void sil_setCursor(BYTE);
 SILLYR *sil_screenCapture();
+BYTE sil_getModifiers();
+void sil_getWindowSize(int *, int *);
+BYTE sil_getMouse(int *,int *);
+BYTE sil_outsideWindow();
+void sil_setSysHandler(void (*)(SILEVENT *));
+
 
 /* bitmasks for keymodifiers/special keys */
 #define SILKM_SHIFT  1
@@ -377,12 +390,18 @@ SILLYR *sil_screenCapture();
 #define SILKM_CAPS   8
 
 /* mouse cursor types */
-#define SILCUR_HAND  1
-#define SILCUR_ARROW 2
-#define SILCUR_WAIT  3
-#define SILCUR_HELP  4
-#define SILCUR_NO    5
-#define SILCUR_IBEAM 6
+#define SILCUR_HAND       1
+#define SILCUR_ARROW      2
+#define SILCUR_WAIT       3
+#define SILCUR_HELP       4
+#define SILCUR_NO         5
+#define SILCUR_IBEAM      6
+#define SILCUR_VERSIZE    7  
+#define SILCUR_HORSIZE    8
+#define SILCUR_DIAGRSIZE  9
+#define SILCUR_DIAGLSIZE 10
+#define SILCUR_SIZEALL   11 
+
 
 /* keycodes */
 #define SILKY_BACK          1

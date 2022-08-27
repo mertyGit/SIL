@@ -50,9 +50,11 @@ typedef struct _GDISP {
  struct timeval lasttimer;
  HCURSOR cursor;
  BYTE ctype;
+ int lastx;
+ int lasty;
 } GDISP;
 
-static GDISP gdisp;
+static GDISP gv;
 
 /*****************************************************************************
 
@@ -64,11 +66,45 @@ static GDISP gdisp;
  *****************************************************************************/
 
 UINT sil_getTypefromDisplay() {
-  if (NULL==gdisp.fb) {
+  if (NULL==gv.fb) {
     log_warn("trying to get display color type from non-initialized display");
     return 0;
   }
-  return gdisp.fb->type;
+  return gv.fb->type;
+}
+
+BYTE sil_getMouse(int *x,int *y) {
+  BYTE ret=0;
+  BYTE swap=0;
+  POINT point;
+  if (GetCursorPos(&point)) {
+    if (x) *x=point.x;
+    if (y) *y=point.y;
+  } else {
+    if (x) *x=gv.lastx;
+    if (y) *y=gv.lasty;
+  }
+
+  /* keystate can't tell if they are swapped by user */
+  if (GetSystemMetrics(SM_SWAPBUTTON)) swap=1;
+  if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
+    if (swap) { 
+      ret|=SIL_BTN_RIGHT;
+    } else { 
+      ret|=SIL_BTN_LEFT;
+    }
+  }
+  if (GetAsyncKeyState(VK_MBUTTON) & 0x8000) ret|=SIL_BTN_MIDDLE;
+  if (GetAsyncKeyState(VK_RBUTTON) & 0x8000) {
+    if (swap) { 
+      ret|=SIL_BTN_LEFT;
+    } else { 
+      ret|=SIL_BTN_RIGHT;
+    }
+  }
+
+  return ret;
+
 }
 
 /*****************************************************************************
@@ -214,64 +250,64 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
 
 
   /* hI = HINSTANCE is returned by calling WinMain, therefore should be given to SIL */
-  gdisp.hInstance=(HINSTANCE) hI;
+  gv.hInstance=(HINSTANCE) hI;
 
   
   /* this framebuffer will be dedicated for the window */
-  gdisp.fb=sil_initFB(width, height, SILTYPE_ARGB);
-  if (NULL==gdisp.fb) {
+  gv.fb=sil_initFB(width, height, SILTYPE_ARGB);
+  if (NULL==gv.fb) {
     log_info("ERR: Can't create framebuffer for display");
     return SILERR_NOMEM;
   }
 
   /* simple C-string to more unicode "widechar" string */
-  MultiByteToWideChar(CP_ACP,0,title,-1,(LPWSTR)gdisp.name,sizeof(gdisp.name)-1);
+  MultiByteToWideChar(CP_ACP,0,title,-1,(LPWSTR)gv.name,sizeof(gv.name)-1);
 
   wc.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-  wc.lpszClassName = gdisp.name;
-  wc.hInstance     = gdisp.hInstance;
+  wc.lpszClassName = gv.name;
+  wc.hInstance     = gv.hInstance;
   wc.hbrBackground = GetSysColorBrush(COLOR_3DFACE);
   wc.lpfnWndProc   = WndProc;
   wc.hCursor       = LoadCursor(0, IDC_ARROW);
   wc.hIcon         = LoadIcon(hI, MAKEINTRESOURCE(1));
 
   /* since we set it to arrow in the class, use it as default for sil_setCursor */
-  gdisp.ctype=SILCUR_ARROW;
+  gv.ctype=SILCUR_ARROW;
 
   /* Set windows options */
   RegisterClassW(&wc);
 
   /* and create the window */
-  gdisp.win.window=CreateWindowExW(
+  gv.win.window=CreateWindowExW(
     0,     /* WS_EX_... possibilities                          */
     wc.lpszClassName,wc.lpszClassName, /* should be the same ? */
     WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
     CW_USEDEFAULT, CW_USEDEFAULT,   /* initial position of window (left upper corner)   */
-    gdisp.fb->width+6,gdisp.fb->height+30,
+    gv.fb->width+6,gv.fb->height+30,
     NULL,NULL,NULL,NULL /* no hWndParent,hMenu,hInstance or lpParam to set */
   );
 
-  if (NULL==gdisp.win.window) {
+  if (NULL==gv.win.window) {
     printf("ERROR: Can't create window (%d)\n",GetLastError());
 
     return SILERR_NOTINIT;
   }
 
   /* display window (nothing in it, yet) */
-  ShowWindow(gdisp.win.window, SW_NORMAL);
+  ShowWindow(gv.win.window, SW_NORMAL);
 
   /* now create a bitmap that has the same colordepth and dimensions as our framebuffer    */
-  gdisp.win.bitmapInfo = (BITMAPINFO  *) calloc(1,sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) *3);
-  gdisp.win.bitmapInfo->bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
-  gdisp.win.bitmapInfo->bmiHeader.biPlanes      = 1;
-  gdisp.win.bitmapInfo->bmiHeader.biBitCount    = 32;
-  gdisp.win.bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
-  gdisp.win.bitmapInfo->bmiHeader.biWidth       = gdisp.fb->width;
-  gdisp.win.bitmapInfo->bmiHeader.biHeight      = -gdisp.fb->height; /* yup, minus, from bottom to top */
-  gdisp.win.bitmapInfo->bmiColors[0].rgbRed     = 0xff;
-  gdisp.win.bitmapInfo->bmiColors[1].rgbGreen   = 0xff;
-  gdisp.win.bitmapInfo->bmiColors[2].rgbBlue    = 0xff;
-  GetWindowRect(gdisp.win.window,&sz);
+  gv.win.bitmapInfo = (BITMAPINFO  *) calloc(1,sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) *3);
+  gv.win.bitmapInfo->bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+  gv.win.bitmapInfo->bmiHeader.biPlanes      = 1;
+  gv.win.bitmapInfo->bmiHeader.biBitCount    = 32;
+  gv.win.bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
+  gv.win.bitmapInfo->bmiHeader.biWidth       = gv.fb->width;
+  gv.win.bitmapInfo->bmiHeader.biHeight      = -gv.fb->height; /* yup, minus, from bottom to top */
+  gv.win.bitmapInfo->bmiColors[0].rgbRed     = 0xff;
+  gv.win.bitmapInfo->bmiColors[1].rgbGreen   = 0xff;
+  gv.win.bitmapInfo->bmiColors[2].rgbBlue    = 0xff;
+  GetWindowRect(gv.win.window,&sz);
   AdjustWindowRect(&sz,WS_OVERLAPPEDWINDOW  & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,FALSE);
 
   /* fix for hanging mousepointer */
@@ -291,28 +327,28 @@ void sil_updateDisplay() {
   HDC         hdc;
 
   /* get all layerinformation into a single fb */
-  LayersToFB(gdisp.fb);
+  LayersToFB(gv.fb);
 
   /* get device context (GDI handle) */
-  hdc = GetDC(gdisp.win.window);
+  hdc = GetDC(gv.win.window);
 
   /* now "stretch" the framebuffer over the earlier created bitmap */
   /* since sizes are the same, there will be no scaling */
   StretchDIBits(
     hdc,                    /* GDI context                      */
     0, 0,                   /* upper left corner of destination */
-    gdisp.fb->width, gdisp.fb->height,  /* width/height of destination      */
+    gv.fb->width, gv.fb->height,  /* width/height of destination      */
     0, 0,                   /* upper left corner of source (FB) */
-    gdisp.fb->width, gdisp.fb->height,  /* width/height of source           */
-    gdisp.fb->buf,                /* pointer source pixels            */
-    gdisp.win.bitmapInfo,         /* pointer to window bitmap         */
+    gv.fb->width, gv.fb->height,  /* width/height of source           */
+    gv.fb->buf,                /* pointer source pixels            */
+    gv.win.bitmapInfo,         /* pointer to window bitmap         */
     DIB_RGB_COLORS,         /* use RGB values                   */
     SRCCOPY                 /* just plain-old-copy              */
   );
-  ValidateRect(gdisp.win.window,NULL);
+  ValidateRect(gv.win.window,NULL);
 
   /* release device context (GDI handle) */
-  ReleaseDC(gdisp.win.window,hdc);
+  ReleaseDC(gv.win.window,hdc);
 }
 
 /*****************************************************************************
@@ -321,7 +357,7 @@ void sil_updateDisplay() {
 
  *****************************************************************************/
 void sil_destroyDisplay() { 
-  if (gdisp.fb->type) sil_destroyFB(gdisp.fb);
+  if (gv.fb->type) sil_destroyFB(gv.fb);
 }
 
 
@@ -352,54 +388,54 @@ void sil_destroyDisplay() {
  *****************************************************************************/
 SILEVENT *sil_getEventDisplay() {
   MSG  msg;
-  gdisp.se.type=SILDISP_NOTHING;
-  gdisp.se.val=0;
-  gdisp.se.x=0;
-  gdisp.se.y=0;
-  gdisp.se.code=0;
-  gdisp.se.key=0;
-  gdisp.se.modifiers=0;
-  gdisp.se.layer=NULL;
-  while ((SILDISP_NOTHING==gdisp.se.type)&&(GetMessage(&msg, NULL, 0, 0))) {
+  gv.se.type=SILDISP_NOTHING;
+  gv.se.val=0;
+  gv.se.x=0;
+  gv.se.y=0;
+  gv.se.code=0;
+  gv.se.key=0;
+  gv.se.modifiers=0;
+  gv.se.layer=NULL;
+  while ((SILDISP_NOTHING==gv.se.type)&&(GetMessage(&msg, NULL, 0, 0))) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
   }
-  return &gdisp.se;
+  return &gv.se;
 }
 
 
 void sil_setTimerDisplay(UINT amount) {
-  gettimeofday(&gdisp.lasttimer,NULL);
-  SetTimer(gdisp.win.window, 666, amount, (TIMERPROC) NULL);
+  gettimeofday(&gv.lasttimer,NULL);
+  SetTimer(gv.win.window, 666, amount, (TIMERPROC) NULL);
 }
 
 void sil_stopTimerDisplay() {
-  KillTimer(gdisp.win.window, 666);
+  KillTimer(gv.win.window, 666);
 }
 
 void sil_setCursor(BYTE type) {
   /* only load if cursor has been changed */
-  if (type!=gdisp.ctype) {
+  if (type!=gv.ctype) {
     switch(type) {
       case SILCUR_ARROW:
-        gdisp.cursor=LoadCursor(NULL,IDC_ARROW);
+        gv.cursor=LoadCursor(NULL,IDC_ARROW);
         break;
       case SILCUR_HAND:
-        gdisp.cursor=LoadCursor(NULL,IDC_HAND);
+        gv.cursor=LoadCursor(NULL,IDC_HAND);
         break;
       case SILCUR_HELP:
-        gdisp.cursor=LoadCursor(NULL,IDC_HELP);
+        gv.cursor=LoadCursor(NULL,IDC_HELP);
         break;
       case SILCUR_NO:
-        gdisp.cursor=LoadCursor(NULL,IDC_NO);
+        gv.cursor=LoadCursor(NULL,IDC_NO);
         break;
       case SILCUR_IBEAM:
-        gdisp.cursor=LoadCursor(NULL,IDC_IBEAM);
+        gv.cursor=LoadCursor(NULL,IDC_IBEAM);
         break;
     }
-    if (gdisp.cursor) {
-      SetCursor(gdisp.cursor);
-      gdisp.ctype=type;
+    if (gv.cursor) {
+      SetCursor(gv.cursor);
+      gv.ctype=type;
     }
   }
 }
@@ -421,86 +457,90 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   
   switch(msg) {
     case WM_TIMER:
-      gdisp.se.type=SILDISP_TIMER;
-      gdisp.se.code=wParam;
+      gv.se.type=SILDISP_TIMER;
+      gv.se.code=wParam;
       gettimeofday(&tv,NULL);
-      gdisp.se.val=(tv.tv_sec-gdisp.lasttimer.tv_sec)*1000+(tv.tv_usec-gdisp.lasttimer.tv_usec)/1000;
-      gettimeofday(&gdisp.lasttimer,NULL);
+      gv.se.val=(tv.tv_sec-gv.lasttimer.tv_sec)*1000+(tv.tv_usec-gv.lasttimer.tv_usec)/1000;
+      gettimeofday(&gv.lasttimer,NULL);
       return 0;
       break;
 
     case WM_PAINT:
-      hdc = GetDC(gdisp.win.window);
-      StretchDIBits(hdc, 0, 0, gdisp.fb->width, gdisp.fb->height, 0, 0, 
-        gdisp.fb->width, gdisp.fb->height, gdisp.fb->buf, gdisp.win.bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
+      hdc = GetDC(gv.win.window);
+      StretchDIBits(hdc, 0, 0, gv.fb->width, gv.fb->height, 0, 0, 
+        gv.fb->width, gv.fb->height, gv.fb->buf, gv.win.bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
       ValidateRect(hwnd,0);
-      ReleaseDC(gdisp.win.window,hdc);
+      ReleaseDC(gv.win.window,hdc);
       break;
 
     case WM_LBUTTONDOWN:
-      gdisp.se.type=SILDISP_MOUSE_DOWN;
-      gdisp.se.x = GET_X_LPARAM(lParam);
-      gdisp.se.y = GET_Y_LPARAM(lParam);
-      gdisp.se.val=1;
+      gv.se.type=SILDISP_MOUSE_DOWN;
+      gv.se.x = GET_X_LPARAM(lParam);
+      gv.se.y = GET_Y_LPARAM(lParam);
+      gv.se.val=1;
       return 0;
       break;
 
     case WM_LBUTTONUP:
-      gdisp.se.type=SILDISP_MOUSE_UP;
-      gdisp.se.x = GET_X_LPARAM(lParam);
-      gdisp.se.y = GET_Y_LPARAM(lParam);
-      gdisp.se.val=1;
+      gv.se.type=SILDISP_MOUSE_UP;
+      gv.se.x = GET_X_LPARAM(lParam);
+      gv.se.y = GET_Y_LPARAM(lParam);
+      gv.se.val=1;
       return 0;
       break;
 
     case WM_MBUTTONDOWN:
-      gdisp.se.type=SILDISP_MOUSE_DOWN;
-      gdisp.se.x = GET_X_LPARAM(lParam);
-      gdisp.se.y = GET_Y_LPARAM(lParam);
-      gdisp.se.val=2;
+      gv.se.type=SILDISP_MOUSE_DOWN;
+      gv.se.x = GET_X_LPARAM(lParam);
+      gv.se.y = GET_Y_LPARAM(lParam);
+      gv.se.val=2;
       return 0;
       break;
 
     case WM_MBUTTONUP:
-      gdisp.se.type=SILDISP_MOUSE_UP;
-      gdisp.se.x = GET_X_LPARAM(lParam);
-      gdisp.se.y = GET_Y_LPARAM(lParam);
-      gdisp.se.val=2;
+      gv.se.type=SILDISP_MOUSE_UP;
+      gv.se.x = GET_X_LPARAM(lParam);
+      gv.se.y = GET_Y_LPARAM(lParam);
+      gv.se.val=2;
       return 0;
       break;
 
     case WM_RBUTTONDOWN:
-      gdisp.se.type=SILDISP_MOUSE_DOWN;
-      gdisp.se.x = GET_X_LPARAM(lParam);
-      gdisp.se.y = GET_Y_LPARAM(lParam);
-      gdisp.se.val=3;
+      gv.se.type=SILDISP_MOUSE_DOWN;
+      gv.se.x = GET_X_LPARAM(lParam);
+      gv.se.y = GET_Y_LPARAM(lParam);
+      gv.se.val=3;
       return 0;
       break;
 
     case WM_RBUTTONUP:
-      gdisp.se.type=SILDISP_MOUSE_UP;
-      gdisp.se.x = GET_X_LPARAM(lParam);
-      gdisp.se.y = GET_Y_LPARAM(lParam);
-      gdisp.se.val=3;
+      gv.se.type=SILDISP_MOUSE_UP;
+      gv.se.x = GET_X_LPARAM(lParam);
+      gv.se.y = GET_Y_LPARAM(lParam);
+      gv.se.val=3;
       return 0;
       break;
 
     case WM_MOUSEMOVE:
-      gdisp.se.type=SILDISP_MOUSE_MOVE;
-      gdisp.se.x = GET_X_LPARAM(lParam);
-      gdisp.se.y = GET_Y_LPARAM(lParam);
-      gdisp.se.val=0;
+      gv.se.type=SILDISP_MOUSE_MOVE;
+      gv.se.x = GET_X_LPARAM(lParam);
+      gv.se.y = GET_Y_LPARAM(lParam);
+      gv.se.dx= gv.se.x-gv.lastx;
+      gv.se.dy= gv.se.y-gv.lasty;
+      gv.lastx=gv.se.x;
+      gv.lasty=gv.se.y;
+      gv.se.val=0;
       return 0;
       break;
 
     case WM_MOUSEWHEEL:
-      gdisp.se.type=SILDISP_MOUSEWHEEL;
-      gdisp.se.x = GET_X_LPARAM(lParam);
-      gdisp.se.y = GET_Y_LPARAM(lParam);
+      gv.se.type=SILDISP_MOUSEWHEEL;
+      gv.se.x = GET_X_LPARAM(lParam);
+      gv.se.y = GET_Y_LPARAM(lParam);
       if (GET_WHEEL_DELTA_WPARAM(wParam) > 0)
-        gdisp.se.val=2;
+        gv.se.val=2;
       else 
-        gdisp.se.val=1;
+        gv.se.val=1;
       return 0;
       break;
 
@@ -508,11 +548,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_KEYDOWN:
       GetKeyboardState(kstate);
       ToUnicode(wParam,MapVirtualKey(wParam, MAPVK_VK_TO_VSC),kstate,kbuf,sizeof(kbuf),0);
-      gdisp.se.type=SILDISP_KEY_DOWN;
-      gdisp.se.code=wParam;
-      gdisp.se.key=code2sil(wParam);
-      gdisp.se.modifiers=modifiers2sil();
-      gdisp.se.val=kbuf[0];
+      gv.se.type=SILDISP_KEY_DOWN;
+      gv.se.code=wParam;
+      gv.se.key=code2sil(wParam);
+      gv.se.modifiers=modifiers2sil();
+      gv.se.val=kbuf[0];
       return 0;
       break; 
 
@@ -521,16 +561,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_KEYUP:
       GetKeyboardState(kstate);
       ToUnicode(wParam,MapVirtualKey(wParam, MAPVK_VK_TO_VSC),kstate,kbuf,sizeof(kbuf),0);
-      gdisp.se.type=SILDISP_KEY_UP;
-      gdisp.se.code=wParam;
-      gdisp.se.key=code2sil(wParam);
-      gdisp.se.modifiers=modifiers2sil();
-      gdisp.se.val=kbuf[0];
+      gv.se.type=SILDISP_KEY_UP;
+      gv.se.code=wParam;
+      gv.se.key=code2sil(wParam);
+      gv.se.modifiers=modifiers2sil();
+      gv.se.val=kbuf[0];
       return 0;
       break;
 
     case WM_DESTROY:
-      gdisp.se.type=SILDISP_QUIT;
+      gv.se.type=SILDISP_QUIT;
       PostQuitMessage(0);
       return 0;
       break;
@@ -594,6 +634,6 @@ SILLYR *sil_screenCapture() {
 
   /* delete and release handles */
   DeleteDC(hdcc);
-  ReleaseDC(gdisp.win.window,hdc);
+  ReleaseDC(gv.win.window,hdc);
   return lyr;
 }

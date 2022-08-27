@@ -18,6 +18,7 @@
    -sil_setTimerDisplay    ; will set a repeating timer to interrupt the wait loop 
    -sil_stopTimerDisplay   ; stops the repeating timer
    -sil_setCursor          ; sets the mouse cursor (in windowed environments) 
+   -sil_getMouse           ; retrieves last known position of mouse cursor and button
 
 
 */
@@ -50,9 +51,16 @@ typedef struct _GDISP {
   int fevent;
   UINT lastx;
   UINT lasty;
+  BYTE button;
 } GDISP;
 
-static GDISP gdisp;
+static GDISP gv;
+
+BYTE sil_getMouse(int *x,int *y) {
+  if (x) *x=gv.lastx;
+  if (y) *y=gv.lasty;
+  return gv.button;
+}
 
 /*****************************************************************************
 
@@ -64,11 +72,11 @@ static GDISP gdisp;
  *****************************************************************************/
 
 UINT sil_getTypefromDisplay() {
-  if (NULL==gdisp.fb) {
+  if (NULL==gv.fb) {
     log_warn("trying to get display color type from non-initialized display");
     return 0;
   }
-  return gdisp.fb->type;
+  return gv.fb->type;
 }
 
 
@@ -80,82 +88,83 @@ UINT sil_getTypefromDisplay() {
 
  *****************************************************************************/
 UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
-  unsigned char *image;
-  unsigned error;
   BYTE type=0;
-  FILE *fp;
   int fd=0;
   char name[256]="unknown";
 
 
 
-  gdisp.fbfd=open("/dev/fb0",O_RDWR);
-  if (-1==gdisp.fbfd) {
+  gv.fbfd=open("/dev/fb0",O_RDWR);
+  if (-1==gv.fbfd) {
     log_info("ERR: Can't open framebuffer device");
     return SILERR_NOTINIT;
   }
 
-  if (-1==ioctl(gdisp.fbfd, FBIOGET_FSCREENINFO, &gdisp.finfo)) {
+  if (-1==ioctl(gv.fbfd, FBIOGET_FSCREENINFO, &gv.finfo)) {
     log_info("ERR: Can't get framebuffer device fixed info");
     return SILERR_NOTINIT;
   }
-  if (-1==ioctl(gdisp.fbfd, FBIOGET_VSCREENINFO, &gdisp.vinfo)) {
+  if (-1==ioctl(gv.fbfd, FBIOGET_VSCREENINFO, &gv.vinfo)) {
     log_warn("ERR: Can't get framebuffer device variable info");
     return SILERR_NOTINIT;
   }
-  gdisp.screensize = gdisp.finfo.smem_len;
+  gv.screensize = gv.finfo.smem_len;
 
-  gdisp.fbp=(BYTE *)mmap(NULL,gdisp.screensize,PROT_READ|PROT_WRITE,MAP_SHARED,gdisp.fbfd,0);
-  if (NULL==gdisp.fbp) {
+  gv.fbp=(BYTE *)mmap(NULL,gv.screensize,PROT_READ|PROT_WRITE,MAP_SHARED,gv.fbfd,0);
+  if (NULL==gv.fbp) {
     log_warn("ERR: Can't mmap framebuffer device ");
     return SILERR_NOTINIT;
   }
 
-  switch (gdisp.vinfo.green.length) {
-    case 3: if ((2==gdisp.vinfo.blue.length)&&(3==gdisp.vinfo.red.length))
-              type=SILTYPE_332RGB;
-            if ((3==gdisp.vinfo.blue.length)&&(2==gdisp.vinfo.red.length))
-              type=SILTYPE_332BGR;
-            break;
-    case 4: if ((4==gdisp.vinfo.blue.length)&&(4==gdisp.vinfo.red.length)) {
-              if (gdisp.vinfo.red.offset>gdisp.vinfo.blue.offset) {
-                type=SILTYPE_444RGB;
-              } else {
-                type=SILTYPE_444BGR;
-              }
-            }
-            break;
-    case 5: if ((5==gdisp.vinfo.blue.length)&&(5==gdisp.vinfo.red.length)) {
-              if (gdisp.vinfo.red.offset>gdisp.vinfo.blue.offset) {
-                type=SILTYPE_555RGB;
-              } else {
-                type=SILTYPE_555BGR;
-              }
-            } 
-    case 6: if ((5==gdisp.vinfo.blue.length)&&(5==gdisp.vinfo.red.length)) {
-              if (gdisp.vinfo.red.offset>gdisp.vinfo.blue.offset) {
-                type=SILTYPE_565BGR;
-              } else {
-                type=SILTYPE_565RGB;
-              }
-            }
-            break;
-    case 8: if ((8==gdisp.vinfo.blue.length)&&(8==gdisp.vinfo.red.length)) {
-              if (gdisp.vinfo.transp.length>0) {
-                if (gdisp.vinfo.red.offset>gdisp.vinfo.blue.offset) {
-                  type=SILTYPE_ARGB;
-                } else {
-                  type=SILTYPE_ABGR;
-                }
-              } else {
-                if (gdisp.vinfo.red.offset>gdisp.vinfo.blue.offset) {
-                  type=SILTYPE_888RGB;
-                } else {
-                  type=SILTYPE_888BGR;
-                }
-              }
-            }
-            break;
+  switch (gv.vinfo.green.length) {
+    case 3: 
+      if ((2==gv.vinfo.blue.length)&&(3==gv.vinfo.red.length)) type=SILTYPE_332RGB;
+      if ((3==gv.vinfo.blue.length)&&(2==gv.vinfo.red.length)) type=SILTYPE_332BGR;
+      break;
+    case 4: 
+      if ((4==gv.vinfo.blue.length)&&(4==gv.vinfo.red.length)) {
+        if (gv.vinfo.red.offset>gv.vinfo.blue.offset) {
+          type=SILTYPE_444RGB;
+        } else {
+          type=SILTYPE_444BGR;
+        }
+      }
+      break;
+    case 5: 
+      if ((5==gv.vinfo.blue.length)&&(5==gv.vinfo.red.length)) {
+        if (gv.vinfo.red.offset>gv.vinfo.blue.offset) {
+          type=SILTYPE_555RGB;
+        } else {
+          type=SILTYPE_555BGR;
+        }
+      } 
+      break;
+    case 6: 
+      if ((5==gv.vinfo.blue.length)&&(5==gv.vinfo.red.length)) {
+        if (gv.vinfo.red.offset>gv.vinfo.blue.offset) {
+          type=SILTYPE_565BGR;
+        } else {
+          type=SILTYPE_565RGB;
+        }
+      }
+      break;
+    case 8: 
+      if ((8==gv.vinfo.blue.length)&&(8==gv.vinfo.red.length)) {
+        if (gv.vinfo.transp.length>0) {
+          if (gv.vinfo.red.offset>gv.vinfo.blue.offset) {
+            type=SILTYPE_ARGB;
+          } else {
+            type=SILTYPE_ABGR;
+          }
+        } else {
+          if (gv.vinfo.red.offset>gv.vinfo.blue.offset) {
+            type=SILTYPE_888RGB;
+          } else {
+            type=SILTYPE_888BGR;
+          }
+        }
+      }
+      break;
   }
 
   if (0==type) {
@@ -163,13 +172,13 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
     return SILERR_NOTINIT;
   }
 
-  log_info("Screeninfo: %dx%d, %dbpp , size=%d",gdisp.vinfo.xres,gdisp.vinfo.yres, 
-    gdisp.vinfo.bits_per_pixel,gdisp.screensize);
+  log_info("Screeninfo: %dx%d, %dbpp , size=%d",gv.vinfo.xres,gv.vinfo.yres, 
+    gv.vinfo.bits_per_pixel,gv.screensize);
   log_info("Screentype: %d",type);
 
   /* this framebuffer will be dedicated for the window */
-  gdisp.fb=sil_initFB(gdisp.vinfo.xres, gdisp.vinfo.yres, type);
-  if (NULL==gdisp.fb) {
+  gv.fb=sil_initFB(gv.vinfo.xres, gv.vinfo.yres, type);
+  if (NULL==gv.fb) {
     log_info("ERR: Can't create framebuffer for display");
     return SILERR_NOMEM;
   }
@@ -187,19 +196,20 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
   /* open events for mouse/touchscreen */
   /* not sure /dev/input/event2 is location of touch events in every situation..*/
   /* it looks like it is for raspberry pi's..                                   */
-  gdisp.fevent=open("/dev/input/event2",O_RDONLY);
-  if (!gdisp.fevent) {
+  gv.fevent=open("/dev/input/event2",O_RDONLY);
+  if (!gv.fevent) {
     log_warn("Cant open event2 to read touchscreen");
   } else {
     /* should be something like "rasberrypi-ts" or something, denoting a */
     /* touchscreen and not a mouse or keyboard..                         */
-    ioctl(gdisp.fevent, EVIOCGNAME(sizeof(name)),name);
+    ioctl(gv.fevent, EVIOCGNAME(sizeof(name)),name);
     log_info("Input device name is : %s",name);
   }
 
   /* init some global variables for later */
-  gdisp.lastx=0;
-  gdisp.lasty=0;
+  gv.lastx=0;
+  gv.lasty=0;
+  gv.button=0;
 
   return SILERR_ALLOK;
 }
@@ -212,10 +222,10 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
 void sil_updateDisplay() {
 
   /* get all layerinformation into a single fb */
-  LayersToFB(gdisp.fb);
+  LayersToFB(gv.fb);
 
   /* and just copy it */
-  memcpy(gdisp.fbp,gdisp.fb->buf,gdisp.screensize);
+  memcpy(gv.fbp,gv.fb->buf,gv.screensize);
 
 }
 
@@ -227,8 +237,8 @@ void sil_updateDisplay() {
 void sil_destroyDisplay() { 
   int fd;
 
-  if (gdisp.fb->type) sil_destroyFB(gdisp.fb);
-  if (gdisp.fevent) close(gdisp.fevent);
+  if (gv.fb->type) sil_destroyFB(gv.fb);
+  if (gv.fevent) close(gv.fevent);
   fd =open("/dev/tty0",O_RDWR);
   if (fd) { 
     /* back to text mode */
@@ -273,89 +283,93 @@ SILEVENT *sil_getEventDisplay() {
 
 
   do {
-    gdisp.se.type=SILDISP_NOTHING;
-    gdisp.se.val=0;
-    gdisp.se.code=0;
-    gdisp.se.key=0;
-    gdisp.se.modifiers=0;
-    gdisp.se.layer=NULL;
-    gdisp.se.x=gdisp.lastx;
-    gdisp.se.y=gdisp.lasty;
+    gv.se.type=SILDISP_NOTHING;
+    gv.se.val=0;
+    gv.se.code=0;
+    gv.se.key=0;
+    gv.se.modifiers=0;
+    gv.se.layer=NULL;
+    gv.se.x=gv.lastx;
+    gv.se.y=gv.lasty;
 
     FD_ZERO(&rs);
-    FD_SET(gdisp.fevent,&rs);
+    FD_SET(gv.fevent,&rs);
 
-    if ((gdisp.tval.tv_sec>0)||(gdisp.tval.tv_usec>0)) {
-      tt.tv_sec=gdisp.tval.tv_sec;
-      tt.tv_usec=gdisp.tval.tv_usec;
+    if ((gv.tval.tv_sec>0)||(gv.tval.tv_usec>0)) {
+      tt.tv_sec=gv.tval.tv_sec;
+      tt.tv_usec=gv.tval.tv_usec;
       tp=&tt;
     } else {
       tp=NULL;
     }
 
-    if (0==select(gdisp.fevent+1,&rs,NULL,NULL,tp)) {
+    if (0==select(gv.fevent+1,&rs,NULL,NULL,tp)) {
       /* timer expired */
-      gdisp.se.type=SILDISP_TIMER;
-      gdisp.se.code=666;
+      gv.se.type=SILDISP_TIMER;
+      gv.se.code=666;
       gettimeofday(&tv,NULL);
-      gdisp.se.val=(tv.tv_sec-gdisp.lasttimer.tv_sec)*1000+(tv.tv_usec-gdisp.lasttimer.tv_usec)/1000;
-      gettimeofday(&gdisp.lasttimer,NULL);
+      gv.se.val=(tv.tv_sec-gv.lasttimer.tv_sec)*1000+(tv.tv_usec-gv.lasttimer.tv_usec)/1000;
+      gettimeofday(&gv.lasttimer,NULL);
       stop=1;
     } else {
       /* we have event(s) read till SYN_REPORT */
       do {
-        rd=read(gdisp.fevent,&ev,sizeof(ev));
+        rd=read(gv.fevent,&ev,sizeof(ev));
         
         /* not garbage ? */
         if (rd<(int)sizeof(struct input_event)) {
           log_warn("Wrong size of event returned from touchscreen");
-          gdisp.se.type=SILDISP_NOTHING;
-          return &gdisp.se;
+          gv.se.type=SILDISP_NOTHING;
+          return &gv.se;
         }
         //log_info("Got event: type:%d code:%d value:%d",ev.type,ev.code,ev.value);
 
-
+        /* for this we presume touchscreen, therefore one button */
         if ((EV_KEY==ev.type)&&(BTN_TOUCH==ev.code)) {
           if (0==ev.value) {
-            gdisp.se.type=SILDISP_MOUSE_UP;
-            gdisp.se.val=1;
+            gv.se.type=SILDISP_MOUSE_UP;
+            gv.se.val=SIL_BTN_LEFT;
+            gv.button=0;
           } else {
-            gdisp.se.type=SILDISP_MOUSE_DOWN;
-            gdisp.se.val=1;
+            gv.se.type=SILDISP_MOUSE_DOWN;
+            gv.se.val=SIL_BTN_LEFT;
+            gv.button=SIL_BTN_LEFT;
           }
           /* wait for other events for more information */
         }
 
         if (EV_ABS==ev.type) {
           if (ABS_X==ev.code) {
-            gdisp.se.x=ev.value;
-            gdisp.lastx=ev.value;
+            gv.se.x=ev.value;
+            gv.se.dx=ev.value-gv.lastx;
+            gv.lastx=ev.value;
           } else {
             if (ABS_Y==ev.code) {
-              gdisp.se.y=ev.value;
-              gdisp.lasty=ev.value;
+              gv.se.y=ev.value;
+              gv.se.dy=ev.value-gv.lasty;
+              gv.lasty=ev.value;
             }
           }
-          if (SILDISP_NOTHING==gdisp.se.type) gdisp.se.type=SILDISP_MOUSE_MOVE;
+          if (SILDISP_NOTHING==gv.se.type) gv.se.type=SILDISP_MOUSE_MOVE;
         }
 
       } while (!((EV_SYN==ev.type)&&(SYN_REPORT==ev.code))); 
-      if (SILDISP_NOTHING!=gdisp.se.type) stop=1;
+      if (SILDISP_NOTHING!=gv.se.type) stop=1;
     }
   } while (!stop);
-  return &gdisp.se;
+  return &gv.se;
 }
 
 
 void sil_setTimerDisplay(UINT amount) {
-  gettimeofday(&gdisp.lasttimer,NULL);
-  gdisp.tval.tv_sec=amount/1000;
-  gdisp.tval.tv_usec=(amount-gdisp.tval.tv_sec*1000)*1000;
+  gettimeofday(&gv.lasttimer,NULL);
+  gv.tval.tv_sec=amount/1000;
+  gv.tval.tv_usec=(amount-gv.tval.tv_sec*1000)*1000;
 }
 
 void sil_stopTimerDisplay() {
-  gdisp.tval.tv_sec=0;
-  gdisp.tval.tv_usec=0;
+  gv.tval.tv_sec=0;
+  gv.tval.tv_usec=0;
 }
 
 
