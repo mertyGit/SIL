@@ -1,1 +1,1 @@
-﻿NDSummary.OnToolTipsLoaded("File:sil.h",{});
+﻿NDSummary.OnToolTipsLoaded("File:sil.h",{18:"<div class=\"NDToolTip TGroup LC\"><div class=\"TTSummary\">Naming denotes the amount of bits per color and storage of bits or bytes.</div></div>",24:"<div class=\"NDToolTip TGroup LC\"><div class=\"TTSummary\">See also CSS color codes : https://&#8203;ao&#8203;.ms&#8203;/rbg-color-codes&#8203;/</div></div>"});

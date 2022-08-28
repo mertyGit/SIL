@@ -66,7 +66,8 @@ fb:  clean
 	$(MAKE) -C ../examples/ PROG=ordercopy DEST=$@
 	$(MAKE) -C ../examples/ PROG=draw      DEST=$@
 	$(MAKE) -C ../examples/ PROG=text      DEST=$@
-	$(MAKE) -C ../examples/ PROG=basic     DEST=$@
+#	$(MAKE) -C ../examples/ PROG=example_basic         DEST=$@
+#	$(MAKE) -C ../examples/ PROG=example_clickhandler  DEST=$@
 
 clean: 
 	rm -rf ../examples/*.exe ../examples/*.o ../src/*.o ../examples/*.o ../examples/combined ../examples/filters ../examples/*dump.png ../examples/printscreen.png

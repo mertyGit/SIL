@@ -501,6 +501,9 @@ SILEVENT *sil_getEventDisplay() {
 
         case SDL_MOUSEWHEEL:
           gv.se.type=SILDISP_MOUSEWHEEL;
+          /* whoops, SDL don't give mousepointer location at this event */
+          /* so, retrieve it to include them                            */
+          sil_getMouse(&(gv.se.x),&(gv.se.y));
           if ((gv.event.wheel.y)>0) {
             gv.se.val=1;
           } else {

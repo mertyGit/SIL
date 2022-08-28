@@ -34,7 +34,6 @@ typedef struct _GDRAW {
   UINT width;
   GCOLOR fg;
   GCOLOR bg;
-  BYTE zoom;
 } GDRAW;
 
 static GDRAW gd;
@@ -54,7 +53,6 @@ void sil_initDraw() {
   gd.bg.green=0;
   gd.bg.blue=0;
   gd.bg.alpha=0;
-  gd.zoom=0;
 }
 
 
@@ -203,15 +201,6 @@ void sil_getForegroundColor(BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
   *green=gd.fg.green;
   *blue=gd.fg.blue;
   *alpha=gd.fg.alpha;
-}
-
-void sil_setZoom(BYTE lvl) {
-  gd.zoom=lvl;
-}
-
-BYTE sil_getZoom() {
-  return gd.zoom;
-  
 }
 
 
@@ -697,7 +686,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   if (x1 == x2) {
     if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
     while(y1<=y2) {
-      sil_blendBigPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     }
     return;
   }
@@ -705,7 +694,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   if (y1 == y2) {
     if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
     while(x1<=x2) {
-      sil_blendBigPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     } 
     return;
   }
@@ -721,7 +710,7 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
   tDeltaXTimes2 = tDeltaX*2;
   tDeltaYTimes2 = tDeltaY*2;
 
-  sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+  sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
 
   if (tDeltaX > tDeltaY) {
     /* stepping over X axis */
@@ -729,13 +718,13 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
     while (x1 != x2) {
       x1 += tStepX;
       if (tError >= 0) {
-        if (overlap & SILLO_MAJOR) sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        if (overlap & SILLO_MAJOR) sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         y1 += tStepY;
-        if (overlap & SILLO_MINOR) sil_blendBigPixelLayer(layer, x1-tStepX,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        if (overlap & SILLO_MINOR) sil_blendPixelLayer(layer, x1-tStepX,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         tError -= tDeltaXTimes2;
       }
       tError += tDeltaYTimes2;
-      sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     }
   } else {
     /* stepping over y axis */
@@ -743,16 +732,16 @@ void drawSingleLine(SILLYR *layer,UINT x1, UINT y1, UINT x2, UINT y2, BYTE overl
     while (y1 != y2) {
       y1 += tStepY;
       if (tError >= 0) {
-        if (overlap & SILLO_MAJOR) sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        if (overlap & SILLO_MAJOR) sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         x1 += tStepX;
-        if (overlap & SILLO_MINOR) sil_blendBigPixelLayer(layer, x1,y1-tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+        if (overlap & SILLO_MINOR) sil_blendPixelLayer(layer, x1,y1-tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         tError -= tDeltaYTimes2;
       }
       tError += tDeltaXTimes2;
       sil_drawPixel(layer,x1,y1);
     }
   }
-  sil_blendBigPixelLayer(layer, x2,y2, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+  sil_blendPixelLayer(layer, x2,y2, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
 }
 
 
@@ -922,7 +911,7 @@ static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, 
   if (x1 == x2+1) {
     if (y2<y1) swapcoords(&x1,&y1,&x2,&y2);
     while(y1<=y2) {
-      sil_blendBigPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendPixelLayer(layer, x1,y1++, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     }
     return;
   }
@@ -930,7 +919,7 @@ static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, 
   if (y1 == y2) {
     if (x2<x1) swapcoords(&x1,&y1,&x2,&y2);
     while(x1<=x2) {
-      sil_blendBigPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+      sil_blendPixelLayer(layer, x1++,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
     } 
     return;
   }
@@ -957,16 +946,16 @@ static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, 
       cor=(fraction<0)?-1:1;
       fraction*=cor;
       if ((SILLO_MAJOR|SILLO_MINOR)==overlap) {
-        sil_blendBigPixelLayer(layer, x1,y1-cor*tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
-        sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
+        sil_blendPixelLayer(layer, x1,y1-cor*tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
+        sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
       } else {
         if (SILLO_NONE==overlap) {
-          sil_blendBigPixelLayer(layer, x1,y1-cor*tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          sil_blendPixelLayer(layer, x1,y1-cor*tStepY, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         } else {
           if (SILLO_MAJOR==overlap) {
-            sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (fraction)*gd.fg.alpha);
+            sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (fraction)*gd.fg.alpha);
           } else {
-            sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
+            sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
           }
         }
       }
@@ -991,16 +980,16 @@ static void drawSingleLineAA(SILLYR *layer, UINT x1, UINT y1, UINT x2, UINT y2, 
       cor=(fraction<0)?-1:1;
       fraction*=cor;
       if ((SILLO_MAJOR|SILLO_MINOR)==overlap) {
-        sil_blendBigPixelLayer(layer, x1-cor*tStepX, y1, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
-        sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
+        sil_blendPixelLayer(layer, x1-cor*tStepX, y1, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
+        sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
       } else {
         if (SILLO_NONE==overlap) {
-          sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
+          sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, gd.fg.alpha);
         } else {
           if (SILLO_MAJOR==overlap) {
-            sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
+            sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, fraction*gd.fg.alpha);
           } else {
-            sil_blendBigPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
+            sil_blendPixelLayer(layer, x1,y1, gd.fg.red, gd.fg.green, gd.fg.blue, (1-fraction)*gd.fg.alpha);
           }
         }
       }
@@ -1388,7 +1377,6 @@ void sil_drawCircleAA(SILLYR *layer, UINT xm, UINT ym, UINT r) {
   if (0==width) {
     innersq=outersq+1;
   }
-  log_info("inner,outer,width=%d,%d,%d",innersq,outersq,width);
   for (x1=0;x1<=r+width;x1++) {
     xsq=x1*x1;
     for (y1=0;y1<=r+width;y1++) {

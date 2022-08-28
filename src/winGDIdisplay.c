@@ -453,6 +453,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   BYTE kstate[256];
   WCHAR  kbuf[5];
   struct timeval tv;
+  POINT pt;
 
   
   switch(msg) {
@@ -477,7 +478,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       gv.se.type=SILDISP_MOUSE_DOWN;
       gv.se.x = GET_X_LPARAM(lParam);
       gv.se.y = GET_Y_LPARAM(lParam);
-      gv.se.val=1;
+      gv.se.val=SIL_BTN_LEFT;
       return 0;
       break;
 
@@ -485,7 +486,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       gv.se.type=SILDISP_MOUSE_UP;
       gv.se.x = GET_X_LPARAM(lParam);
       gv.se.y = GET_Y_LPARAM(lParam);
-      gv.se.val=1;
+      gv.se.val=SIL_BTN_LEFT;
       return 0;
       break;
 
@@ -493,7 +494,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       gv.se.type=SILDISP_MOUSE_DOWN;
       gv.se.x = GET_X_LPARAM(lParam);
       gv.se.y = GET_Y_LPARAM(lParam);
-      gv.se.val=2;
+      gv.se.val=SIL_BTN_MIDDLE;
       return 0;
       break;
 
@@ -501,7 +502,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       gv.se.type=SILDISP_MOUSE_UP;
       gv.se.x = GET_X_LPARAM(lParam);
       gv.se.y = GET_Y_LPARAM(lParam);
-      gv.se.val=2;
+      gv.se.val=SIL_BTN_MIDDLE;
       return 0;
       break;
 
@@ -509,7 +510,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       gv.se.type=SILDISP_MOUSE_DOWN;
       gv.se.x = GET_X_LPARAM(lParam);
       gv.se.y = GET_Y_LPARAM(lParam);
-      gv.se.val=3;
+      gv.se.val=SIL_BTN_RIGHT;
       return 0;
       break;
 
@@ -517,7 +518,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       gv.se.type=SILDISP_MOUSE_UP;
       gv.se.x = GET_X_LPARAM(lParam);
       gv.se.y = GET_Y_LPARAM(lParam);
-      gv.se.val=3;
+      gv.se.val=SIL_BTN_RIGHT;
       return 0;
       break;
 
@@ -535,12 +536,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
     case WM_MOUSEWHEEL:
       gv.se.type=SILDISP_MOUSEWHEEL;
-      gv.se.x = GET_X_LPARAM(lParam);
-      gv.se.y = GET_Y_LPARAM(lParam);
+      pt.x = GET_X_LPARAM(lParam);
+      pt.y = GET_Y_LPARAM(lParam);
+      /* whoops, position is given for display, not window...convert it back */
+      ScreenToClient(gv.win.window, &pt);
+      gv.se.x = pt.x;
+      gv.se.y = pt.y;
+
       if (GET_WHEEL_DELTA_WPARAM(wParam) > 0)
-        gv.se.val=2;
+        gv.se.val=SIL_WHEEL_UP;
       else 
-        gv.se.val=1;
+        gv.se.val=SIL_WHEEL_DOWN;
       return 0;
       break;
 

@@ -323,15 +323,8 @@ void sil_mainLoop() {
           if (gv.timer(se)) sil_updateDisplay();
         break;
 
+      case SILDISP_MOUSEWHEEL:
       case SILDISP_MOUSE_UP:
-        if (al) {
-          if (al->click) {
-            se->layer=al;
-            if (al->click(se)) {
-              sil_updateDisplay();
-            }
-          }
-        }
         gv.dragged=0;
         se->layer=sil_findHighestClick(se->x,se->y);
         if (se->layer) {
@@ -345,17 +338,26 @@ void sil_mainLoop() {
             if (se->layer->click(se)) sil_updateDisplay();
           }
         } else {
-          /* no layer found, check if hover is enabled */
-          se->layer=sil_findHighestHover(se->x,se->y);
-          if (se->layer) {
-            if (se->layer->pointer) {
-              se->layer->pointer(se);
-            } else {
-              sil_setCursor(SILCUR_HAND);
+          /* no layer found, but maybe we already had an active later */
+          if ((al)&&(al->click)) {
+            se->layer=al;
+            if (al->click(se)) {
+              sil_updateDisplay();
             }
-          } else {
-            sil_setCursor(SILCUR_ARROW);
             gv.ActiveLayer=NULL;
+          } else {
+            /* if not, figure out mouse cursor to show */
+            se->layer=sil_findHighestHover(se->x,se->y);
+            if (se->layer) {
+              if (se->layer->pointer) {
+                se->layer->pointer(se);
+              } else {
+                sil_setCursor(SILCUR_HAND);
+              }
+            } else {
+              sil_setCursor(SILCUR_ARROW);
+              gv.ActiveLayer=NULL;
+            }
           }
         }
         break;
@@ -379,6 +381,7 @@ void sil_mainLoop() {
         }
         break;
 
+        /*
       case SILDISP_MOUSEWHEEL:
         se->layer=sil_findHighestClick(se->x,se->y);
         if (se->layer) {
@@ -396,6 +399,7 @@ void sil_mainLoop() {
           gv.ActiveLayer=NULL;
         }
         break;
+        */
 
       case SILDISP_MOUSE_MOVE:
         checkMove(se);
@@ -432,11 +436,11 @@ void sil_mainLoop() {
 
 
 /* 
-  Function: sil_err2Txt
+Function: sil_err2Txt
   Optional function to convert any internal SIL error code to a more human understandable 
   form. 
 
-Paramers: 
+Parameters: 
   errorcode - SIL error code
 
 Returns: 
@@ -483,7 +487,7 @@ Function: sil_setTimerHandler
 
 Parameters: 
   timer - own handler function that accepts a pointer to *SILEVENT* and returns 
-  1 if display has to be updated or not (0). 
+          1 if display has to be updated or not (0). 
 
 Remarks:
   - Only one timer can be set per SIL program. Therefore, setting a Timerhandler
@@ -508,8 +512,7 @@ Function: sil_setTimeval
   set timer to given amount of miliseconds
 
 Parameters:
-  UINT amount - delay in seconds until timer handler is called. use '0' to 
-                cancel any running timer
+  amount - delay in miliseconds until timer handler is called. use '0' to cancel any running timer
 
 Remarks:
   - will cancel and overwrite any previous -running- timers
@@ -528,7 +531,7 @@ Function: sil_getTimeval
   If you have trouble remembering things, retrieve the amount of miliseconds you did set your timer to
 
 Returns:
-  UINT - amount of seconds
+  amount of miliseconds
 
 */
 UINT sil_getTimeval() {

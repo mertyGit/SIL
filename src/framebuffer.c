@@ -164,7 +164,7 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
     case SILTYPE_444BGR:
       pos=x*1.5+width*y*1.5;
       if ((x+width*y)%2) {
-        buf[pos]=red&0xF0|((green&0xF0)>>4);
+        buf[pos]=(red&0xF0)|((green&0xF0)>>4);
         buf[pos+1]|=blue&0xF0;
       } else {
         buf[pos]|=((red&0xF0)>>4);
@@ -174,7 +174,7 @@ void sil_putPixelFB(SILFB *fb,UINT x,UINT y,BYTE red, BYTE green, BYTE blue, BYT
     case SILTYPE_444RGB:
       pos=x*1.5+width*y*1.5;
       if ((x+width*y)%2) {
-        buf[pos]=blue&0xF0|((green&0xF0)>>4);
+        buf[pos]=(blue&0xF0)|((green&0xF0)>>4);
         buf[pos+1]|=red&0xF0;
       } else {
         buf[pos]|=((blue&0xF0)>>4);
@@ -251,7 +251,6 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
   BYTE val1, val2;
   BYTE *buf=NULL;
   UINT width=0;
-  UINT height=0;
   int pos=0;
 
 #ifndef SIL_LIVEDANGEROUS
@@ -276,7 +275,6 @@ void sil_getPixelFB(SILFB *fb,UINT x,UINT y, BYTE *red, BYTE *green, BYTE *blue,
 
   buf=fb->buf;
   width=fb->width;
-  height=fb->height;
   *alpha=255;
   switch(fb->type) {
     case SILTYPE_EMPTY:

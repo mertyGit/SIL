@@ -20,23 +20,32 @@ typedef struct _GLYR {
   UINT idcount;  /* unique identifiers for layers (not used at the moment) */
 } GLYR;
 
-static GLYR glyr={NULL,NULL,0}; /* holds all global variables used only within layers.c */
+static GLYR gv={NULL,NULL,0}; /* holds all global variables used only within layers.c */
 
 
-/*****************************************************************************
-  Create a layer and it it to linked list of layers on top
-  In: display context
-      width x height of layer, 
-      x,y  position of layer relative to display (top left)
-      type = RGB type (SILTYPE_...) 
-  Out: pointer to created layer or NULL if error occured
+/* 
+Function: sil_addLayer 
+  Create a layer and put to top of stack of layers
 
- *****************************************************************************/
+Parameters: 
+  relx   - x position relative to top left of display
+  rely   - y position relative to top left of display
+  width  - width of layer
+  height - height of layer
+  type   - RGB type to store (see: <RGB types>). Use '0' to use same type as the one from the display.
 
-SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
+Returns:
+  pointer to created layer or NULL if error occured
+
+Remarks:
+  addLayer adds the layer on top of the stack of existing layers. 
+  If you want them somewhere else in the stack, use the "to.." sil functions afterwards:
+  <sil_toTop()>,<sil_toBottom()>,<sil_toAbove()>,<sil_toBelow()> or even <sil_swap()>
+  
+
+*/
+SILLYR *sil_addLayer(int relx, int rely, UINT width, UINT height, BYTE type) {
   SILLYR *layer=NULL;
-  UINT err=0;
-
 
   layer=calloc(1,sizeof(SILLYR));
   if (NULL==layer) {
@@ -46,9 +55,7 @@ SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
 
   /* if no type is given - '0' - use type of framebuffer of display for best performance */
   /* and maximum colordepth                                                              */
-  if (0==type) {
-    type=sil_getTypefromDisplay();
-  }
+  if (0==type) type=sil_getTypefromDisplay();
 
   /* create framebuffer for that layer */
   layer->fb=sil_initFB(width, height, type);
@@ -59,14 +66,14 @@ SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
 
   /* add layer to double linked list of layers */
   layer->next=NULL;
-  if (glyr.top) {
-    glyr.top->next=layer;
-    layer->previous=glyr.top;
+  if (gv.top) {
+    gv.top->next=layer;
+    layer->previous=gv.top;
   } else {
-    glyr.bottom=layer;
+    gv.bottom=layer;
     layer->previous=NULL;
   }
-  glyr.top=layer;
+  gv.top=layer;
 
   /* set the other parameters to default */
   layer->view.minx=0;
@@ -78,7 +85,7 @@ SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
   layer->alpha=1;
   layer->flags=0;
   layer->internal=0;
-  layer->id=glyr.idcount++;
+  layer->id=gv.idcount++;
   layer->texture=NULL;
   layer->user=NULL;
   layer->hover=NULL;
@@ -96,80 +103,35 @@ SILLYR *sil_addLayer(UINT relx, UINT rely, UINT width, UINT height, BYTE type) {
   return layer;
 }
 
-/*****************************************************************************
-  Create a mirror of given layer. New layer will share the same framebuffer 
-  as the original, so all drawings and filters on it will be the same as the 
-  original, however, the new layer can have different position, view or visability
-
-  In:  Layer to mirror
-  Out: Mirrored copy of the Layer
-
- *****************************************************************************/
-SILLYR *sil_mirrorLayer(SILLYR *layer, UINT relx, UINT rely) {
-  SILLYR *newlayer=NULL;
-
-  if (NULL==layer) {
-    log_warn("mirroring layer that isn't initialized");
-    return NULL;
-  }
-
-  newlayer=calloc(1,sizeof(SILLYR));
-  if (NULL==newlayer) {
-    log_info("ERR: Can't allocate memory for addLayer");
-    return NULL;
-  }
-
-  /* copy all information */
-  memcpy(newlayer,layer,sizeof(SILLYR));
-
-  /* and set new id & position*/
-  newlayer->id=glyr.idcount++;
-  newlayer->relx=relx;
-  newlayer->rely=rely;
-
-  /* make sure we dont accidently copy handlers & states */
-  newlayer->internal=0;
-  newlayer->hover=NULL;
-  newlayer->click=NULL;
-  newlayer->keypress=NULL;
-  newlayer->drag=NULL;
-  newlayer->pointer=NULL;
-  newlayer->key=0;
-  newlayer->modifiers=0;
-  newlayer->user=NULL;
-
-  /* add layer to double linked list of layers */
-  newlayer->next=NULL;
-  if (glyr.top) {
-    glyr.top->next=newlayer;
-    newlayer->previous=glyr.top;
-  } else {
-    glyr.bottom=newlayer;
-    newlayer->previous=NULL;
-  }
-  glyr.top=newlayer;
-  layer->fb->changed=1;
-  layer->fb->resized=1;
-
-  return newlayer;
-}
-
-/*****************************************************************************
+/*
+Function: sil_setHoverHandler
   
   Set handler for "hover", when mousepointer is above the given layer, it will 
-  trigger the given hoverhandler. Handlers receive the event, including 
+  trigger the given hoverhandler. Handlers will receive the event, including 
   targeted layer and should return '0' for "do nothing" or '1' for 
   "update display".
 
-  event->type can be of:
-  MOUSE_MOVE   : Mousepointer is moving with the view (and above visible pixels)
-  MOUSE_LEFT   : Mousepointer left the view of the layer
-  MOUSE_ENTER  : Mousepointer enters the view of the layer
+Parameters: 
+  layer - layer to attach handler to 
+  hover - addresss of the handler function
 
-  event->x, event->y will be the coordinates withing the layer of the mouse 
-  pointer.
+Remarks:
 
- *****************************************************************************/
+  - *event->type* can be of:
+
+    * *SILDISP_MOUSE_MOVE*   : Mousepointer is moving within the view (and above visible pixels)
+    * *SILDISP_MOUSE_LEFT*   : Mousepointer left the view of the layer
+    * *SILDISP_MOUSE_ENTER*  : Mousepointer enters the view of the layer
+
+  - *event->x, event->y* will be the coordinates of the mouse pointer within the layer.
+  - *event->dx, event->dy* will be the difference between previous and this movement
+  - Like all handlers, setting this handler to NULL will prevent these events send to the layer
+  - By default, the function will only triggers if mousepointer is above layer *and* 
+    there is a visible pixel. If you set the layer flag for *SILFLAG_MOUSEALLPIX*, it will 
+    use all pixels within view, visible or not. However, the layer might be blocking visible 
+    pixels of the layers underneath.
+
+*/
 void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -180,23 +142,115 @@ void sil_setHoverHandler(SILLYR *layer, UINT (*hover)(SILEVENT *)) {
   layer->hover=hover;
 }
 
-/*****************************************************************************
+/*
+Function: sil_setClickHandler
   
   Set handler for "click", when mousepointer is above the given layer AND 
   mousebutton has been pressed, it will trigger the given clickhandler. 
-  Handlers receive the event, including targeted layer and should return '0' 
+  Handlers will receive the event, including targeted layer and should return '0' 
   for "do nothing" or '1' for "update display".
-  Mousebuttons are 1,2 and 3. Left, Middle(or Mousewheel button) Right
 
-  event->type can be of:
-  MOUSE_DOWN  : mousebutton is clicked, event->val contains mousebutton number
-  MOUSE_UP    : mousebutton is released, event->val contains mousebutton number
-  MOUSEWHEEL  : mousewheel is rotated, event->val 1:up , 2:down
-  
+Parameters: 
+  layer - layer to attach handler to 
+  click - addresss of the handler function
 
 
- *****************************************************************************/
+Remarks: 
+  - Only 3 mousebuttons are recognized: 
 
+    * *SIL_BTN_LEFT*
+    * *SIL_BTN_MIDDLE* (same as scrollwheel click)
+    * *SIL_BTN_RIGHT*
+    
+  - Mousewheel event is also converted to a "click"
+
+    * *SIL_WHEEL_UP* rotating upwards
+    * *SIL_WHEEL_DOWN* rotating downwards
+
+  - *event->type* can be of:
+
+    * *SILDISP_MOUSE_DOWN*  : mousebutton is clicked, *event->val* contains mousebutton code 
+    * *SILDISP_MOUSE_UP*    : mousebutton is released, *event->val* contains mousebutton code 
+    * *SILDISP_MOUSEWHEEL*  : mousewheel is rotated, *event->val* contains wheel code
+
+  - *event->x,event->y* will contain the current location of the mousepointer within display
+    (!), so not within layer,  because mouse-up event might even happen outside of layer
+
+  - *event->val* will contain button/wheel code
+  - Like all handlers, setting this handler to NULL will prevent these events send to the layer
+
+Example:
+
+  ( file "example_clickhandler.c" in examples directory )
+
+--- Code
+#include <stdio.h>
+#include "sil.h"
+#include "log.h"
+
+SILLYR *whitelayer,*yellowlayer;
+
+UINT myclick(SILEVENT *event) {
+  log_info("---------------------------");
+  log_info("GOT Click Event !");
+  if (whitelayer==event->layer) {
+    log_info("From white rectangle layer");
+  } else {
+    log_info("From yellow rectangle layer");
+  }
+  switch (event->type) {
+    case SILDISP_MOUSE_DOWN:
+      log_info("Mouse Down at %d,%d",event->x,event->y);
+      if (event->val&SIL_BTN_LEFT) log_info("LEFT pressed");
+      if (event->val&SIL_BTN_MIDDLE) log_info("MIDDLE pressed");
+      if (event->val&SIL_BTN_RIGHT) log_info("RIGHT pressed");
+      break;
+    case SILDISP_MOUSE_UP:
+      log_info("Mouse Up at %d,%d",event->x,event->y);
+      if (event->val&SIL_BTN_LEFT) log_info("LEFT released");
+      if (event->val&SIL_BTN_MIDDLE) log_info("MIDDLE released");
+      if (event->val&SIL_BTN_RIGHT) log_info("RIGHT released");
+      break;
+    case SILDISP_MOUSEWHEEL:
+      log_info("Mouse Wheel at %d,%d",event->x,event->y);
+      if (SIL_WHEEL_UP==event->val) {
+        log_info("Wheel Up");
+      } else {
+        log_info("Wheel Down");
+      }
+      break;
+  }
+
+  return 0; // Don't need no screen update afterwards
+}
+
+int main() {
+  sil_initSIL(200,200,"basic example",NULL);
+
+  whitelayer=sil_addLayer(10,10,150,150,SILTYPE_ABGR);
+  sil_setForegroundColor(SILCOLOR_WHITE,255);
+  sil_setDrawWidth(4);
+  sil_drawRectangle(whitelayer,0,0,150,150);
+
+  yellowlayer=sil_addLayer(20,20,150,150,SILTYPE_ABGR);
+  sil_setForegroundColor(SILCOLOR_YELLOW,200);
+  sil_setDrawWidth(4);
+  sil_drawRectangle(yellowlayer,0,0,150,150);
+
+  // link our own click handler to both layers
+  sil_setClickHandler(whitelayer,myclick);
+  sil_setClickHandler(yellowlayer,myclick);
+
+
+  sil_updateDisplay();
+  sil_mainLoop();
+  sil_destroySIL();
+}
+
+---
+
+
+*/
 void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -207,47 +261,71 @@ void sil_setClickHandler(SILLYR *layer, UINT (*click)(SILEVENT *)) {
   layer->click=click;
 }
 
-/*****************************************************************************
+/*
+Function: sil_setKeyHandler
   
-  Set handler for keypresses. Key=key to trigger on, modifiers=shift, alt, ctrl
-  that has to be pressed as well. If both are set to zero, it will be a
-  "catch all". So you can have a single keyhandler for the whole program, 
-  oterwise the highest - visible- layer with matching key/modifiers will be 
-  triggered.
-  Flags can be:
-  - SILKT_SINGLE : only react on first/single keypress event (no autorepeat)
-  - SILKT_ONLYUP : only react on the release of the key
-  (no need to have both set, since keyrelease is only once )
+  Set handler for keyboard events. 
 
-  events can be:
-  KEY_DOWN : key has been pressed (or is still being pressed)
-  KEY_UP   : key has been released
+Parameters: 
+  layer     - layer to attach handler to 
+  key       - keycode to trigger on
+  modifiers - flags of extra modifiers keys that has to be pressed at same time
+  flags     - extra options
 
-  event->x,event->y 
-  will give the last know position of the mouse, but might
-  not be reliable.
-  
-  event->code 
-  will be the "native" keycode (without translation, figuring out
-  what might be the real markings on the keycap) . Code differs 
-  per platform and even per type of keyboardlayout.
+Key: 
+  A single key from <Keyboard codes>, or '0' to get all key codes (if modifiers is also set to '0')
 
-  event->val
-  will be the "guessed" character, base on modifier keys like shift and caps
-  like event->key can be SILKY_C , modifiers has SILKM_SHIFT => resulting val will be 
-  the ascii char "C".
-  
-  event->key 
-  is translated to "common" SILKY_xxxx code, and is the same on all
-  platforms.
+Modifiers:
+  One or more modifierkeys that has to be pressed can be selected concatting with 'or' for 
+  example SILKM_SHIFT|SILKM_ALT to trigger keyhandler only when keycode + shift + alt are pressed at the same time
 
-  event->modifiers
-  are flags representing shift,alt,ctrl and caps status. 
-  (SILKM_SHIFT, SILKM_ALT, SILKM_CTRL and SILKM_CAPS )
+  * *SILKM_SHIFT*
+  * *SILKM_ALT*
+  * *SILKM_CTRL*
+  * *SILKM_CAPS*
 
- *****************************************************************************/
+  Note that there is no difference between left or right of same modifier type
+
+Flags:
+
+  These can also be combined together with or ('|'):
+
+  * SILKT_SINGLE - Ignore any autorepeat, just send code once
+  * SILKT_ONLYUP - Don't send any *SILDISP_KEY_DOWN* event, only the *SILDISP_KEY_UP*
 
 
+Event:
+  Two event types can be send to handler:
+
+  * KEY_DOWN - key has been pressed (or is still being pressed, depending on SILKT_SINGLE flag if 
+               you want or don't want those additional events )
+  * KEY_UP   - key has been released
+
+  *event->key*       - "native" code translated to one of the <Keyboard codes>, platform independend
+  *event->modifiers* - Any special keys pressed at the same time (shift,alt,ctrl and or caps)
+  *event->val*       - Will be the "guessed" character, based on modifier key like shift and caps. 
+                       It is like event->key but with the right case
+  *event->code*      - Will be the "native","scancode" or "raw" keycode that might be different per platform. 
+                       This is without "translating" it what really is printed on the keycap;
+
+
+Remarks:
+  - The highest layer with matching key/modifiers will be triggered. 
+    By doing so you can "bind" special keycombo's per layer, for instance menu items.
+  - Like all handlers, setting this handler to NULL will prevent these events send to the layer
+  - The layer doesn't have to be visible to receive keyevents
+  - By setting both key and modifiers to zero, you create a "catch all" for all keyboard codes.
+    You can choose to have one layer handler handle - or dispatch - all pressed keys to 
+    make it less complex
+  - Depending on platform, some keycombinations cannot be intercepted and are handled directly 
+    by operating system, like ALT-F4 or CTRL-C.
+  - Don't use *event->x* or *event->y*; they might be not set at all or lagging. 
+    Use <sil_getMouse()> to retrieve to current location of mouse pointer if needed.
+  - *event->val* is only one byte, so it will probably misintepret any 'special' UTF-8 keyboard 
+    codes longer then one byte. Try to look at *event->code* in these cases
+    
+
+ */
 void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT (*keypress)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -263,22 +341,28 @@ void sil_setKeyHandler(SILLYR *layer, UINT key, BYTE modifiers, BYTE flags, UINT
 }
 
 
-/*****************************************************************************
+/*
+Function: sil_setDragHandler
 
-  Set handler for "drag". Drag is actually combination of 2 events: 
-  mouseclick & move. The handler will recieve the event with the "proposed" 
-  new x,y coordinates of the layer. Returning 0 will ignore the move, returning
-  1 will set the layer at the proposed coordinates and updates the display.
-  
-  This way you can define "boundaries" for dragging layers or even handle 
+  Set handler for "drag". 
+
+
+Parameters: 
+  layer - layer to attach handler to 
+  drag  - addresss of the handler function
+
+Remarks:
+  Drag is actually combination of 2 events,  mouseclick & move, that will be "translated" by
+  SIL to a drag event if there is a drag handler linked to the layer where mouseclick happend.
+  The handler will recieve the event with the "proposed" new x,y coordinates of the layer 
+  in *event->x* and *event->y* and change since last event in *event->dx* and *event->dy*.
+  These will be the target coordinates of the layer within the display, not the current (!).
+  Returning 0 will ignores the proposed coordinates, returning 1 will set the layer at 
+  the proposed coordinates and updates the display.
+  This way you will have a simple way to define "boundaries" for dragging layers or even handle 
   your own "dragging/shifting/moving" algorithm and returning 0.
-  Note that when you moved the layer on your own, the dragging routine doesn't
-  see that and still presumes it is dragging from the original coordinates if 
-  mouse button isn't released, which might result in strange behaviour.
-  To prevent this, clearflag "SILFLAG_BUTTONDOWN" to have the user release
-  and click again to drag again.
 
- *****************************************************************************/
+ */
 
 void sil_setDragHandler(SILLYR *layer, UINT (*drag)(SILEVENT *)) {
 #ifndef SIL_LIVEDANGEROUS
@@ -291,18 +375,25 @@ void sil_setDragHandler(SILLYR *layer, UINT (*drag)(SILEVENT *)) {
   sil_setFlags(layer,SILFLAG_DRAGGABLE);
 }
 
-/*****************************************************************************
+/*
+Function: sil_moveLayer
+
   Move layer to new position, relative to current position
 
-  In: x and y amount (can be negative) 
-      you can place a layer outside dimensions of display
+Parameters: 
+  layer - Layer to move
+  x     - distance to move on X axis (can be negative)
+  y     - distance to move on Y axis (can be negative)
 
- *****************************************************************************/
+Remarks:
+  It is possible to move layers outside the boundaries of the display. 
+  Of course this will result in the layer not - or partly - being drawn when updating.
 
+ */
 void sil_moveLayer(SILLYR *layer,int x,int y) {
 #ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("moving a layer that isn't initialized, or with uninitialized FB");
+  if (NULL==layer) {
+    log_warn("moving a layer that isn't initialized");
     return;
   }
 #endif
@@ -310,67 +401,58 @@ void sil_moveLayer(SILLYR *layer,int x,int y) {
   layer->rely+=y;
 }
 
-/*****************************************************************************
-  Place layer on given position
+/*
+Function: sil_placeLayer
 
-  In: x,y coordinates (top left of display = 0,0)
-      you can place a layer outside dimensions of display
+  place layer to new position, relative to upper left corner of display
 
- *****************************************************************************/
-void sil_placeLayer(SILLYR *layer, UINT x,UINT y) {
+Parameters: 
+  layer - Layer to place 
+  x     - x position, relative to upper left corner of display
+  y     - y position, relative to upper left corner of display
+
+Remarks:
+  - Coordinates can be negative, meaning drawn (partly) "off screen". 
+  Same goes for x,y higher then right lower corner.
+  - If you want to stop showing layer, it is still faster and easier to use 
+    <sil_hide()> and <sil_show()> instead of setting it outside dimensions of display
+
+
+*/
+void sil_placeLayer(SILLYR *layer, int x,int y) {
 #ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("placing a layer that isn't initialized, or with uninitialized FB");
+  if (NULL==layer) {
+    log_warn("placing a layer that isn't initialized");
     return;
   }
 #endif
   layer->relx=x;
   layer->rely=y;
 }
-/*****************************************************************************
 
- Draw a pixel "zoomlevel" times as big as normal, for debugging drawing
- algorithms. Be aware ; x,y are also multiplied by zoomlevel !
+/*
+Function: sil_putPixelLayer
+  
+  Draw a pixel on given location inside a layer.
 
- *****************************************************************************/
+Parameters:
+  layer  - layer to draw on
+  x      - x position, relative from upper left corner of layer
+  y      - y position, relative from upper left corner of layer
+  red    - amount of red   0..255
+  green  - amount of green 0..255
+  blue   - amount of blue  0..255
+  alpha  - Opacity -> from 0 (not visible) to 255 (no transparancy)
 
-void sil_putBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
-  BYTE lvl=sil_getZoom();
-  if (lvl<2) {
-    /* width of one or none, so just a "normal" pixel */
-    sil_putPixelLayer(layer,x,y,red,green,blue,alpha);
-    return;
-  }
-  for (int cy=0;cy<lvl;cy++) {
-    for (int cx=0;cx<lvl;cx++) {
-      sil_putPixelLayer(layer,(x*lvl)+cx,(y*lvl)+cy,red,green,blue,alpha);
-    }
-  }
-}
+Remarks:
+  - you can also used predefined SIL <color codes>, instead of writing 
+    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
+  - Any pixels that are not within boundaries of layer are not drawn at all
+  - If framebuffer type of layer doesn't support alpha value, alpha will be ignored
+  - Although it uses 8 bit values for RGB, if framebuffer type of layer uses less bits for 
+    each color, they will be adjusted 
 
-
-void sil_blendBigPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
-  BYTE lvl=sil_getZoom();
-  if (lvl<2) {
-    /* width of one or none, so just a "normal" pixel */
-    sil_blendPixelLayer(layer,x,y,red,green,blue,alpha);
-    return;
-  }
-  for (int cy=0;cy<lvl;cy++) {
-    for (int cx=0;cx<lvl;cx++) {
-      sil_blendPixelLayer(layer,(x*lvl)+cx,(y*lvl)+cy,red,green,blue,alpha);
-    }
-  }
-}
-
-/*****************************************************************************
-  Draw a pixel on given location inside a layer
-
-  In: layer context, x,y position
-      RGBA color values
-
- *****************************************************************************/
-
+*/
 void sil_putPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
@@ -383,15 +465,34 @@ void sil_putPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE
   sil_putPixelFB(layer->fb, x,y,red,green,blue,alpha);
 }
 
-/*****************************************************************************
-  Draw a pixel on given location inside a layer, but uses alpha value to 
-  blend pixel with pixel already on that position
 
-  In: layer context, x,y position
-      RGBA color values
+/*
+Function: sil_blendPixelLayer
+  
+  Draw a pixel on given location inside a layer and blend it with existing pixel
 
- *****************************************************************************/
 
+Parameters:
+  layer  - layer to draw on
+  x      - x position, relative from upper left corner of layer
+  y      - y position, relative from upper left corner of layer
+  red    - amount of red   0..255
+  green  - amount of green 0..255
+  blue   - amount of blue  0..255
+  alpha  - Opacity -> from 0 (not visible) to 255 (no transparancy)
+
+Remarks:
+  - you can also used predefined SIL <color codes>, instead of writing 
+    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
+  - Any pixels that are not within boundaries of layer are not drawn at all
+  - Although it uses 8 bit values for RGB, if framebuffer type of layer uses less bits for 
+    each color, they will be adjusted 
+  - This function is in the rare case you want to overwrite pixels or framebuffer/display type
+    doesn't support alpha blending. But in other cases, if you want to blend images, it is 
+    easier -and much faster !- to have each image in a seperate layer and use alpha settings of 
+    layers to blend them
+
+*/
 void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
   BYTE mixred,mixgreen,mixblue,mixalpha;
   float af,negaf;
@@ -419,14 +520,29 @@ void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BY
   sil_putPixelLayer(layer,x,y,red,green,blue,alpha);
 }
 
-/*****************************************************************************
-  Draw a pixel on given location inside a layer, but uses alpha value to 
-  blend pixel with pixel already on that position
+/*
+Function: sil_getPixelLayer
+  
+  get red,green,blue and alpha information for pixel on given location inside a layer.
 
-  In: layer context, x,y position
-      RGBA color values
+Parameters:
+  layer  - layer to draw on
+  x      - x position, relative from upper left corner of layer
+  y      - y position, relative from upper left corner of layer
+  red    - return amount of red   0..255
+  green  - return amount of green 0..255
+  blue   - return amount of blue  0..255
+  alpha  - return Opacity -> from 0 (not visible) to 255 (no transparancy)
 
- *****************************************************************************/
+Remarks:
+  - you can also used predefined SIL <color codes>, instead of writing 
+    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
+  - all RGB codes are returned as bytes. If Framebuffer uses fewer bits, they will be translated 
+    to 8 bits.
+  - If framebuffer type doesn't support alpha value, 255 will be returned.
+  - Any pixels that are not within boundaries of layer will be returning zero for all values
+
+*/
 void sil_getPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
   if ((layer) && (layer->init)) {
     /* just return transparant black when outside of fb dimensions */
@@ -441,38 +557,99 @@ void sil_getPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE *red, BYTE *green, BY
   }
 }
 
-/*****************************************************************************
-  Manipulate flags for layers
-  SILFLAG_INVISIBLE Don't draw layer
-  SILFLAG_NOBLEND   Do not blend with existing colors
+/*
+Function: sil_setFlags
+  set layer flags
 
+Parameters:
 
- *****************************************************************************/
+  layer - layer to set flags of 
+  flags - one or more flags to set, joined by bitwise "or" ('|')
 
+Flags:
+
+  SILFLAG_INVISIBLE   - don't show layer, don't scan for mouse handlers. 
+                        Setting and resetting is the same as <sil_hide()> and <sil_show()>
+  SILFLAG_NOBLEND     - don't use blend when drawing text
+  SILFLAG_VIEWPOSSTAY - if view is changed of layer, keep the layer at same position
+  SILFLAG_MOUSESHIELD - Stop scanning for layers with mouse handlers under this layer
+  SILFLAG_MOUSEALLPIX - When scanning for valid mouse handlers, all pixels of this layer 
+                        are eligable , instead of only visible ones
+  SILFLAG_FREEUSER    - Let SIL free up any userdefined memory pointed by layer->user
+                        when layer is destroyed
+
+*/
 void sil_setFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("setFlags on layer that isn't initialized, or with uninitialized FB");
+  if (NULL==layer) {
+    log_warn("setFlags on layer that isn't initialized");
     return;
   }
 #endif
   layer->flags|=flags;
 }
 
+/*
+Function: sil_clearFlags
+  clear one or more flags from layer
+
+Parameters:
+
+  layer - layer that has the flags
+  flags - one or more flags to clear, joined by bitwise "or" ('|')
+
+Flags:
+
+  SILFLAG_INVISIBLE   - don't show layer, don't scan for mouse handlers. 
+                        Setting and resetting is the same as <sil_hide()> and <sil_show()>
+  SILFLAG_NOBLEND     - don't use blend when drawing text
+  SILFLAG_VIEWPOSSTAY - if view is changed of layer, keep the layer at same position
+  SILFLAG_MOUSESHIELD - Stop scanning for layers with mouse handlers under this layer
+  SILFLAG_MOUSEALLPIX - When scanning for valid mouse handlers, all pixels of this layer 
+                        are eligable , instead of only visible ones
+  SILFLAG_FREEUSER    - Let SIL free up any userdefined memory pointed by layer->user
+                        when layer is destroyed
+
+*/
 void sil_clearFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("clearFlags on layer that isn't initialized, or with uninitialized FB");
+  if (NULL==layer) {
+    log_warn("clearFlags on layer that isn't initialized");
     return;
   }
 #endif
   layer->flags&=~flags;
 }
 
+/*
+Function: sil_checkFlags
+  check if one or more flags are set for given layer
+
+Parameters:
+
+  layer - layer to get flags from
+  flags - one or more flags to check on, joined by bitwise "or" ('|')
+
+Flags:
+
+  SILFLAG_INVISIBLE   - don't show layer, don't scan for mouse handlers. 
+                        Setting and resetting is the same as <sil_hide()> and <sil_show()>
+  SILFLAG_NOBLEND     - don't use blend when drawing text
+  SILFLAG_VIEWPOSSTAY - if view is changed of layer, keep the layer at same position
+  SILFLAG_MOUSESHIELD - Stop scanning for layers with mouse handlers under this layer
+  SILFLAG_MOUSEALLPIX - When scanning for valid mouse handlers, all pixels of this layer 
+                        are eligable , instead of only visible ones
+  SILFLAG_FREEUSER    - Let SIL free up any userdefined memory pointed by layer->user
+                        when layer is destroyed
+
+Returns:
+  zero if not all given flags are set, one if they are
+
+*/
 UINT sil_checkFlags(SILLYR *layer,BYTE flags) {
 #ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("checkFlags on layer that isn't initialized, or with uninitialized FB");
+  if (NULL==layer) {
+    log_warn("checkFlags on layer that isn't initialized");
     return SILERR_NOTINIT;
   }
 #endif
@@ -481,20 +658,32 @@ UINT sil_checkFlags(SILLYR *layer,BYTE flags) {
 }
 
 
-/*****************************************************************************
-  Get bottom layer
- *****************************************************************************/
+/*
+Function: sil_getBottom
+  get layer on the bottom of the stack
 
+Returns: 
+  Pointer to bottom layer (suprise)
+
+Remarks:
+  If you want to iterate to all layers, you can do it the best from bottom
+  till top, by following the layer->next link
+ 
+*/
 SILLYR *sil_getBottom() {
-  return glyr.bottom;
+  return gv.bottom;
 }
 
-/*****************************************************************************
-  Get top most layer 
- *****************************************************************************/
+/*
+Function: sil_getTop
+  get the top most layer 
 
+Returns: 
+  Pointer to top layer 
+
+*/
 SILLYR *sil_getTop() {
-  return glyr.top;
+  return gv.top;
 }
 
 /*****************************************************************************
@@ -508,8 +697,8 @@ static int hasInstance(SILLYR *layer) {
   UINT cnt=0;
   SILLYR *search;
 
-  if (0==layer->internal&SILFLAG_INSTANCIATED) return 0;
-  search=glyr.bottom;
+  if (0==(layer->internal&SILFLAG_INSTANCIATED)) return 0;
+  search=gv.bottom;
   while(search) {
     if ((search != layer)&&(search->internal&SILFLAG_INSTANCIATED)) {
       if (search->fb==layer->fb) cnt++; 
@@ -519,15 +708,21 @@ static int hasInstance(SILLYR *layer) {
   return cnt;
 }
 
-/*****************************************************************************
-  Remove layer
- *****************************************************************************/
+/*
+Function: sil_destroyLayer
+  remove layer from stack and delete it
+
+Remarks:
+  If layer flag *SILFLAG_FREEUSER* is set and layer->user is not NULL, it will free 
+  any allocated memory pointed by layer->user. 
+ 
+*/
 void sil_destroyLayer(SILLYR *layer) {
   if ((layer)&&(layer->init)) {
     if (0==hasInstance(layer)) sil_destroyFB(layer->fb);
     layer->init=0;
     sil_toBottom(layer);
-    glyr.bottom=layer->next;
+    gv.bottom=layer->next;
     layer->next->previous=NULL;
     if ((layer->flags&SILFLAG_FREEUSER)&&(layer->user)) free(layer->user);
     free(layer);
@@ -536,10 +731,22 @@ void sil_destroyLayer(SILLYR *layer) {
   }
 }
 
-/*****************************************************************************
-  Set alpha blending for whole layer 
-  In: Layer context, alpha (0.0 ... 1.0) 1.0 is no transparency 
- *****************************************************************************/
+/*
+Function: sil_setAlphaLayer
+  set alpha blending factor for layer
+
+Parameters:
+
+  layer - layer to set alpha value
+  alpha - alpha value 0.0 (transparant) to 1.0 (opaque)
+  
+Remarks:
+  - Be aware: Although alpha values in pixel functions do use range from 0 to 255, 
+    this one uses 0 to 1.0 as float
+  - Setting this value on non-SDL platforms might slow down update proces because all
+    pixels had to be calculated seperately. 
+ 
+*/
 void sil_setAlphaLayer(SILLYR *layer, float alpha) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
@@ -951,7 +1158,6 @@ SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
  *****************************************************************************/
 
 void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
-  UINT x=0,y=0;
 
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
@@ -1099,18 +1305,18 @@ void sil_toTop(SILLYR *layer) {
 #endif
 
   /* don't move when already on top */
-  if (glyr.top==layer) return;
+  if (gv.top==layer) return;
 
   tnext=layer->next;
   tprevious=layer->previous;
   
   if (tnext) tnext->previous=tprevious;
   if (tprevious) tprevious->next=tnext;
-  if (glyr.bottom==layer) glyr.bottom=tnext;
-  layer->previous=glyr.top;
+  if (gv.bottom==layer) gv.bottom=tnext;
+  layer->previous=gv.top;
   layer->next=NULL;
-  glyr.top->next=layer;
-  glyr.top=layer;
+  gv.top->next=layer;
+  gv.top=layer;
 
 }
 
@@ -1127,18 +1333,18 @@ void sil_toBottom(SILLYR *layer) {
 #endif
 
   /* don't move when already on bottom */
-  if (glyr.bottom==layer) return;
+  if (gv.bottom==layer) return;
 
   tnext=layer->next;
   tprevious=layer->previous;
   
   if (tnext) tnext->previous=tprevious;
   if (tprevious) tprevious->next=tnext;
-  if (glyr.top==layer) glyr.top=tprevious;
-  layer->next=glyr.bottom;
+  if (gv.top==layer) gv.top=tprevious;
+  layer->next=gv.bottom;
   layer->previous=NULL;
-  glyr.bottom->previous=layer;
-  glyr.bottom=layer;
+  gv.bottom->previous=layer;
+  gv.bottom=layer;
 }
 
 
@@ -1166,12 +1372,12 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
   lnext=layer->next;
   lprevious=layer->previous;
   
-  if (target==glyr.top) {
+  if (target==gv.top) {
     sil_toTop(layer);
     return;
   }
 
-  if (target==glyr.bottom) {
+  if (target==gv.bottom) {
     sil_toBottom(layer);
     sil_swap(layer,target);
     return;
@@ -1186,7 +1392,7 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
     if (lprevious) lprevious->next=lnext;
     if (tnext) tnext->previous=layer;
     target->next=layer;
-    if (layer==glyr.top) glyr.top=lprevious;
+    if (layer==gv.top) gv.top=lprevious;
     return;
 
   }
@@ -1223,13 +1429,13 @@ void sil_toBelow(SILLYR *layer,SILLYR *target) {
   lnext=layer->next;
   lprevious=layer->previous;
 
-  if (target==glyr.top) {
+  if (target==gv.top) {
     sil_toTop(layer);
     sil_swap(layer,target);
     return;
   }
 
-  if (target==glyr.bottom) {
+  if (target==gv.bottom) {
     sil_toBottom(layer);
     return;
   }
@@ -1244,7 +1450,7 @@ void sil_toBelow(SILLYR *layer,SILLYR *target) {
     if (lprevious) lprevious->next=lnext;
     if (tprevious) tprevious->next=layer;
     target->previous=layer;
-    if (layer==glyr.top) glyr.top=lprevious;
+    if (layer==gv.top) gv.top=lprevious;
     return;
   }
 
@@ -1279,17 +1485,17 @@ void sil_swap(SILLYR *layer,SILLYR *target) {
     return;
   }
 
-  if (glyr.top==target) {
-    glyr.top=layer;
+  if (gv.top==target) {
+    gv.top=layer;
   } else {
-    if (glyr.top==layer) {
-      glyr.top=target;
+    if (gv.top==layer) {
+      gv.top=target;
     }
   }
-  if (glyr.bottom==target) {
-    glyr.bottom=layer;
+  if (gv.bottom==target) {
+    gv.bottom=layer;
   } else {
-    if (glyr.bottom==layer) glyr.bottom=target;
+    if (gv.bottom==layer) gv.bottom=target;
   }
   lnext=layer->next;
   lprevious=layer->previous;
@@ -1358,13 +1564,22 @@ static void copylayerinfo(SILLYR *from, SILLYR *to) {
 }
 
 
-/*****************************************************************************
+/*
 
-  addCopy : creates a new layer, but copies all layer information to new one
-            New layer will be placed at given x,y postion
+Function: sil_addCopy
 
- *****************************************************************************/
-SILLYR *sil_addCopy(SILLYR *layer,UINT relx,UINT rely) {
+  creates a new layer, but copies all layer information to new one.The New layer will be placed at given x,y postion
+
+Parameters: 
+  layer - pointer to layer to copy
+  relx  - x position of new layer relative to top left of display
+  rely  - y position of new layer relative to top left of display
+
+Returns:
+  pointer to newly created layer
+
+*/
+SILLYR *sil_addCopy(SILLYR *layer,int relx,int rely) {
   SILLYR *ret=NULL;
 
 #ifndef SIL_LIVEDANGEROUS
@@ -1385,15 +1600,34 @@ SILLYR *sil_addCopy(SILLYR *layer,UINT relx,UINT rely) {
 }
 
 
-/*****************************************************************************
+/* 
+Function: sil_addInstance
 
-  addInstance: 
-   creates a new layer, but shares the same framebuffer to save memory.
-   New layer will be placed at given x,y postion
+  Create an extra instance of given layer. New layer will share the same framebuffer 
+  as the original, so all drawings and filters on it will be the same as the 
+  original, however, the new layer can have different position, view, visability or 
+  handlers.
 
- *****************************************************************************/
+  Use this to save memory when using the same image over and over again, like "tiling"
+  a background.
 
-SILLYR *sil_addInstance(SILLYR *layer,UINT relx,UINT rely) {
+Parameters: 
+  layer - pointer to layer to instanciate from
+  relx  - x position of new layer relative to top left of display
+  rely  - y position of new layer relative to top left of display
+
+Returns:
+  pointer to newly created layer
+
+Remarks:
+  The only advantage of this function is that it will save memory. However, if you use SDL, 
+  every layer -including instanciated ones- will end up having a seperate texture to be send 
+  to GPU, therefore, it isn't recommended to use this function for SDL environments. 
+  If you just want a copy of an existing layer, use <sil_addCopy()> instead
+
+ */
+
+SILLYR *sil_addInstance(SILLYR *layer,int relx,int rely) {
   SILLYR *ret=NULL;
 
 #ifndef SIL_LIVEDANGEROUS
@@ -1412,10 +1646,27 @@ SILLYR *sil_addInstance(SILLYR *layer,UINT relx,UINT rely) {
   ret->fb=layer->fb;
 
   copylayerinfo(layer,ret);
+
+  /* make sure we dont accidently copy handlers & states */
+  ret->internal=0;
+  ret->hover=NULL;
+  ret->click=NULL;
+  ret->keypress=NULL;
+  ret->drag=NULL;
+  ret->pointer=NULL;
+  ret->key=0;
+  ret->modifiers=0;
+  ret->user=NULL;
+
   /* set flag to instanciated, preventing throwing away framebuffer */
   /* if there is still a copy of it left                            */
   layer->internal|=SILFLAG_INSTANCIATED;
   ret->internal|=SILFLAG_INSTANCIATED;
+
+  /* For SDL: to be sure, set flag that fb is changed to notify it has to */
+  /* render the texture for this layer first                              */
+  layer->fb->changed=1;
+  layer->fb->resized=1;
   return ret;
 }
 

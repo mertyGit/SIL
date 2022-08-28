@@ -389,7 +389,7 @@ int main() {
   sil_addLayerGroup(grouptest,test);
 
   printf("mirroring layer 10");
-  mirror=sil_mirrorLayer(test,700,400);
+  mirror=sil_addInstance(test,700,400);
   sil_resetView(mirror);
 
 

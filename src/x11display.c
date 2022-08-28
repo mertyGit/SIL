@@ -362,21 +362,21 @@ SILEVENT *sil_getEventDisplay() {
         gv.se.val=0;
         switch (event.xbutton.button) {
            case Button1:
-             gv.se.val=1;
+             gv.se.val=SIL_BTN_LEFT;
              break;
            case Button2:
-             gv.se.val=2;
+             gv.se.val=SIL_BTN_MIDDLE;
              break;
            case Button3:
-             gv.se.val=3;
+             gv.se.val=SIL_BTN_RIGHT;
              break;
            case Button4:
              gv.se.type=SILDISP_MOUSEWHEEL;
-             gv.se.val=2;
+             gv.se.val=SIL_WHEEL_UP;
              break;
            case Button5:
              gv.se.type=SILDISP_MOUSEWHEEL;
-             gv.se.val=1;
+             gv.se.val=SIL_WHEEL_DOWN;
            break;
         }
         gv.se.x  =event.xbutton.x;
