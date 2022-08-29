@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "sil.h"
+#include "sil_int.h"
 #include "log.h"
 
 

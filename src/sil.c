@@ -15,10 +15,10 @@
     - (optional) Set logging -> <sil_setLog()>
     - Create/load/place - initial - layers 
     - (optional) attach your own handlers to layers -> <sil_setKeyHandler()> <sil_setClickHandler()>
-    <sil_setHoverHandler()><sil_setDragHandler()>
-    - (optional) set timer handler & timer -> <sil_setTimeHandler()> <sil_setTimeval()>
+    <sil_setHoverHandler()> <sil_setDragHandler()>
+    - (optional) set timer handler & timer -> <sil_setTimerHandler()> <sil_setTimeval()>
     - Send 1st update to display -> <sil_updateDisplay()>
-    - Enter SIL mainloop until quit is requested -> <sil_mainLoop()> & <sil_quit()>
+    - Enter SIL mainloop until quit is requested -> <sil_mainLoop()> & <sil_quitLoop()>
     - clean-up SIL resources -> <sil_destroySIL()>
     - end of your application
   
@@ -75,6 +75,7 @@ int main() {
 #include <stdio.h>
 #include <stdlib.h>
 #include "sil.h"
+#include "sil_int.h"
 #include "log.h"
 
 
@@ -275,7 +276,7 @@ static void checkMove(SILEVENT *se) {
    will be send to the highest visible layer right under mouse cursor that has a registered 
    a mousehandler via <sil_setClickHandler> 
    - *mouse move* events, If mousepointers is above a visible layer with hoverhandler set, 
-   *SILDISP_MOUSE_ENTER* will be send to hoverhandler that has been set via <sil_setHoverHandler >.
+   *SILDISP_MOUSE_ENTER* will be send to hoverhandler that has been set via <sil_setHoverHandler()>.
    Any mousemovement later, it will send *SILDISP_MOUSE_MOVE* events.
    If mouse leaves the layer, it will send a *SILDISP_MOUSE_LEFT*. 
    - *mouse drag* event, is a combination of *SILDISP_MOUSE_DOWN* and *SILDISP_MOUSE_MOVE*, that 

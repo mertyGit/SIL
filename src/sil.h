@@ -5,7 +5,7 @@
 #define BYTE unsigned char
 #define UINT unsigned int
 
-/* the useual helpers */
+/* the usual helpers */
 #define SIL_MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define SIL_MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define SIL_ABS(x) ((x) < 0 ? -(x) : (x))
@@ -38,7 +38,6 @@
 UINT sil_initSIL(UINT, UINT, char *, void *);
 UINT sil_setLog(char *logname, BYTE flags);
 void sil_destroySIL();
-UINT sil_getErr();
 const char *sil_err2Txt(UINT errorcode);
 void sil_quitLoop();
 void sil_mainLoop();
@@ -136,13 +135,6 @@ void sil_destroyFB(SILFB *);
 #define SILFLAG_MOUSESHIELD   64
 #define SILFLAG_MOUSEALLPIX  128
 
-/* bitmask for internal */
-#define SILFLAG_ALPHACHANGED   1
-#define SILFLAG_KEYEVENT       2
-#define SILKT_SINGLE           4
-#define SILKT_ONLYUP           8
-#define SILFLAG_INSTANCIATED  16
-
 /* also used by display.c */
 typedef struct _SILEVENT {
   BYTE type;
@@ -211,18 +203,14 @@ UINT sil_checkFlags(SILLYR *,BYTE);
 void sil_setAlphaLayer(SILLYR *,float);
 void sil_setView(SILLYR *,UINT,UINT,UINT,UINT);
 void sil_resetView(SILLYR *);
-UINT sil_resizeLayer(SILLYR *, UINT,UINT,UINT,UINT);
+UINT sil_resizeLayer(SILLYR *, int,int,UINT,UINT);
 void sil_moveLayer(SILLYR *,int, int);
 void sil_placeLayer(SILLYR *,int, int);
 SILLYR *sil_PNGtoNewLayer(char *,UINT,UINT);
-void LayersToFB(SILFB *);
 void sil_setKeyHandler(SILLYR *,UINT, BYTE, BYTE, UINT (*)(SILEVENT *));
 void sil_setClickHandler(SILLYR *,UINT (*)(SILEVENT *));
 void sil_setHoverHandler(SILLYR *,UINT (*)(SILEVENT *));
 void sil_setDragHandler(SILLYR *,UINT (*)(SILEVENT *));
-SILLYR *sil_findHighestClick(UINT,UINT);
-SILLYR *sil_findHighestHover(UINT,UINT);
-SILLYR *sil_findHighestKeyPress(UINT,BYTE);
 void sil_initSpriteSheet(SILLYR *,UINT ,UINT);
 void sil_nextSprite(SILLYR *);
 void sil_prevSprite(SILLYR *);

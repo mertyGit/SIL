@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "sil.h"
+#include "sil_int.h"
 #include "log.h"
 
 
@@ -610,7 +611,7 @@ void sil_updateDisplay() {
   GC gc;
 
 	if (NULL==gv.fb) log_fatal("framebuffer not initialized");
-  LayersToFB(gv.fb);
+  sil_LayersToFB(gv.fb);
   
   /* create colormap */
   gc=XCreateGC(gv.display, gv.window, 0, &gv.gcvalues);

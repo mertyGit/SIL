@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "log.h"
 #include "sil.h"
+#include "sil_int.h"
 
 
 /*****************************************************************************

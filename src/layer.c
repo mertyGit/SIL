@@ -5,12 +5,71 @@
    This file contains all functions for creating and manipulation of layers
 
 */
+/*
+ 
+About: Using Layers
+
+  Layer are the main elements of SIL. Although "the real thing" is handled
+  by framebuffers under every layer and pushed out to the display via platform
+  specific display routines, as user you should not be knowing anything about that 
+  and just focus on the layer routines and if needed - primitive - drawing, imageloading
+  and textdrawing routines. 
+
+  In SIL, we talk about *layers* , *views* on layers and the *display* the combination has
+  to be rendered to. The term "display" can be confusing, because initially, SIL was 
+  written with embedded systems in mind that don't use a sophisticated operating system
+  or windowing system. In this terminology, the final target is "just a single display",
+  nothing more, nothing less. However, to run it on operating systems that do have a 
+  windowing system, its easier to use that system to display on. Therefore, in SIL,
+  "display" is the same as "single window SIL run in". 
+
+  (see layersexplanation.png)
+
+  So, the layer concept is simple. Layers are like multiple images with different 
+  dimensions place on each other to form a stack. The image on top of the stack might
+  be covering the view on the image below, and that image does the same for the image
+  below that image and so on. But there is a twist, layers are rectangular but pixels 
+  within that layer can be made a bit transparant, where it will blend with the pixels
+  of the layer right under it, or even completely transparant, making it look like the
+  layer isn't rectangular anymore, but a cut-out. 
+
+  Of course you can create a layer "masking" parts of the layer under it, but it is much easier
+  to set a 'view'. This way, you save a layer and you don't need to load,draw or move the image 
+  again, you can set the borders of the part you want to see within the layer. See for
+  example the use of views to create an animation using a "spritesheet" in a single 
+  layer (<sil_initSpriteSheet()>).
+
+  So a "dumb" display isn't aware of any "layers" or "views", but rendering to a display
+  or a window, isn't that hard. On every update, just start with bottom layer, get all 
+  pixels within the view of that layer and place them in a framebuffer that is as big as 
+  the display or window. continue with next layer above it, and it will overwrite 
+  existing pixels (or blend, depending on transparancy of the pixel) at places where 
+  this layers "covers". Do this until you reached the top layer. Now, push out the 
+  framebuffer to display or window, and you have a fresh update of the whole display.
+  Check the LayersToFB function in this file how that is done.
+
+  However, parsing every, visible, layer for every small update is not the fastest way 
+  to do so, there are much better algorithms out there to only update what is really
+  changed on the display and leave the rest there is. It might not be the best for
+  fast games, but good enough for GUI kind of tasks. Also, on most embedded systems,
+  the communication to the display can be the bottle neck, not the CPU itselfes.
+
+  If you really want speed and you are using a computer or system that do have a graphical 
+  unit , either as graphics card or as part of the CPU, use SDL who can make use of any GPU. 
+  In SIL, the SDL display routines don't use "LayersToFB", but translate every layer to 
+  a seperate texture that will be loaded into the graphics card memory. 
+  Moving, rearranging, showing, hiding will all be done inside the graphics card 
+  and only changes to layers, but not the whole screen, has to be pushed to the GPU. 
+  The CPU doesn't need to render, the graphic card will render it much, much faster.
+
+*/
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "lodepng.h"
 #include "sil.h"
+#include "sil_int.h"
 #include "log.h"
 
 typedef struct _GLYR {
@@ -744,7 +803,7 @@ Remarks:
   - Be aware: Although alpha values in pixel functions do use range from 0 to 255, 
     this one uses 0 to 1.0 as float
   - Setting this value on non-SDL platforms might slow down update proces because all
-    pixels had to be calculated seperately. 
+    pixels have to be calculated seperately. 
  
 */
 void sil_setAlphaLayer(SILLYR *layer, float alpha) {
@@ -760,12 +819,28 @@ void sil_setAlphaLayer(SILLYR *layer, float alpha) {
   layer->internal|=SILFLAG_ALPHACHANGED;
 }
 
-/*****************************************************************************
+/*
+Function: sil_setView
   Set view of layer
+
   Despite the dimensions and position of layer, it will only display pixels 
-  within this view. 
-  In: Layer context, x,y postion top left, width and height
- *****************************************************************************/
+  within this view. Also, all mouse handlers only react on pixels within this view.
+
+  (see layerandview.png)
+
+Paramaters:
+  layer  - Layer to set view of
+  minx   - x offset from top left of layer
+  miny   - y offset from top left of layer
+  width  - width of view 
+  height - height of view
+
+
+Remarks:
+  - If values given creates a view that doesn't fit in layer, the values will 
+    be adjusted to fit maximum width and height.
+
+ */
 void sil_setView(SILLYR *layer,UINT minx,UINT miny,UINT width,UINT height) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
@@ -787,10 +862,19 @@ void sil_setView(SILLYR *layer,UINT minx,UINT miny,UINT width,UINT height) {
   }
 }
 
-/*****************************************************************************
-  Reset the view to display the whole layer
-  In: Layer context
- *****************************************************************************/
+/*
+Function: sil_resetView
+  Reset view settings of layer to default. Default values will be the same as the 
+  surface of the layer in total. So minx,miny at 0 and width&height the same as 
+  layer width and height 
+
+Paramaters:
+  layer  - Layer to set view of
+
+Remark:
+  Usefull after resizing the layer or applying filters that result in resizing.
+
+ */
 void sil_resetView(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
@@ -808,14 +892,34 @@ void sil_resetView(SILLYR *layer) {
   layer->view.height=layer->fb->height;
 }
 
-/*****************************************************************************
-  Resize layer (used for cropping and turning) will create a temporary 
-  framebuffer
+/*
+Function: sil_resizeLayer
+  resize the given layer to new dimensions and offset.
+  Offset are the distances to add from pixellocation in original layer and
+  the one in the resized one. 
 
-  In: Layer context x,y top left within layer + width & height of view
+Paramaters:
+  layer - layer to resize
+  minx  - X offset 
 
- *****************************************************************************/
-UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) {
+Remarks:
+  - Using offsets, you are also able to crop or shift the layer. 
+  - It only cuts off or add pixels, it doesn't scale the layer. If you want that,
+    use <sil_rescale()> function.
+  - It will be resizing by creating a new framebuffer and copying
+    all pixels (with offset) from old one, so it is time and memory
+    consuming to resize it this way. Often, the use of views is a
+    better alternative is layer has to be smaller.
+  - Old version of resize did reset the view, but this version doesn't. 
+    Use <sil_setView()> <sil_resetView()> afterwards to compensate that
+    if needed.
+  
+Returns:
+  SILERR_ALLOK (0) when everything wend ok, otherwise errorcode
+  
+
+ */
+UINT sil_resizeLayer(SILLYR *layer, int minx,int miny,UINT width,UINT height) {
   SILFB *tmpfb;
   BYTE red,green,blue,alpha;
   UINT maxx,maxy;
@@ -861,39 +965,37 @@ UINT sil_resizeLayer(SILLYR *layer, UINT minx,UINT miny,UINT width,UINT height) 
   layer->fb->size=tmpfb->size;
   layer->fb->changed=1;
   layer->fb->resized=1;
-  /*
-  layer->view.minx=0;
-  layer->view.miny=0;
-  layer->view.width=tmpfb->width;
-  layer->view.height=tmpfb->height;
-  */
 
   return SILERR_ALLOK;
 }
 
-/*****************************************************************************
+/*
+Function: sil_PNGtoNewLayer
 
   Creat a new layer based on given PNG filename and place it on location x,y
-  This function is way faster then "PNGintoLayer" which will load and put in 
+
+Parameters:
+  filename - name of .png file to be loaded
+  x        - x coordinate of new layer
+  y        - y coordinate of new layer
+
+Returns:
+  pointer to newly created layer. Pointer is NULL if error occured.
+
+Remarks:
+  - Width and Height of layer are automatically adjusted to size of png file.
+  - Although pngfiles can have different colordepths and bit alignment,
+  all layers will be generated with SILTYPE_ABGR, so 1 byte per color + alpha
+  - This function is way faster then <PNGintoLayer()> which will load and put in 
   an existing layer. It will not use a temporary framebuffer but will claim 
   the created framebuffer from the lodepng function as part of the layer.
-
-  Width and Height of layer are automatically adjusted to size of png file.
-  Note that although pngfiles can have different colordepths and bit alignment,
-  all layers will be generated with SILTYPE_ABGR, so 1 byte per color + alpha
-
- *****************************************************************************/
-
+ */
 SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
   SILLYR *layer=NULL;
   BYTE *image =NULL;
   UINT err=0;
-  UINT pos=0;
   UINT width=0;
   UINT height=0;
-  UINT maxwidth=0;
-  UINT maxheight=0;
-  BYTE red,green,blue,alpha;
 
   /* load image in framebuffer */
   err=lodepng_decode32_file(&image,&width,&height,filename);
@@ -943,26 +1045,29 @@ SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
 
   /* and swap the buf with the loaded image */
   layer->fb->buf=image;
+  layer->fb->changed=1;
+  layer->fb->resized=1;
 
   return layer;
 }
 
 /*****************************************************************************
 
-  draw all layers, from bottom till top, into a single Framebuffer
-  Mostly used by display functions, updating display framebuffer,
+  Internal function,draw all layers, from bottom till top, into a single 
+  Framebuffer mostly used by display functions, updating display framebuffer,
   However can be also be used for making screendumps, testing or generating
   image .png files
+  This function can be called from display file. Since SDL wil use textures, 
+  and not framebuffer, it is the only one not calling this function.
 
  *****************************************************************************/
 
-void LayersToFB(SILFB *fb) {
+void sil_LayersToFB(SILFB *fb) {
   SILLYR *layer;
   BYTE red,green,blue,alpha;
   BYTE mixred,mixgreen,mixblue,mixalpha;
   float af;
   float negaf;
-  int absx,absy;
 
 #ifndef SIL_LIVEDANGEROUS
   if (0==fb->size) {
@@ -975,11 +1080,6 @@ void LayersToFB(SILFB *fb) {
   sil_clearFB(fb);
   while (layer) {
     if (!(layer->flags&SILFLAG_INVISIBLE)) {
-     /*
-      if (sil_getBottom()==layer) log_debug("Bottom");
-      if (sil_getTop()==layer) log_debug("Top");
-      log_debug("Processing layer %d",layer->id);
-      */
       for (int y=layer->view.miny; y<(layer->view.miny+layer->view.height); y++) {
         for (int x=layer->view.minx; x<(layer->view.minx+layer->view.width); x++) {
           int absx=x+layer->relx-layer->view.minx;
@@ -996,6 +1096,7 @@ void LayersToFB(SILFB *fb) {
           if (255==alpha) {
             sil_putPixelFB(fb,absx,absy,red,green,blue,255);
           } else {
+            /* lets do our own alpha blending */
             sil_getPixelFB(fb,absx,absy,&mixred,&mixgreen,&mixblue,&mixalpha);
             af=((float)alpha)/255;
             negaf=1-af;
@@ -1009,9 +1110,20 @@ void LayersToFB(SILFB *fb) {
     }
     layer=layer->next;
   }
+  
+  /* clear changed flags, although they are only use by SDL platform at the moment */
+  /* but just to be sure or for further development                                */
+  layer=sil_getBottom();
+  while(layer) {
+    layer->fb->changed=0;
+    layer->fb->resized=0;
+    layer=layer->next;
+  }
 }
 
 /*****************************************************************************
+
+  Internal function
 
   if mousebutton has been clicked, find the highest layer that is right under 
   the mousepointer and 
@@ -1028,8 +1140,6 @@ void LayersToFB(SILFB *fb) {
   it.
 
  *****************************************************************************/
-
-
 SILLYR *sil_findHighestClick(UINT x,UINT y) {
   SILLYR *layer;
   BYTE red,green,blue,alpha;
@@ -1064,6 +1174,8 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
 }
 
 /*****************************************************************************
+ 
+  Internal function
 
   if mouse has been moved, find the highest layer that is right under 
   the mousepointer and 
@@ -1079,7 +1191,6 @@ SILLYR *sil_findHighestClick(UINT x,UINT y) {
   it.
 
  *****************************************************************************/
-
 SILLYR *sil_findHighestHover(UINT x,UINT y) {
   SILLYR *layer;
   BYTE red,green,blue,alpha;
@@ -1115,6 +1226,7 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
 }
 
 /*****************************************************************************
+   Internal function
    
    A key has been pressed and find the highest layer that is waiting for the 
    given key and modifiers. 
@@ -1122,8 +1234,6 @@ SILLYR *sil_findHighestHover(UINT x,UINT y) {
    handlers who has key=0, modifiers=0 set, will catch all keyevents.
 
  *****************************************************************************/
-
-
 SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
   SILLYR *layer;
 
@@ -1145,18 +1255,40 @@ SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
   return NULL;
 }
 
-/*****************************************************************************
+/*
+Function: sil_initSpriteSheet
 
-  Initialize given layer as "SpriteSheet", containing different images/frames
-  - hence called 'sprites'- in a single image. hparts and vparts are the amount
-  of sprites horizontally and vertically respectively.
-  Every sprite should have the same with and height - and distance to eachother -
-  in the file.
-  The "showing" of the sprite is done via setting the view of the layer to just
-  a single sprite within the whole image.
+  Initialize given layer as "SpriteSheet", containing different images/frames, hence 
+  called 'sprites', in a single image. 
+  Every sprite should have the same with and height and distance to eachother in 
+  the file.
 
- *****************************************************************************/
+  See also example 'combined.c' using the dancing bananana spritesheet. In this 
+  example hparts=8 and vparts=2
 
+  (see dancingbanana.png)
+
+Parameters:
+  layer  - layer containing sprites
+  hparts - amount of sprites there are horizontally
+  vparts - amount of sprites there are vertically
+
+Remarks:
+  - The easiest way to animate using spritesheet is to use <sil_setTimerHandler()> 
+    together with <sil_setTimeval()> and each time timer goes off, call <sil_nextSprite> 
+    (and set new timer for next call)
+  - Function assumes the sprites are spread evenly on the layer. therefore the
+    size of each sprite should be layer width divided by hparts x layer height 
+    divided by vpart
+  - It will start with first sprite (top left), and will continue, when using
+    <sil_nextSprite()> from left to right, top to bottom and back to top left.
+  - Use <sil_nextSprite()> <sil_prevSprite()> or <sil_setSprite()> to display
+    one of the sprites.
+  - The "displaying" of the sprite is done via setting the view of the layer to just
+    a single sprite within the whole image. So, don't alter view of these kind of 
+    layers.
+
+ */
 void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
 
 #ifndef SIL_LIVEDANGEROUS
@@ -1175,14 +1307,17 @@ void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
   sil_setSprite(layer,0);
 }
 
-/*****************************************************************************
+/*
+Function: sil_nextSprite
 
   Move view of layer to next sprite (counting from left upper corner to 
   right down corner). If there isn't, sprite will be set to first again
 
- *****************************************************************************/
+Parameters:
+  layer - Sprite layer
 
 
+ */
 void sil_nextSprite(SILLYR *layer) {
   UINT maxpos=0;
 #ifndef SIL_LIVEDANGEROUS
@@ -1206,14 +1341,16 @@ void sil_nextSprite(SILLYR *layer) {
   sil_setSprite(layer,layer->sprite.pos);
 }
 
-/*****************************************************************************
+/*
+Function: sil_prevSprite
 
   Move view of layer to previous sprite (counting from left upper corner to 
   right down corner). If there isn't, sprite will be set to last sprite 
 
- *****************************************************************************/
+Parameters:
+  layer - Sprite layer
 
-
+ */
 void sil_prevSprite(SILLYR *layer) {
   UINT maxpos=0;
 
@@ -1238,13 +1375,17 @@ void sil_prevSprite(SILLYR *layer) {
   sil_setSprite(layer,layer->sprite.pos);
 }
 
-/*****************************************************************************
+/*
+Function: sil_setSprite
 
   Set view of layer to sprite with index "pos" (counting from 0, left upper 
   corner to right down corner). 
 
- *****************************************************************************/
+Parameters:
+  layer - Sprite layer to use
+  pos   - Position
 
+*/
 void sil_setSprite(SILLYR *layer,UINT pos) {
   UINT maxpos=0;
   UINT x=0;
@@ -1283,16 +1424,13 @@ void sil_setSprite(SILLYR *layer,UINT pos) {
   sil_setView(layer,x,y,layer->sprite.width,layer->sprite.height);
 }
 
-/*****************************************************************************
+/*
+Function: sil_toTop
+  Move given layer to the top of the stack of layers
 
-  Functions to change stacking position of layers 
-  toTop    : brings layer to the top of the stack (in front of every layer)
-  toBottom : brings layer to the bottom of the stack (behind every layer) 
-  toAbove  : brings layer (first argument) just in front of another layer (2nd)
-  toBelow  : brings layer (first argument) just behind another layer (2nd)
-
- *****************************************************************************/
-
+Parameters: 
+  layer - Layer to move to top
+*/
 void sil_toTop(SILLYR *layer) {
   SILLYR *tnext;
   SILLYR *tprevious;
@@ -1321,6 +1459,13 @@ void sil_toTop(SILLYR *layer) {
 }
 
 
+/*
+Function: sil_toBottom
+  Move given layer to the top of the stack of layers
+
+Parameters: 
+  layer - Layer to move to top
+*/
 void sil_toBottom(SILLYR *layer) {
   SILLYR *tnext;
   SILLYR *tprevious;
@@ -1348,6 +1493,14 @@ void sil_toBottom(SILLYR *layer) {
 }
 
 
+/*
+Function: sil_toAbove
+  Move given layer just above target layer in stack
+
+Parameters: 
+  layer  - Layer to move 
+  target - Layer to move on top of
+*/
 void sil_toAbove(SILLYR *layer,SILLYR *target) {
   SILLYR *lnext;
   SILLYR *lprevious;
@@ -1405,6 +1558,13 @@ void sil_toAbove(SILLYR *layer,SILLYR *target) {
 }
 
 
+/*
+Function: sil_toBelow
+  Move given layer to the bottom of the stack of layers
+
+Parameters: 
+  layer - Layer to move to bottom
+*/
 void sil_toBelow(SILLYR *layer,SILLYR *target) {
   SILLYR *lnext;
   SILLYR *lprevious;
@@ -1460,13 +1620,14 @@ void sil_toBelow(SILLYR *layer,SILLYR *target) {
   return;
 }
 
-/*****************************************************************************
+/*
+Function: sil_swap
+  Swap position of two layers in stack with eachother 
 
-  Swap the position of layers in the stack
-
- *****************************************************************************/
-
-
+Parameters: 
+  layer - Layer to swap position with target
+  target- Layer to swap position with layer
+*/
 void sil_swap(SILLYR *layer,SILLYR *target) {
   SILLYR *lnext;
   SILLYR *lprevious;
@@ -1670,32 +1831,49 @@ SILLYR *sil_addInstance(SILLYR *layer,int relx,int rely) {
   return ret;
 }
 
-/*****************************************************************************
+/*
+Function: sil_hide
+  Hide the given layer.
 
-  Hide layer, shorter version of setting the INVISIBLE flag
+Parameters:
+  layer - Layer to hide
 
- *****************************************************************************/
+Remarks:
+  - Result is the same as setting SILFLAG_INVISIBLE via <sil_setFlags()> 
+  - Hidden layers aren't shown on display when updating
+  - Hidden layers cannot receive any mouse events
+  - Hidden layers can do receive key events, though
+*/
 void sil_hide(SILLYR *layer) {
   sil_setFlags(layer,SILFLAG_INVISIBLE);
 }
 
 
-/*****************************************************************************
+/*
+Function: sil_show
+  Unhide the given layer.
 
-  Show layer, shorter version of resetting the INVISIBLE flag
+Parameters:
+  layer - Layer to show
 
- *****************************************************************************/
-
+Remarks:
+  - Result is the same as resetting SILFLAG_INVISIBLE via <sil_setFlags()> 
+*/
 void sil_show(SILLYR *layer) {
   sil_clearFlags(layer,SILFLAG_INVISIBLE);
 }
 
-/*****************************************************************************
+/*
+Function: clearLayer
+  clear all contents of layer
 
-  clear layer, faster then painting it with color + alpha 0
+Parameters:
+  layer - layer to clear
 
- *****************************************************************************/
-
+Remarks:
+  "clearing" in this case is setting all pixels and alpha values to '0' - 
+  black with maximum transparency 
+*/
 void sil_clearLayer(SILLYR *layer) {
 #ifndef SIL_LIVEDANGEROUS
   if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {

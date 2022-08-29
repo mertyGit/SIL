@@ -24,6 +24,7 @@
 #include <SDL2/SDL.h> 
 #include <stdio.h>
 #include "sil.h"
+#include "sil_int.h"
 #include "log.h"
 #include "sys/time.h"
 

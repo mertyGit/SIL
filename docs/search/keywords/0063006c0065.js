@@ -1,0 +1,1 @@
+﻿NDSearch.OnPrefixDataLoaded("cle",["Function"],[["clearLayer",,[[,,,,0,"File:layer.c:clearLayer"]]]]);

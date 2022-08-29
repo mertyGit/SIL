@@ -34,6 +34,7 @@
 #include <sys/mman.h>
 #include <sys/kd.h>
 #include "sil.h"
+#include "sil_int.h"
 #include "log.h"
 
 
@@ -222,7 +223,7 @@ UINT sil_initDisplay(void *hI, UINT width, UINT height, char *title) {
 void sil_updateDisplay() {
 
   /* get all layerinformation into a single fb */
-  LayersToFB(gv.fb);
+  sil_LayersToFB(gv.fb);
 
   /* and just copy it */
   memcpy(gv.fbp,gv.fb->buf,gv.screensize);

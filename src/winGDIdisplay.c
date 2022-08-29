@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include "sil.h"
+#include "sil_int.h"
 #include "log.h"
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -327,7 +328,7 @@ void sil_updateDisplay() {
   HDC         hdc;
 
   /* get all layerinformation into a single fb */
-  LayersToFB(gv.fb);
+  sil_LayersToFB(gv.fb);
 
   /* get device context (GDI handle) */
   hdc = GetDC(gv.win.window);
