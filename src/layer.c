@@ -5,6 +5,7 @@
    This file contains all functions for creating and manipulation of layers
 
 */
+/* Group: About Layers */
 /*
  
 About: Using Layers
@@ -68,7 +69,6 @@ About: Using Layers
 #include <string.h>
 #include <stdio.h>
 #include "lodepng.h"
-#include "sil.h"
 #include "sil_int.h"
 #include "log.h"
 
@@ -82,6 +82,7 @@ typedef struct _GLYR {
 static GLYR gv={NULL,NULL,0}; /* holds all global variables used only within layers.c */
 
 
+/* Group: Creating and destroying
 /* 
 Function: sil_addLayer 
   Create a layer and put to top of stack of layers
@@ -162,6 +163,267 @@ SILLYR *sil_addLayer(int relx, int rely, UINT width, UINT height, BYTE type) {
   return layer;
 }
 
+/*****************************************************************************
+
+  internal function :
+    copies the relevant information from one layer to another one
+
+ *****************************************************************************/
+static void copylayerinfo(SILLYR *from, SILLYR *to) {
+  to->view.minx= from->view.minx; 
+  to->view.miny= from->view.miny; 
+  to->view.width= from->view.width; 
+  to->view.height= from->view.height; 
+  if (sil_checkFlags(from,SILFLAG_INVISIBLE)) sil_setFlags(to,SILFLAG_INVISIBLE);
+  if (sil_checkFlags(from,SILFLAG_DRAGGABLE)) sil_setFlags(to,SILFLAG_DRAGGABLE);
+  if (sil_checkFlags(from,SILFLAG_VIEWPOSSTAY)) sil_setFlags(to,SILFLAG_VIEWPOSSTAY);
+  if (from->internal & SILKT_SINGLE) to->internal|=SILKT_SINGLE;
+  if (from->internal & SILKT_ONLYUP) to->internal|=SILKT_ONLYUP;
+  to->hover= from->hover;
+  to->click= from->click;
+  to->keypress= from->keypress;
+  to->drag= from->drag;
+  to->texture=from->texture;
+  to->sprite.width= from->sprite.width; 
+  to->sprite.height= from->sprite.height; 
+  to->sprite.pos= from->sprite.pos; 
+}
+
+
+/*
+
+Function: sil_addCopy
+
+  creates a new layer, but copies all layer information to new one.The New layer will be placed at given x,y postion
+
+Parameters: 
+  layer - pointer to layer to copy
+  relx  - x position of new layer relative to top left of display
+  rely  - y position of new layer relative to top left of display
+
+Returns:
+  pointer to newly created layer
+
+*/
+SILLYR *sil_addCopy(SILLYR *layer,int relx,int rely) {
+  SILLYR *ret=NULL;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("addCopy on layer that isn't initialized, or with uninitialized FB");
+    return NULL;
+  }
+#endif
+  ret=sil_addLayer(relx,rely,layer->fb->width,layer->fb->height,layer->fb->type);
+  if (NULL==ret) {
+    log_warn("Can't create extra layer for addCopy");
+    return NULL;
+  }
+  memcpy(ret->fb->buf,layer->fb->buf,layer->fb->size);
+  copylayerinfo(layer,ret);
+
+  return ret;
+}
+
+
+/* 
+Function: sil_addInstance
+
+  Create an extra instance of given layer. New layer will share the same framebuffer 
+  as the original, so all drawings and filters on it will be the same as the 
+  original, however, the new layer can have different position, view, visability or 
+  handlers.
+
+  Use this to save memory when using the same image over and over again, like "tiling"
+  a background.
+
+Parameters: 
+  layer - pointer to layer to instanciate from
+  relx  - x position of new layer relative to top left of display
+  rely  - y position of new layer relative to top left of display
+
+Returns:
+  pointer to newly created layer
+
+Remarks:
+  The only advantage of this function is that it will save memory. However, if you use SDL, 
+  every layer -including instanciated ones- will end up having a seperate texture to be send 
+  to GPU, therefore, it isn't recommended to use this function for SDL environments. 
+  If you just want a copy of an existing layer, use <sil_addCopy()> instead
+
+ */
+
+SILLYR *sil_addInstance(SILLYR *layer,int relx,int rely) {
+  SILLYR *ret=NULL;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("addCopy on layer that isn't initialized, or with uninitialized FB");
+    return NULL;
+  }
+#endif
+  /* create layer of size 1x1, since fb will be thrown away later */
+  ret=sil_addLayer(relx,rely,1,1,layer->fb->type);
+  if (NULL==ret) {
+    log_warn("Can't create extra layer for addCopy");
+    return NULL;
+  }
+  free(ret->fb);
+  ret->fb=layer->fb;
+
+  copylayerinfo(layer,ret);
+
+  /* make sure we dont accidently copy handlers & states */
+  ret->internal=0;
+  ret->hover=NULL;
+  ret->click=NULL;
+  ret->keypress=NULL;
+  ret->drag=NULL;
+  ret->pointer=NULL;
+  ret->key=0;
+  ret->modifiers=0;
+  ret->user=NULL;
+
+  /* set flag to instanciated, preventing throwing away framebuffer */
+  /* if there is still a copy of it left                            */
+  layer->internal|=SILFLAG_INSTANCIATED;
+  ret->internal|=SILFLAG_INSTANCIATED;
+
+  /* For SDL: to be sure, set flag that fb is changed to notify it has to */
+  /* render the texture for this layer first                              */
+  layer->fb->changed=1;
+  layer->fb->resized=1;
+  return ret;
+}
+
+/*
+Function: sil_PNGtoNewLayer
+
+  Creat a new layer based on given PNG filename and place it on location x,y
+
+Parameters:
+  filename - name of .png file to be loaded
+  x        - x coordinate of new layer
+  y        - y coordinate of new layer
+
+Returns:
+  pointer to newly created layer. Pointer is NULL if error occured.
+
+Remarks:
+  - Width and Height of layer are automatically adjusted to size of png file.
+  - Although pngfiles can have different colordepths and bit alignment,
+  all layers will be generated with SILTYPE_ABGR, so 1 byte per color + alpha
+  - This function is way faster then <PNGintoLayer()> which will load and put in 
+  an existing layer. It will not use a temporary framebuffer but will claim 
+  the created framebuffer from the lodepng function as part of the layer.
+ */
+SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
+  SILLYR *layer=NULL;
+  BYTE *image =NULL;
+  UINT err=0;
+  UINT width=0;
+  UINT height=0;
+
+  /* load image in framebuffer */
+  err=lodepng_decode32_file(&image,&width,&height,filename);
+  if ((!err)&&((0==width)||(0==height))) {
+    /* doesn't make sense loading a PNG file with no height and/or width */
+    log_warn("'%s' appears to have unusual width x height (%d x %d)",filename,width,height);
+    err=666; /* will be handled later with err switch */
+  }
+
+  if (err) {
+    switch (err) {
+      case 28:
+      case 29:
+        /* wrong file presented as .png */
+        log_warn("'%s' is Not an .png file (%d)",filename,err);
+        err=SILERR_WRONGFORMAT;
+        break;
+      case 78:
+        /* common error, wrong filename */
+        log_warn("Can't open '%s' (%d)",filename,err);
+        err=SILERR_CANTOPENFILE;
+        break;
+      default:
+        /* something wrong with decoding png */
+        log_warn("Can't decode PNG file '%s' (%d)",filename,err);
+        err=SILERR_CANTDECODEPNG;
+        break;
+    }
+    if (image) free(image);
+    return NULL;
+  }
+  /* first create layer */
+  layer=sil_addLayer(x,y,width,height,SILTYPE_ABGR);
+  if (NULL==layer) {
+    log_warn("Can't create layer for loaded PNG file");
+    if (image) free(image);
+    return NULL;
+  }
+
+  /* free the framebuffer memory */
+  if (!(( layer->fb) && (layer->fb->buf))) {
+    log_warn("Created layer for PNG has incorrect or missing framebuffer");
+    if (image) free(image);
+    return NULL;
+  }
+  free(layer->fb->buf);
+
+  /* and swap the buf with the loaded image */
+  layer->fb->buf=image;
+  layer->fb->changed=1;
+  layer->fb->resized=1;
+
+  return layer;
+}
+
+/*****************************************************************************
+  Internal function to check if layer is instanciated and twin(s) of it are
+  still around...
+  return amount of instances found
+
+ *****************************************************************************/
+
+static int hasInstance(SILLYR *layer) {
+  UINT cnt=0;
+  SILLYR *search;
+
+  if (0==(layer->internal&SILFLAG_INSTANCIATED)) return 0;
+  search=gv.bottom;
+  while(search) {
+    if ((search != layer)&&(search->internal&SILFLAG_INSTANCIATED)) {
+      if (search->fb==layer->fb) cnt++; 
+    }
+    search=search->next;
+  }
+  return cnt;
+}
+
+/*
+Function: sil_destroyLayer
+  remove layer from stack and delete it
+
+Remarks:
+  If layer flag *SILFLAG_FREEUSER* is set and layer->user is not NULL, it will free 
+  any allocated memory pointed by layer->user. 
+ 
+*/
+void sil_destroyLayer(SILLYR *layer) {
+  if ((layer)&&(layer->init)) {
+    if (0==hasInstance(layer)) sil_destroyFB(layer->fb);
+    layer->init=0;
+    sil_toBottom(layer);
+    gv.bottom=layer->next;
+    layer->next->previous=NULL;
+    if ((layer->flags&SILFLAG_FREEUSER)&&(layer->user)) free(layer->user);
+    free(layer);
+  } else {
+    log_warn("removing non-existing or non-initialized layer");
+  }
+}
+
+/* Group: Setting handlers */
 /*
 Function: sil_setHoverHandler
   
@@ -434,6 +696,7 @@ void sil_setDragHandler(SILLYR *layer, UINT (*drag)(SILEVENT *)) {
   sil_setFlags(layer,SILFLAG_DRAGGABLE);
 }
 
+/* Group: Moving */
 /*
 Function: sil_moveLayer
 
@@ -489,133 +752,7 @@ void sil_placeLayer(SILLYR *layer, int x,int y) {
   layer->rely=y;
 }
 
-/*
-Function: sil_putPixelLayer
-  
-  Draw a pixel on given location inside a layer.
-
-Parameters:
-  layer  - layer to draw on
-  x      - x position, relative from upper left corner of layer
-  y      - y position, relative from upper left corner of layer
-  red    - amount of red   0..255
-  green  - amount of green 0..255
-  blue   - amount of blue  0..255
-  alpha  - Opacity -> from 0 (not visible) to 255 (no transparancy)
-
-Remarks:
-  - you can also used predefined SIL <color codes>, instead of writing 
-    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
-  - Any pixels that are not within boundaries of layer are not drawn at all
-  - If framebuffer type of layer doesn't support alpha value, alpha will be ignored
-  - Although it uses 8 bit values for RGB, if framebuffer type of layer uses less bits for 
-    each color, they will be adjusted 
-
-*/
-void sil_putPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("putPixel on layer that isn't initialized, or with uninitialized FB");
-    return;
-  }
-#endif
-  /* don't draw if outside of dimensions of framebuffer */
-  if ((x >= layer->fb->width)||(y >= layer->fb->height)) return;
-  sil_putPixelFB(layer->fb, x,y,red,green,blue,alpha);
-}
-
-
-/*
-Function: sil_blendPixelLayer
-  
-  Draw a pixel on given location inside a layer and blend it with existing pixel
-
-
-Parameters:
-  layer  - layer to draw on
-  x      - x position, relative from upper left corner of layer
-  y      - y position, relative from upper left corner of layer
-  red    - amount of red   0..255
-  green  - amount of green 0..255
-  blue   - amount of blue  0..255
-  alpha  - Opacity -> from 0 (not visible) to 255 (no transparancy)
-
-Remarks:
-  - you can also used predefined SIL <color codes>, instead of writing 
-    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
-  - Any pixels that are not within boundaries of layer are not drawn at all
-  - Although it uses 8 bit values for RGB, if framebuffer type of layer uses less bits for 
-    each color, they will be adjusted 
-  - This function is in the rare case you want to overwrite pixels or framebuffer/display type
-    doesn't support alpha blending. But in other cases, if you want to blend images, it is 
-    easier -and much faster !- to have each image in a seperate layer and use alpha settings of 
-    layers to blend them
-
-*/
-void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
-  BYTE mixred,mixgreen,mixblue,mixalpha;
-  float af,negaf;
-
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("blendPixelLayer on layer that isn't initialized, or with uninitialized FB");
-    return;
-  }
-#endif
-  sil_getPixelLayer(layer,x,y,&mixred,&mixgreen,&mixblue,&mixalpha);
-  if (mixalpha>0) {
-    /* only mix when underlaying pixel doesn't have 0 alpha */
-    if (0==alpha) return; /* nothing to do */
-    if (alpha<255) {
-      /* only calculate when its less then 100% opaque */
-      af=((float)alpha)/255;
-      negaf=1-af;
-      red=red*af+negaf*mixred;
-      green=green*af+negaf*mixgreen;
-      blue=blue*af+negaf*mixblue;
-      if (mixalpha>alpha) alpha=mixalpha;
-    }
-  }
-  sil_putPixelLayer(layer,x,y,red,green,blue,alpha);
-}
-
-/*
-Function: sil_getPixelLayer
-  
-  get red,green,blue and alpha information for pixel on given location inside a layer.
-
-Parameters:
-  layer  - layer to draw on
-  x      - x position, relative from upper left corner of layer
-  y      - y position, relative from upper left corner of layer
-  red    - return amount of red   0..255
-  green  - return amount of green 0..255
-  blue   - return amount of blue  0..255
-  alpha  - return Opacity -> from 0 (not visible) to 255 (no transparancy)
-
-Remarks:
-  - you can also used predefined SIL <color codes>, instead of writing 
-    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
-  - all RGB codes are returned as bytes. If Framebuffer uses fewer bits, they will be translated 
-    to 8 bits.
-  - If framebuffer type doesn't support alpha value, 255 will be returned.
-  - Any pixels that are not within boundaries of layer will be returning zero for all values
-
-*/
-void sil_getPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
-  if ((layer) && (layer->init)) {
-    /* just return transparant black when outside of fb dimensions */
-    if ((x >= layer->fb->width)||(y >= layer->fb->height)) {
-      *red=0;
-      *green=0;
-      *blue=0;
-      *alpha=0;
-    } else {
-      sil_getPixelFB(layer->fb,x,y,red,green,blue,alpha);
-    }
-  }
-}
-
+/* Group: Adjusting */
 /*
 Function: sil_setFlags
   set layer flags
@@ -714,80 +851,6 @@ UINT sil_checkFlags(SILLYR *layer,BYTE flags) {
 #endif
   if ((layer->flags&flags)==flags) return 1;
   return 0;
-}
-
-
-/*
-Function: sil_getBottom
-  get layer on the bottom of the stack
-
-Returns: 
-  Pointer to bottom layer (suprise)
-
-Remarks:
-  If you want to iterate to all layers, you can do it the best from bottom
-  till top, by following the layer->next link
- 
-*/
-SILLYR *sil_getBottom() {
-  return gv.bottom;
-}
-
-/*
-Function: sil_getTop
-  get the top most layer 
-
-Returns: 
-  Pointer to top layer 
-
-*/
-SILLYR *sil_getTop() {
-  return gv.top;
-}
-
-/*****************************************************************************
-  Internal function to check if layer is instanciated and twin(s) of it are
-  still around...
-  return amount of instances found
-
- *****************************************************************************/
-
-static int hasInstance(SILLYR *layer) {
-  UINT cnt=0;
-  SILLYR *search;
-
-  if (0==(layer->internal&SILFLAG_INSTANCIATED)) return 0;
-  search=gv.bottom;
-  while(search) {
-    if ((search != layer)&&(search->internal&SILFLAG_INSTANCIATED)) {
-      if (search->fb==layer->fb) cnt++; 
-    }
-    search=search->next;
-  }
-  return cnt;
-}
-
-/*
-Function: sil_destroyLayer
-  remove layer from stack and delete it
-
-Remarks:
-  If layer flag *SILFLAG_FREEUSER* is set and layer->user is not NULL, it will free 
-  any allocated memory pointed by layer->user. 
- 
-*/
-void sil_destroyLayer(SILLYR *layer) {
-  if ((layer)&&(layer->init)) {
-    if (0==hasInstance(layer)) sil_destroyFB(layer->fb);
-    layer->init=0;
-    sil_toBottom(layer);
-    gv.bottom=layer->next;
-    layer->next->previous=NULL;
-    if ((layer->flags&SILFLAG_FREEUSER)&&(layer->user)) free(layer->user);
-    free(layer);
-  } else {
-    log_warn("removing non-existing or non-initialized layer");
-  }
 }
 
 /*
@@ -970,460 +1033,37 @@ UINT sil_resizeLayer(SILLYR *layer, int minx,int miny,UINT width,UINT height) {
 }
 
 /*
-Function: sil_PNGtoNewLayer
-
-  Creat a new layer based on given PNG filename and place it on location x,y
+Function: sil_hide
+  Hide the given layer.
 
 Parameters:
-  filename - name of .png file to be loaded
-  x        - x coordinate of new layer
-  y        - y coordinate of new layer
-
-Returns:
-  pointer to newly created layer. Pointer is NULL if error occured.
+  layer - Layer to hide
 
 Remarks:
-  - Width and Height of layer are automatically adjusted to size of png file.
-  - Although pngfiles can have different colordepths and bit alignment,
-  all layers will be generated with SILTYPE_ABGR, so 1 byte per color + alpha
-  - This function is way faster then <PNGintoLayer()> which will load and put in 
-  an existing layer. It will not use a temporary framebuffer but will claim 
-  the created framebuffer from the lodepng function as part of the layer.
- */
-SILLYR *sil_PNGtoNewLayer(char *filename,UINT x,UINT y) {
-  SILLYR *layer=NULL;
-  BYTE *image =NULL;
-  UINT err=0;
-  UINT width=0;
-  UINT height=0;
-
-  /* load image in framebuffer */
-  err=lodepng_decode32_file(&image,&width,&height,filename);
-  if ((!err)&&((0==width)||(0==height))) {
-    /* doesn't make sense loading a PNG file with no height and/or width */
-    log_warn("'%s' appears to have unusual width x height (%d x %d)",filename,width,height);
-    err=666; /* will be handled later with err switch */
-  }
-
-  if (err) {
-    switch (err) {
-      case 28:
-      case 29:
-        /* wrong file presented as .png */
-        log_warn("'%s' is Not an .png file (%d)",filename,err);
-        err=SILERR_WRONGFORMAT;
-        break;
-      case 78:
-        /* common error, wrong filename */
-        log_warn("Can't open '%s' (%d)",filename,err);
-        err=SILERR_CANTOPENFILE;
-        break;
-      default:
-        /* something wrong with decoding png */
-        log_warn("Can't decode PNG file '%s' (%d)",filename,err);
-        err=SILERR_CANTDECODEPNG;
-        break;
-    }
-    if (image) free(image);
-    return NULL;
-  }
-  /* first create layer */
-  layer=sil_addLayer(x,y,width,height,SILTYPE_ABGR);
-  if (NULL==layer) {
-    log_warn("Can't create layer for loaded PNG file");
-    if (image) free(image);
-    return NULL;
-  }
-
-  /* free the framebuffer memory */
-  if (!(( layer->fb) && (layer->fb->buf))) {
-    log_warn("Created layer for PNG has incorrect or missing framebuffer");
-    if (image) free(image);
-    return NULL;
-  }
-  free(layer->fb->buf);
-
-  /* and swap the buf with the loaded image */
-  layer->fb->buf=image;
-  layer->fb->changed=1;
-  layer->fb->resized=1;
-
-  return layer;
-}
-
-/*****************************************************************************
-
-  Internal function,draw all layers, from bottom till top, into a single 
-  Framebuffer mostly used by display functions, updating display framebuffer,
-  However can be also be used for making screendumps, testing or generating
-  image .png files
-  This function can be called from display file. Since SDL wil use textures, 
-  and not framebuffer, it is the only one not calling this function.
-
- *****************************************************************************/
-
-void sil_LayersToFB(SILFB *fb) {
-  SILLYR *layer;
-  BYTE red,green,blue,alpha;
-  BYTE mixred,mixgreen,mixblue,mixalpha;
-  float af;
-  float negaf;
-
-#ifndef SIL_LIVEDANGEROUS
-  if (0==fb->size) {
-    log_warn("Trying to merge layers to uninitialized framebuffer");
-    return;
-  }
-#endif
-
-  layer=sil_getBottom();
-  sil_clearFB(fb);
-  while (layer) {
-    if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      for (int y=layer->view.miny; y<(layer->view.miny+layer->view.height); y++) {
-        for (int x=layer->view.minx; x<(layer->view.minx+layer->view.width); x++) {
-          int absx=x+layer->relx-layer->view.minx;
-          int absy=y+layer->rely-layer->view.miny;
-          int rx=x;
-          int ry=y;
-
-          /* prevent drawing outside borders of display */
-          if ((absx>fb->width)||(absy>fb->height)) continue;
-
-          sil_getPixelLayer(layer,rx,ry,&red,&green,&blue,&alpha);
-          if (0==alpha) continue; /* nothing to do if completely transparant */
-          alpha=alpha*layer->alpha;
-          if (255==alpha) {
-            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
-          } else {
-            /* lets do our own alpha blending */
-            sil_getPixelFB(fb,absx,absy,&mixred,&mixgreen,&mixblue,&mixalpha);
-            af=((float)alpha)/255;
-            negaf=1-af;
-            red=red*af+negaf*mixred;
-            green=green*af+negaf*mixgreen;
-            blue=blue*af+negaf*mixblue;
-            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
-          }
-        }
-      }
-    }
-    layer=layer->next;
-  }
-  
-  /* clear changed flags, although they are only use by SDL platform at the moment */
-  /* but just to be sure or for further development                                */
-  layer=sil_getBottom();
-  while(layer) {
-    layer->fb->changed=0;
-    layer->fb->resized=0;
-    layer=layer->next;
-  }
-}
-
-/*****************************************************************************
-
-  Internal function
-
-  if mousebutton has been clicked, find the highest layer that is right under 
-  the mousepointer and 
-  - layer is visible
-  - has a clickhandler attached to it or is marked "draggable" by 
-    either a draghandler or set manually
-  - pointer is within view of layer
-  - pointer is above a visible, non-transparant, pixel 
-    (you can turn this check off via setting of SILFLAG_MOUSEALLPIX)
-
-  if a layer has been found that has the flag SILFLAG_MOUSESHIELD, it will 
-  not traverse further down, "shielding" all mouse events to layers under it.
-  Generally used for messages/pop-ups mechanisms, to prevent clicking outside
-  it.
-
- *****************************************************************************/
-SILLYR *sil_findHighestClick(UINT x,UINT y) {
-  SILLYR *layer;
-  BYTE red,green,blue,alpha;
-  int xl,xr,yt,yb;
-
-  layer=sil_getTop();
-  while (layer) {
-    if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      if ((NULL!=layer->click)||(sil_checkFlags(layer,SILFLAG_DRAGGABLE))) {
-        /* calculate boundaries of layers where x,y must fall into */
-        xl=layer->relx-(int)(layer->view.minx);
-        xr=layer->relx+(int)(layer->view.width);
-        yt=layer->rely-(int)(layer->view.miny);
-        yb=layer->rely+(int)(layer->view.height);
-        if ((x>=xl) && (x<xr) && (y>=yt) && (y<yb)) {
-          /* return inmediatly when all pixels within view can be considered as target */
-          if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
-          /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
-          sil_getPixelLayer(layer,x-(layer->relx)+(layer->view.minx),
-              y-(layer->rely)+(layer->view.miny),&red,&green,&blue,&alpha);
-          if (alpha>0) return layer;
-        }
-      }
-      /* if we find layer with flag "MOUSESHIELD" , we stop searching */
-      /* therefore blocking/shielding any mouseevent for layer under  */
-      /* this layer                                                   */
-      if (layer->flags&(SILFLAG_MOUSESHIELD)) return NULL;
-    }
-    layer=layer->previous;
-  }
-  return NULL;
-}
-
-/*****************************************************************************
- 
-  Internal function
-
-  if mouse has been moved, find the highest layer that is right under 
-  the mousepointer and 
-  - layer is visible
-  - has a hoverhandler attached to it 
-  - pointer is within view of layer
-  - pointer is above a visible, non-transparant, pixel 
-    (you can turn this check off via setting of SILFLAG_MOUSEALLPIX)
-
-  if a layer has been found that has the flag SILFLAG_MOUSESHIELD, it will 
-  not traverse further down, "shielding" all mouse events to layers under it.
-  Generally used for messages/pop-ups mechanisms, to prevent clicking outside
-  it.
-
- *****************************************************************************/
-SILLYR *sil_findHighestHover(UINT x,UINT y) {
-  SILLYR *layer;
-  BYTE red,green,blue,alpha;
-  int xl,xr,yt,yb;
-
-  layer=sil_getTop();
-  while (layer) {
-    if (!(layer->flags&SILFLAG_INVISIBLE)) {
-      if (NULL!=layer->hover) {
-        /* calculate boundaries of layers where x,y must fall into */
-        xl=layer->relx-(int)(layer->view.minx);
-        xr=layer->relx+(int)(layer->view.width);
-        yt=layer->rely-(int)(layer->view.miny);
-        yb=layer->rely+(int)(layer->view.height);
-        if ((x>=xl) && (x<xr) && (y>=yt) && (y<yb)) {
-          /* return inmediatly when all pixels within view can be considered as target */
-          if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
-          /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
-          sil_getPixelLayer(layer,x-(layer->relx)+(layer->view.minx),
-              y-(layer->rely)+(layer->view.miny),&red,&green,&blue,&alpha);
-          if (alpha>0) return layer;
-        }
-      }
-      /* if we find layer with flag "MOUSESHIELD" , we stop searching */
-      /* therefore blocking/shielding any mouseevent for layer under  */
-      /* this layer                                                   */
-
-      if (layer->flags&(SILFLAG_MOUSESHIELD)) { return NULL; }
-    }
-    layer=layer->previous;
-  }
-  return NULL;
-}
-
-/*****************************************************************************
-   Internal function
-   
-   A key has been pressed and find the highest layer that is waiting for the 
-   given key and modifiers. 
-   Note that all layers - even invisible - can receive keyevents
-   handlers who has key=0, modifiers=0 set, will catch all keyevents.
-
- *****************************************************************************/
-SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
-  SILLYR *layer;
-
-  layer=sil_getTop();
-  while (layer) {
-    if (NULL!=layer->keypress) {
-      if ((layer->key)||(layer->modifiers)) {
-        /* layer has a keypress handler, but is it looking for this shortcut key ? */
-        if ((c==layer->key) && (modifiers==layer->modifiers)) {
-          return layer;
-        }
-      } else {
-        /* no key or modifier set, so its a "catch all" for all keyevents */
-        return layer;
-      }
-    }
-    layer=layer->previous;
-  }
-  return NULL;
-}
-
-/*
-Function: sil_initSpriteSheet
-
-  Initialize given layer as "SpriteSheet", containing different images/frames, hence 
-  called 'sprites', in a single image. 
-  Every sprite should have the same with and height and distance to eachother in 
-  the file.
-
-  See also example 'combined.c' using the dancing bananana spritesheet. In this 
-  example hparts=8 and vparts=2
-
-  (see dancingbanana.png)
-
-Parameters:
-  layer  - layer containing sprites
-  hparts - amount of sprites there are horizontally
-  vparts - amount of sprites there are vertically
-
-Remarks:
-  - The easiest way to animate using spritesheet is to use <sil_setTimerHandler()> 
-    together with <sil_setTimeval()> and each time timer goes off, call <sil_nextSprite> 
-    (and set new timer for next call)
-  - Function assumes the sprites are spread evenly on the layer. therefore the
-    size of each sprite should be layer width divided by hparts x layer height 
-    divided by vpart
-  - It will start with first sprite (top left), and will continue, when using
-    <sil_nextSprite()> from left to right, top to bottom and back to top left.
-  - Use <sil_nextSprite()> <sil_prevSprite()> or <sil_setSprite()> to display
-    one of the sprites.
-  - The "displaying" of the sprite is done via setting the view of the layer to just
-    a single sprite within the whole image. So, don't alter view of these kind of 
-    layers.
-
- */
-void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
-
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("initSpriteSheet on layer that isn't initialized, or with uninitialized FB");
-    return;
-  }
-#endif
-  
-  /* calculate dimensions of single part */
-  layer->sprite.width=(layer->fb->width)/hparts;
-  layer->sprite.height=(layer->fb->height)/vparts;
-
-
-  /* set view accordingly */
-  sil_setSprite(layer,0);
-}
-
-/*
-Function: sil_nextSprite
-
-  Move view of layer to next sprite (counting from left upper corner to 
-  right down corner). If there isn't, sprite will be set to first again
-
-Parameters:
-  layer - Sprite layer
-
-
- */
-void sil_nextSprite(SILLYR *layer) {
-  UINT maxpos=0;
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
-    return;
-  }
-
-  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
-    log_warn("spritesheet isn't initialized, or wrong format");
-    return;
-  }
-#endif
-
-  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
-  if (layer->sprite.pos < maxpos) {
-    layer->sprite.pos++;
-  } else {
-    layer->sprite.pos=0;
-  }
-  sil_setSprite(layer,layer->sprite.pos);
-}
-
-/*
-Function: sil_prevSprite
-
-  Move view of layer to previous sprite (counting from left upper corner to 
-  right down corner). If there isn't, sprite will be set to last sprite 
-
-Parameters:
-  layer - Sprite layer
-
- */
-void sil_prevSprite(SILLYR *layer) {
-  UINT maxpos=0;
-
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
-    return;
-  }
-
-  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
-    log_warn("spritesheet isn't initialized, or wrong format");
-    return;
-  }
-#endif
-
-  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
-  if (layer->sprite.pos>0) {
-    layer->sprite.pos--;
-  } else {
-    layer->sprite.pos=maxpos-1;
-  }
-  sil_setSprite(layer,layer->sprite.pos);
-}
-
-/*
-Function: sil_setSprite
-
-  Set view of layer to sprite with index "pos" (counting from 0, left upper 
-  corner to right down corner). 
-
-Parameters:
-  layer - Sprite layer to use
-  pos   - Position
-
+  - Result is the same as setting SILFLAG_INVISIBLE via <sil_setFlags()> 
+  - Hidden layers aren't shown on display when updating
+  - Hidden layers cannot receive any mouse events
+  - Hidden layers can do receive key events, though
 */
-void sil_setSprite(SILLYR *layer,UINT pos) {
-  UINT maxpos=0;
-  UINT x=0;
-  UINT y=0;
-
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
-    return;
-  }
-
-  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
-    log_warn("spritesheet isn't initialized, or wrong format");
-    return;
-  }
-#endif
-
-  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
-  pos%=maxpos;
-
-  /* calculate position of given part number */
-  layer->sprite.pos=pos;
-  while(pos) {
-    if (x+layer->sprite.width< layer->fb->width) {
-      x+=layer->sprite.width;
-    } else {
-      x=0;
-      if (y+layer->sprite.height< layer->fb->height) {
-        y+=layer->sprite.height;
-      } else {
-        y=0;
-      }
-    }
-    pos--;
-  }
-  sil_setView(layer,x,y,layer->sprite.width,layer->sprite.height);
+void sil_hide(SILLYR *layer) {
+  sil_setFlags(layer,SILFLAG_INVISIBLE);
 }
 
+
+/*
+Function: sil_show
+  Unhide the given layer.
+
+Parameters:
+  layer - Layer to show
+
+Remarks:
+  - Result is the same as resetting SILFLAG_INVISIBLE via <sil_setFlags()> 
+*/
+void sil_show(SILLYR *layer) {
+  sil_clearFlags(layer,SILFLAG_INVISIBLE);
+}
+/* Group: Change stack order */
 /*
 Function: sil_toTop
   Move given layer to the top of the stack of layers
@@ -1698,173 +1338,38 @@ void sil_swap(SILLYR *layer,SILLYR *target) {
   if (lnext)     lnext->previous  = target;
 }
 
-/*****************************************************************************
-
-  internal function :
-    copies the relevant information from one layer to another one
-
- *****************************************************************************/
-static void copylayerinfo(SILLYR *from, SILLYR *to) {
-  to->view.minx= from->view.minx; 
-  to->view.miny= from->view.miny; 
-  to->view.width= from->view.width; 
-  to->view.height= from->view.height; 
-  if (sil_checkFlags(from,SILFLAG_INVISIBLE)) sil_setFlags(to,SILFLAG_INVISIBLE);
-  if (sil_checkFlags(from,SILFLAG_DRAGGABLE)) sil_setFlags(to,SILFLAG_DRAGGABLE);
-  if (sil_checkFlags(from,SILFLAG_VIEWPOSSTAY)) sil_setFlags(to,SILFLAG_VIEWPOSSTAY);
-  if (from->internal & SILKT_SINGLE) to->internal|=SILKT_SINGLE;
-  if (from->internal & SILKT_ONLYUP) to->internal|=SILKT_ONLYUP;
-  to->hover= from->hover;
-  to->click= from->click;
-  to->keypress= from->keypress;
-  to->drag= from->drag;
-  to->texture=from->texture;
-  to->sprite.width= from->sprite.width; 
-  to->sprite.height= from->sprite.height; 
-  to->sprite.pos= from->sprite.pos; 
-}
-
-
 /*
+Function: sil_getBottom
+  get layer on the bottom of the stack
 
-Function: sil_addCopy
-
-  creates a new layer, but copies all layer information to new one.The New layer will be placed at given x,y postion
-
-Parameters: 
-  layer - pointer to layer to copy
-  relx  - x position of new layer relative to top left of display
-  rely  - y position of new layer relative to top left of display
-
-Returns:
-  pointer to newly created layer
-
-*/
-SILLYR *sil_addCopy(SILLYR *layer,int relx,int rely) {
-  SILLYR *ret=NULL;
-
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("addCopy on layer that isn't initialized, or with uninitialized FB");
-    return NULL;
-  }
-#endif
-  ret=sil_addLayer(relx,rely,layer->fb->width,layer->fb->height,layer->fb->type);
-  if (NULL==ret) {
-    log_warn("Can't create extra layer for addCopy");
-    return NULL;
-  }
-  memcpy(ret->fb->buf,layer->fb->buf,layer->fb->size);
-  copylayerinfo(layer,ret);
-
-  return ret;
-}
-
-
-/* 
-Function: sil_addInstance
-
-  Create an extra instance of given layer. New layer will share the same framebuffer 
-  as the original, so all drawings and filters on it will be the same as the 
-  original, however, the new layer can have different position, view, visability or 
-  handlers.
-
-  Use this to save memory when using the same image over and over again, like "tiling"
-  a background.
-
-Parameters: 
-  layer - pointer to layer to instanciate from
-  relx  - x position of new layer relative to top left of display
-  rely  - y position of new layer relative to top left of display
-
-Returns:
-  pointer to newly created layer
+Returns: 
+  Pointer to bottom layer (suprise)
 
 Remarks:
-  The only advantage of this function is that it will save memory. However, if you use SDL, 
-  every layer -including instanciated ones- will end up having a seperate texture to be send 
-  to GPU, therefore, it isn't recommended to use this function for SDL environments. 
-  If you just want a copy of an existing layer, use <sil_addCopy()> instead
-
- */
-
-SILLYR *sil_addInstance(SILLYR *layer,int relx,int rely) {
-  SILLYR *ret=NULL;
-
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("addCopy on layer that isn't initialized, or with uninitialized FB");
-    return NULL;
-  }
-#endif
-  /* create layer of size 1x1, since fb will be thrown away later */
-  ret=sil_addLayer(relx,rely,1,1,layer->fb->type);
-  if (NULL==ret) {
-    log_warn("Can't create extra layer for addCopy");
-    return NULL;
-  }
-  free(ret->fb);
-  ret->fb=layer->fb;
-
-  copylayerinfo(layer,ret);
-
-  /* make sure we dont accidently copy handlers & states */
-  ret->internal=0;
-  ret->hover=NULL;
-  ret->click=NULL;
-  ret->keypress=NULL;
-  ret->drag=NULL;
-  ret->pointer=NULL;
-  ret->key=0;
-  ret->modifiers=0;
-  ret->user=NULL;
-
-  /* set flag to instanciated, preventing throwing away framebuffer */
-  /* if there is still a copy of it left                            */
-  layer->internal|=SILFLAG_INSTANCIATED;
-  ret->internal|=SILFLAG_INSTANCIATED;
-
-  /* For SDL: to be sure, set flag that fb is changed to notify it has to */
-  /* render the texture for this layer first                              */
-  layer->fb->changed=1;
-  layer->fb->resized=1;
-  return ret;
-}
-
-/*
-Function: sil_hide
-  Hide the given layer.
-
-Parameters:
-  layer - Layer to hide
-
-Remarks:
-  - Result is the same as setting SILFLAG_INVISIBLE via <sil_setFlags()> 
-  - Hidden layers aren't shown on display when updating
-  - Hidden layers cannot receive any mouse events
-  - Hidden layers can do receive key events, though
+  If you want to iterate to all layers, you can do it the best from bottom
+  till top, by following the layer->next link
+ 
 */
-void sil_hide(SILLYR *layer) {
-  sil_setFlags(layer,SILFLAG_INVISIBLE);
+SILLYR *sil_getBottom() {
+  return gv.bottom;
 }
 
-
 /*
-Function: sil_show
-  Unhide the given layer.
+Function: sil_getTop
+  get the top most layer 
 
-Parameters:
-  layer - Layer to show
+Returns: 
+  Pointer to top layer 
 
-Remarks:
-  - Result is the same as resetting SILFLAG_INVISIBLE via <sil_setFlags()> 
 */
-void sil_show(SILLYR *layer) {
-  sil_clearFlags(layer,SILFLAG_INVISIBLE);
+SILLYR *sil_getTop() {
+  return gv.top;
 }
 
+/* Group: Drawing primitives */
+
 /*
-Function: clearLayer
+Function: sil_clearLayer
   clear all contents of layer
 
 Parameters:
@@ -1882,4 +1387,505 @@ void sil_clearLayer(SILLYR *layer) {
   }
 #endif
   sil_clearFB(layer->fb);
+}
+/*
+Function: sil_putPixelLayer
+  
+  Draw a pixel on given location inside a layer.
+
+Parameters:
+  layer  - layer to draw on
+  x      - x position, relative from upper left corner of layer
+  y      - y position, relative from upper left corner of layer
+  red    - amount of red   0..255
+  green  - amount of green 0..255
+  blue   - amount of blue  0..255
+  alpha  - Opacity -> from 0 (not visible) to 255 (no transparancy)
+
+Remarks:
+  - you can also used predefined SIL <color codes>, instead of writing 
+    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
+  - Any pixels that are not within boundaries of layer are not drawn at all
+  - If framebuffer type of layer doesn't support alpha value, alpha will be ignored
+  - Although it uses 8 bit values for RGB, if framebuffer type of layer uses less bits for 
+    each color, they will be adjusted 
+
+*/
+void sil_putPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("putPixel on layer that isn't initialized, or with uninitialized FB");
+    return;
+  }
+#endif
+  /* don't draw if outside of dimensions of framebuffer */
+  if ((x >= layer->fb->width)||(y >= layer->fb->height)) return;
+  sil_putPixelFB(layer->fb, x,y,red,green,blue,alpha);
+}
+
+
+/*
+Function: sil_blendPixelLayer
+  
+  Draw a pixel on given location inside a layer and blend it with existing pixel
+
+
+Parameters:
+  layer  - layer to draw on
+  x      - x position, relative from upper left corner of layer
+  y      - y position, relative from upper left corner of layer
+  red    - amount of red   0..255
+  green  - amount of green 0..255
+  blue   - amount of blue  0..255
+  alpha  - Opacity -> from 0 (not visible) to 255 (no transparancy)
+
+Remarks:
+  - you can also used predefined SIL <color codes>, instead of writing 
+    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
+  - Any pixels that are not within boundaries of layer are not drawn at all
+  - Although it uses 8 bit values for RGB, if framebuffer type of layer uses less bits for 
+    each color, they will be adjusted 
+  - This function is in the rare case you want to overwrite pixels or framebuffer/display type
+    doesn't support alpha blending. But in other cases, if you want to blend images, it is 
+    easier -and much faster !- to have each image in a seperate layer and use alpha settings of 
+    layers to blend them
+
+*/
+void sil_blendPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
+  BYTE mixred,mixgreen,mixblue,mixalpha;
+  float af,negaf;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("blendPixelLayer on layer that isn't initialized, or with uninitialized FB");
+    return;
+  }
+#endif
+  sil_getPixelLayer(layer,x,y,&mixred,&mixgreen,&mixblue,&mixalpha);
+  if (mixalpha>0) {
+    /* only mix when underlaying pixel doesn't have 0 alpha */
+    if (0==alpha) return; /* nothing to do */
+    if (alpha<255) {
+      /* only calculate when its less then 100% opaque */
+      af=((float)alpha)/255;
+      negaf=1-af;
+      red=red*af+negaf*mixred;
+      green=green*af+negaf*mixgreen;
+      blue=blue*af+negaf*mixblue;
+      if (mixalpha>alpha) alpha=mixalpha;
+    }
+  }
+  sil_putPixelLayer(layer,x,y,red,green,blue,alpha);
+}
+
+/*
+Function: sil_getPixelLayer
+  
+  get red,green,blue and alpha information for pixel on given location inside a layer.
+
+Parameters:
+  layer  - layer to draw on
+  x      - x position, relative from upper left corner of layer
+  y      - y position, relative from upper left corner of layer
+  red    - return amount of red   0..255
+  green  - return amount of green 0..255
+  blue   - return amount of blue  0..255
+  alpha  - return Opacity -> from 0 (not visible) to 255 (no transparancy)
+
+Remarks:
+  - you can also used predefined SIL <color codes>, instead of writing 
+    ..layer,35,139,34,alpha.. you can use ..layer,SILCOLOR_FOREST_GREEN,alpha....
+  - all RGB codes are returned as bytes. If Framebuffer uses fewer bits, they will be translated 
+    to 8 bits.
+  - If framebuffer type doesn't support alpha value, 255 will be returned.
+  - Any pixels that are not within boundaries of layer will be returning zero for all values
+
+*/
+void sil_getPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE *red, BYTE *green, BYTE *blue, BYTE *alpha) {
+  if ((layer) && (layer->init)) {
+    /* just return transparant black when outside of fb dimensions */
+    if ((x >= layer->fb->width)||(y >= layer->fb->height)) {
+      *red=0;
+      *green=0;
+      *blue=0;
+      *alpha=0;
+    } else {
+      sil_getPixelFB(layer->fb,x,y,red,green,blue,alpha);
+    }
+  }
+}
+
+/*****************************************************************************
+
+  Internal function,draw all layers, from bottom till top, into a single 
+  Framebuffer mostly used by display functions, updating display framebuffer,
+  However can be also be used for making screendumps, testing or generating
+  image .png files
+  This function can be called from display file. Since SDL wil use textures, 
+  and not framebuffer, it is the only one not calling this function.
+
+ *****************************************************************************/
+
+void sil_LayersToFB(SILFB *fb) {
+  SILLYR *layer;
+  BYTE red,green,blue,alpha;
+  BYTE mixred,mixgreen,mixblue,mixalpha;
+  float af;
+  float negaf;
+
+#ifndef SIL_LIVEDANGEROUS
+  if (0==fb->size) {
+    log_warn("Trying to merge layers to uninitialized framebuffer");
+    return;
+  }
+#endif
+
+  layer=sil_getBottom();
+  sil_clearFB(fb);
+  while (layer) {
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      for (int y=layer->view.miny; y<(layer->view.miny+layer->view.height); y++) {
+        for (int x=layer->view.minx; x<(layer->view.minx+layer->view.width); x++) {
+          int absx=x+layer->relx-layer->view.minx;
+          int absy=y+layer->rely-layer->view.miny;
+          int rx=x;
+          int ry=y;
+
+          /* prevent drawing outside borders of display */
+          if ((absx>fb->width)||(absy>fb->height)) continue;
+
+          sil_getPixelLayer(layer,rx,ry,&red,&green,&blue,&alpha);
+          if (0==alpha) continue; /* nothing to do if completely transparant */
+          alpha=alpha*layer->alpha;
+          if (255==alpha) {
+            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
+          } else {
+            /* lets do our own alpha blending */
+            sil_getPixelFB(fb,absx,absy,&mixred,&mixgreen,&mixblue,&mixalpha);
+            af=((float)alpha)/255;
+            negaf=1-af;
+            red=red*af+negaf*mixred;
+            green=green*af+negaf*mixgreen;
+            blue=blue*af+negaf*mixblue;
+            sil_putPixelFB(fb,absx,absy,red,green,blue,255);
+          }
+        }
+      }
+    }
+    layer=layer->next;
+  }
+  
+  /* clear changed flags, although they are only use by SDL platform at the moment */
+  /* but just to be sure or for further development                                */
+  layer=sil_getBottom();
+  while(layer) {
+    layer->fb->changed=0;
+    layer->fb->resized=0;
+    layer=layer->next;
+  }
+}
+
+/*****************************************************************************
+
+  Internal function
+
+  if mousebutton has been clicked, find the highest layer that is right under 
+  the mousepointer and 
+  - layer is visible
+  - has a clickhandler attached to it or is marked "draggable" by 
+    either a draghandler or set manually
+  - pointer is within view of layer
+  - pointer is above a visible, non-transparant, pixel 
+    (you can turn this check off via setting of SILFLAG_MOUSEALLPIX)
+
+  if a layer has been found that has the flag SILFLAG_MOUSESHIELD, it will 
+  not traverse further down, "shielding" all mouse events to layers under it.
+  Generally used for messages/pop-ups mechanisms, to prevent clicking outside
+  it.
+
+ *****************************************************************************/
+SILLYR *sil_findHighestClick(UINT x,UINT y) {
+  SILLYR *layer;
+  BYTE red,green,blue,alpha;
+  int xl,xr,yt,yb;
+
+  layer=sil_getTop();
+  while (layer) {
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      if ((NULL!=layer->click)||(sil_checkFlags(layer,SILFLAG_DRAGGABLE))) {
+        /* calculate boundaries of layers where x,y must fall into */
+        xl=layer->relx-(int)(layer->view.minx);
+        xr=layer->relx+(int)(layer->view.width);
+        yt=layer->rely-(int)(layer->view.miny);
+        yb=layer->rely+(int)(layer->view.height);
+        if ((x>=xl) && (x<xr) && (y>=yt) && (y<yb)) {
+          /* return inmediatly when all pixels within view can be considered as target */
+          if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
+          /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
+          sil_getPixelLayer(layer,x-(layer->relx)+(layer->view.minx),
+              y-(layer->rely)+(layer->view.miny),&red,&green,&blue,&alpha);
+          if (alpha>0) return layer;
+        }
+      }
+      /* if we find layer with flag "MOUSESHIELD" , we stop searching */
+      /* therefore blocking/shielding any mouseevent for layer under  */
+      /* this layer                                                   */
+      if (layer->flags&(SILFLAG_MOUSESHIELD)) return NULL;
+    }
+    layer=layer->previous;
+  }
+  return NULL;
+}
+
+/*****************************************************************************
+ 
+  Internal function
+
+  if mouse has been moved, find the highest layer that is right under 
+  the mousepointer and 
+  - layer is visible
+  - has a hoverhandler attached to it 
+  - pointer is within view of layer
+  - pointer is above a visible, non-transparant, pixel 
+    (you can turn this check off via setting of SILFLAG_MOUSEALLPIX)
+
+  if a layer has been found that has the flag SILFLAG_MOUSESHIELD, it will 
+  not traverse further down, "shielding" all mouse events to layers under it.
+  Generally used for messages/pop-ups mechanisms, to prevent clicking outside
+  it.
+
+ *****************************************************************************/
+SILLYR *sil_findHighestHover(UINT x,UINT y) {
+  SILLYR *layer;
+  BYTE red,green,blue,alpha;
+  int xl,xr,yt,yb;
+
+  layer=sil_getTop();
+  while (layer) {
+    if (!(layer->flags&SILFLAG_INVISIBLE)) {
+      if (NULL!=layer->hover) {
+        /* calculate boundaries of layers where x,y must fall into */
+        xl=layer->relx-(int)(layer->view.minx);
+        xr=layer->relx+(int)(layer->view.width);
+        yt=layer->rely-(int)(layer->view.miny);
+        yb=layer->rely+(int)(layer->view.height);
+        if ((x>=xl) && (x<xr) && (y>=yt) && (y<yb)) {
+          /* return inmediatly when all pixels within view can be considered as target */
+          if (layer->flags&SILFLAG_MOUSEALLPIX) return layer;
+          /* otherwise, fetch pixel info and only target if pixel isn't transparant    */
+          sil_getPixelLayer(layer,x-(layer->relx)+(layer->view.minx),
+              y-(layer->rely)+(layer->view.miny),&red,&green,&blue,&alpha);
+          if (alpha>0) return layer;
+        }
+      }
+      /* if we find layer with flag "MOUSESHIELD" , we stop searching */
+      /* therefore blocking/shielding any mouseevent for layer under  */
+      /* this layer                                                   */
+
+      if (layer->flags&(SILFLAG_MOUSESHIELD)) { return NULL; }
+    }
+    layer=layer->previous;
+  }
+  return NULL;
+}
+
+/*****************************************************************************
+   Internal function
+   
+   A key has been pressed and find the highest layer that is waiting for the 
+   given key and modifiers. 
+   Note that all layers - even invisible - can receive keyevents
+   handlers who has key=0, modifiers=0 set, will catch all keyevents.
+
+ *****************************************************************************/
+SILLYR *sil_findHighestKeyPress(UINT c,BYTE modifiers) {
+  SILLYR *layer;
+
+  layer=sil_getTop();
+  while (layer) {
+    if (NULL!=layer->keypress) {
+      if ((layer->key)||(layer->modifiers)) {
+        /* layer has a keypress handler, but is it looking for this shortcut key ? */
+        if ((c==layer->key) && (modifiers==layer->modifiers)) {
+          return layer;
+        }
+      } else {
+        /* no key or modifier set, so its a "catch all" for all keyevents */
+        return layer;
+      }
+    }
+    layer=layer->previous;
+  }
+  return NULL;
+}
+
+/* Group: Sprites */
+
+/*
+Function: sil_initSpriteSheet
+
+  Initialize given layer as "SpriteSheet", containing different images/frames, hence 
+  called 'sprites', in a single image. 
+  Every sprite should have the same with and height and distance to eachother in 
+  the file.
+
+  See also example 'combined.c' using the dancing bananana spritesheet. In this 
+  example hparts=8 and vparts=2
+
+  (see dancingbanana.png)
+
+Parameters:
+  layer  - layer containing sprites
+  hparts - amount of sprites there are horizontally
+  vparts - amount of sprites there are vertically
+
+Remarks:
+  - The easiest way to animate using spritesheet is to use <sil_setTimerHandler()> 
+    together with <sil_setTimeval()> and each time timer goes off, call <sil_nextSprite> 
+    (and set new timer for next call)
+  - Function assumes the sprites are spread evenly on the layer. therefore the
+    size of each sprite should be layer width divided by hparts x layer height 
+    divided by vpart
+  - It will start with first sprite (top left), and will continue, when using
+    <sil_nextSprite()> from left to right, top to bottom and back to top left.
+  - Use <sil_nextSprite()> <sil_prevSprite()> or <sil_setSprite()> to display
+    one of the sprites.
+  - The "displaying" of the sprite is done via setting the view of the layer to just
+    a single sprite within the whole image. So, don't alter view of these kind of 
+    layers.
+
+ */
+void sil_initSpriteSheet(SILLYR *layer,UINT hparts, UINT vparts) {
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("initSpriteSheet on layer that isn't initialized, or with uninitialized FB");
+    return;
+  }
+#endif
+  
+  /* calculate dimensions of single part */
+  layer->sprite.width=(layer->fb->width)/hparts;
+  layer->sprite.height=(layer->fb->height)/vparts;
+
+
+  /* set view accordingly */
+  sil_setSprite(layer,0);
+}
+
+/*
+Function: sil_nextSprite
+
+  Move view of layer to next sprite (counting from left upper corner to 
+  right down corner). If there isn't, sprite will be set to first again
+
+Parameters:
+  layer - Sprite layer
+
+
+ */
+void sil_nextSprite(SILLYR *layer) {
+  UINT maxpos=0;
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
+    return;
+  }
+
+  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
+    log_warn("spritesheet isn't initialized, or wrong format");
+    return;
+  }
+#endif
+
+  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
+  if (layer->sprite.pos < maxpos) {
+    layer->sprite.pos++;
+  } else {
+    layer->sprite.pos=0;
+  }
+  sil_setSprite(layer,layer->sprite.pos);
+}
+
+/*
+Function: sil_prevSprite
+
+  Move view of layer to previous sprite (counting from left upper corner to 
+  right down corner). If there isn't, sprite will be set to last sprite 
+
+Parameters:
+  layer - Sprite layer
+
+ */
+void sil_prevSprite(SILLYR *layer) {
+  UINT maxpos=0;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
+    return;
+  }
+
+  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
+    log_warn("spritesheet isn't initialized, or wrong format");
+    return;
+  }
+#endif
+
+  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
+  if (layer->sprite.pos>0) {
+    layer->sprite.pos--;
+  } else {
+    layer->sprite.pos=maxpos-1;
+  }
+  sil_setSprite(layer,layer->sprite.pos);
+}
+
+/*
+Function: sil_setSprite
+
+  Set view of layer to sprite with index "pos" (counting from 0, left upper 
+  corner to right down corner). 
+
+Parameters:
+  layer - Sprite layer to use
+  pos   - Position
+
+*/
+void sil_setSprite(SILLYR *layer,UINT pos) {
+  UINT maxpos=0;
+  UINT x=0;
+  UINT y=0;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("setSprite on layer that isn't initialized, or with uninitialized FB");
+    return;
+  }
+
+  if ((0==layer->sprite.width)||(0==layer->sprite.height)) {
+    log_warn("spritesheet isn't initialized, or wrong format");
+    return;
+  }
+#endif
+
+  maxpos=((layer->fb->width/layer->sprite.width) * (layer->fb->height/layer->sprite.height));
+  pos%=maxpos;
+
+  /* calculate position of given part number */
+  layer->sprite.pos=pos;
+  while(pos) {
+    if (x+layer->sprite.width< layer->fb->width) {
+      x+=layer->sprite.width;
+    } else {
+      x=0;
+      if (y+layer->sprite.height< layer->fb->height) {
+        y+=layer->sprite.height;
+      } else {
+        y=0;
+      }
+    }
+    pos--;
+  }
+  sil_setView(layer,x,y,layer->sprite.width,layer->sprite.height);
 }

@@ -4,12 +4,6 @@
 
 /* layer.c */
 
-/* bitmask for internal */
-#define SILFLAG_ALPHACHANGED   1
-#define SILFLAG_KEYEVENT       2
-#define SILKT_SINGLE           4
-#define SILKT_ONLYUP           8
-#define SILFLAG_INSTANCIATED  16
 
 SILLYR *sil_findHighestClick(UINT,UINT);
 SILLYR *sil_findHighestHover(UINT,UINT);

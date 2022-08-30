@@ -5,6 +5,7 @@
    This file contains all generic basic functions and helpers for SIL
 
 */
+/* Group: About SIL */
 
 /* About: Using SIL 
   
@@ -74,7 +75,6 @@ int main() {
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "sil.h"
 #include "sil_int.h"
 #include "log.h"
 
@@ -89,7 +89,9 @@ typedef struct _GSIL {
 } GSIL;
 static GSIL gv;
 
-
+/*
+Group: SIL Structure
+*/
 /* Function: sil_initSIL
 
   initialize SIL context for all other calls. It will be used to contain program
@@ -132,46 +134,7 @@ UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance) {
   return ret;
 }
 
-/* Function: sil_setLog
-
-  Initialize logging parameters 
-
-  Parameters:
-
-    logname - name of logfile to write to. If NULL, stdout will be used
-    flags   - kind of logging we want to capture, can be combined
-              LOG_INFO | LOG_DEBUG | LOG_VERBOSE
-
-  Returns:
-    SILLERR_ALLOK (0) when done, Error on any other code
-
-  Remarks:
-    Only call this *after* calling <sil_initSIL>
-
-    If not called at start, "LOG_INFO" & LOG_VERBOSE information will be logged to 
-    stdout. Prevent logging by setting logname to NULL and flags to 0 
-
-*/
-UINT sil_setLog(char *logname, BYTE flags) {
-  UINT ret=SILERR_ALLOK;
-  UINT err=0;
-
-  err=log_init(logname,flags); /* just redo initialization */
-  if (err) {
-    log_fatal("Can't set logging");
-  }
-  log_verbose("SIL Log options set");
-  return ret;
-}
-
-/* Function: sil_quitLoop
-   signal to stop <sil_mainLoop>. Usually to instruct SIL to clean up and quit the program.
-
- */
-void sil_quitLoop() {
-  gv.quit=1;
-}
-
+/* complex part of mainloop, figuring out when to call drag/click/hover handlers */
 static void checkMove(SILEVENT *se) {
   SILLYR *al=NULL;
   SILLYR *tmp=NULL;
@@ -435,6 +398,58 @@ void sil_mainLoop() {
   } while ((0==gv.quit)&&(SILDISP_QUIT!=se->type));
 }
 
+/* Function: sil_quitLoop
+   signal to stop <sil_mainLoop>. Usually to instruct SIL to clean up and quit the program.
+
+ */
+void sil_quitLoop() {
+  gv.quit=1;
+}
+
+/*
+Function: sil_destroySIL
+  Close & cleanup SIL
+
+*/
+void sil_destroySIL() {
+  sil_destroyDisplay();
+  gv.init=0;
+}
+
+/*
+Group: Logging and errors
+*/
+/* Function: sil_setLog
+
+  Initialize logging parameters 
+
+  Parameters:
+
+    logname - name of logfile to write to. If NULL, stdout will be used
+    flags   - kind of logging we want to capture, can be combined
+              LOG_INFO | LOG_DEBUG | LOG_VERBOSE
+
+  Returns:
+    SILLERR_ALLOK (0) when done, Error on any other code
+
+  Remarks:
+    Only call this *after* calling <sil_initSIL>
+
+    If not called at start, "LOG_INFO" & LOG_VERBOSE information will be logged to 
+    stdout. Prevent logging by setting logname to NULL and flags to 0 
+
+*/
+UINT sil_setLog(char *logname, BYTE flags) {
+  UINT ret=SILERR_ALLOK;
+  UINT err=0;
+
+  err=log_init(logname,flags); /* just redo initialization */
+  if (err) {
+    log_fatal("Can't set logging");
+  }
+  log_verbose("SIL Log options set");
+  return ret;
+}
 
 /* 
 Function: sil_err2Txt
@@ -481,6 +496,9 @@ const char * sil_err2Txt(UINT errorcode) {
   }
   return ret;
 }
+/*
+Group: Timer
+*/
 
 /*
 Function: sil_setTimerHandler
@@ -538,16 +556,5 @@ Returns:
 UINT sil_getTimeval() {
   if (!(gv.init)) return 0;
   return gv.amount;
-}
-
-
-/*
-Function: sil_destroySIL
-  Close & cleanup SIL
-
-*/
-void sil_destroySIL() {
-  sil_destroyDisplay();
-  gv.init=0;
 }
 

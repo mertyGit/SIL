@@ -125,6 +125,7 @@ void sil_destroyFB(SILFB *);
 
 /* layer.c */
 
+
 /* bitmask for flags */
 
 #define SILFLAG_INVISIBLE      1
@@ -134,6 +135,13 @@ void sil_destroyFB(SILFB *);
 #define SILFLAG_FREEUSER      32
 #define SILFLAG_MOUSESHIELD   64
 #define SILFLAG_MOUSEALLPIX  128
+
+/* bitmask for internal */
+#define SILFLAG_ALPHACHANGED   1
+#define SILFLAG_KEYEVENT       2
+#define SILKT_SINGLE           4
+#define SILKT_ONLYUP           8
+#define SILFLAG_INSTANCIATED  16
 
 /* also used by display.c */
 typedef struct _SILEVENT {
