@@ -8,7 +8,7 @@
 #include "log.h"
 
 
-static SILLYR *fonttest,*drawing,*animation, *foreground,*background,*one,*two,*three,*test,*mirror, *ontop,*both,*bothnoblend;
+static SILLYR *fonttest,*drawing,*animation, *foreground,*background,*one,*two,*three,*test,*mirror, *ontop,*both,*bothnoblend,*rotatetest;
 static UINT lw=1;
 static SILGROUP *grouptest;
 
@@ -198,6 +198,17 @@ UINT rotateit(SILEVENT *event) {
     return 1;
   } 
   return 0;
+}
+
+UINT rotateme(SILEVENT *event) {
+  if (event->type==SILDISP_MOUSE_DOWN) {
+    if (SIL_BTN_LEFT==event->val) {
+      sil_rotateLayer(rotatetest,-30);
+      } else {
+      sil_rotateLayer(rotatetest,30);
+    }
+  }
+  return 1;
 }
 
 #ifdef SIL_W32
@@ -481,6 +492,14 @@ int main() {
     return 23;
   }
   drawlines();
+
+  printf("testing rotation with testpic13 ..\n");
+  rotatetest=sil_addLayer(260,250,100,100,SILTYPE_ARGB);
+  if (NULL==rotatetest) {
+    return 24;
+  }
+  sil_PNGintoLayer(rotatetest,"testpic13.png",0,0);
+  sil_setClickHandler(rotatetest,rotateme);
 
 
 

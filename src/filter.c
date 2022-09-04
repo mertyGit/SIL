@@ -60,6 +60,7 @@ UINT sil_cropAlphaFilter(SILLYR *layer) {
   layer->view.height=layer->fb->height;
   layer->view.minx=0;
   layer->view.miny=0;
+  layer->fb->resized=1;
 
   return err;
 }

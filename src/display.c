@@ -1,4 +1,5 @@
-#ifdef SIL_TARGET_WINDSDL
+
+#ifdef SIL_TARGET_WINSDL
 #include "SDLdisplay.c"
 #endif
 

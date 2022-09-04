@@ -68,6 +68,9 @@ About: Using Layers
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#ifndef SIL_NO_MATH
+#include <math.h>
+#endif
 #include "lodepng.h"
 #include "sil_int.h"
 #include "log.h"
@@ -82,8 +85,9 @@ typedef struct _GLYR {
 static GLYR gv={NULL,NULL,0}; /* holds all global variables used only within layers.c */
 
 
-/* Group: Creating and destroying
-/* 
+/* Group: Creating and destroying */
+
+/*
 Function: sil_addLayer 
   Create a layer and put to top of stack of layers
 
@@ -295,6 +299,7 @@ SILLYR *sil_addInstance(SILLYR *layer,int relx,int rely) {
   layer->fb->resized=1;
   return ret;
 }
+
 
 /*
 Function: sil_PNGtoNewLayer
@@ -1032,6 +1037,418 @@ UINT sil_resizeLayer(SILLYR *layer, int minx,int miny,UINT width,UINT height) {
   return SILERR_ALLOK;
 }
 
+/* 
+Function: sil_shiftLayer
+  Shift content of layer 
+
+Parameters: 
+  layer - Layer to shift content from
+  xmove - Amount of pixels to shift right (positive) or left (negative)
+  ymove - Amount of pixels to shift down (positive) or up (negative)
+
+Remarks:
+  If will remove any pixels that crosses the boundaries of the layer.
+  It will fill with pixels 0,0,0,0 (black, full transparancy)
+
+*/
+void sil_shiftLayer(SILLYR *layer,int xmove,int ymove) {
+  BYTE red,green,blue,alpha;
+  int sourcex,sourcey,newx,newy;
+
+  #ifndef SIL_LIVEDANGEROUS
+    if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+      log_warn("resize on layer that isn't initialized, or with uninitialized FB");
+      return;
+    }
+  #endif
+
+  for (int x=0;x<layer->fb->width;x++) {
+    for (int y=0;y<layer->fb->height;y++) {
+      if (xmove<0) {
+        newx=x-xmove;
+        sourcex=x;
+      } else {
+        sourcex=(layer->fb->width)-x;
+        newx=sourcex+xmove;
+      }
+      if (xmove<0) {
+        newy=y-ymove;
+        sourcey=y;
+      } else {
+        sourcex=(layer->fb->height)-y;
+      }
+      sil_getPixelLayer(layer,sourcex,sourcey,&red,&green,&blue,&alpha);
+      sil_putPixelLayer(layer,newx,newy,red,green,blue,alpha);
+    }
+  }
+}
+
+
+
+/*----- */
+
+/* internal function, skey image to the right */
+/* used for rotating                          */
+void HorizSkew(SILFB *src, SILFB *dest, UINT row, int offset, double weight) {
+  BYTE or,og,ob,oa; /* old */
+  BYTE lr,lg,lb,la; /* left */
+  BYTE sr,sg,sb,sa; /* source */
+  int i;
+
+
+  /* fill line with empty pixels */
+  for (i=0;i<src->width;i++) sil_putPixelFB(dest,i,row,0,0,0,0);
+
+  or=0;
+  og=0;
+  ob=0;
+  oa=0;
+
+  for (i=0; i<(src->width) ;i++) {
+    sil_getPixelFB(src,i,row,&sr,&sg,&sb,&sa);
+    lr=(BYTE)((double)sr * weight);
+    lg=(BYTE)((double)sg * weight);
+    lb=(BYTE)((double)sb * weight);
+    la=(BYTE)((double)sa * weight);
+
+
+    sr=sr-(lr-or);
+    sg=sg-(lg-og);
+    sb=sb-(lb-ob);
+    sa=sa-(la-oa);
+    if (((i+offset >=0) &&((i+offset)<dest->width))) sil_putPixelFB(dest,i+offset,row,sr,sg,sb,sa);
+    or=lr;
+    og=lg;
+    ob=lb;
+    oa=la;
+  }
+  i+=offset;
+  /* place leftover */
+  if (i<dest->width) sil_putPixelFB(dest,i,row,or,og,ob,oa);
+  /* clear to the right of skewed line */
+  while(++i < dest->width) sil_putPixelFB(dest,i,row,0,0,0,0);
+}
+
+/* internal function, skey image to the bottom */
+/* used for rotating                          */
+void VertSkew(SILFB *src, SILFB *dest, UINT col, int offset, double weight) {
+  BYTE or,og,ob,oa; /* old */
+  BYTE lr,lg,lb,la; /* left */
+  BYTE sr,sg,sb,sa; /* source */
+  int i;
+
+  /* fill line with empty pixels */
+  for (i=0;i<src->height;i++) sil_putPixelFB(dest,col,i,0,0,0,0);
+    
+  or=0;
+  og=0;
+  ob=0;
+  oa=0;
+
+  for (i=0; i < src->height; i++) {
+    sil_getPixelFB(src,col,i,&sr,&sg,&sb,&sa);
+    lr=(BYTE) ( (double) sr * weight);
+    lg=(BYTE) ( (double) sg * weight);
+    lb=(BYTE) ( (double) sb * weight);
+    la=(BYTE) ( (double) sa * weight);
+    sr=sr-(lr-or);
+    sg=sg-(lg-og);
+    sb=sb-(lb-ob);
+    sa=sa-(la-oa);
+    if (((i+offset >=0) &&((i+offset)<dest->height))) sil_putPixelFB(dest,col,i+offset,sr,sg,sb,sa);
+    or=lr;
+    og=lg;
+    ob=lb;
+    oa=la;
+  }
+  i+=offset;
+  /* place leftover */
+  if (i<dest->height) sil_putPixelFB(dest,col,i,or,og,ob,oa);
+  /* clear to the rest of skewed line */
+  while(++i < dest->height) sil_putPixelFB(dest,col,i,0,0,0,0);
+}
+
+/*
+Function: sil_rotate90
+  Rotates layer 90 degrees
+
+Parameters:
+  layer - Layer to rotate
+
+Remark:
+  This function might resize the layer, therefore view settings might
+  not be correct after this, use <sil_resetView()> if needed
+  If compiled with SIL_NO_MATH option, this rotating function will still work
+*/
+UINT sil_rotate90(SILLYR *layer) {
+  SILFB *dest=NULL;
+  BYTE sr,sg,sb,sa; /* source */
+  UINT x,y;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("resetView on layer that isn't initialized, or with uninitialized FB");
+    return SILERR_NOTINIT;
+  }
+#endif
+
+  dest=sil_initFB(layer->fb->width,layer->fb->height,layer->fb->type);
+  if (NULL==dest) {
+    log_info("WARN: can't get memory temporary buffer for rotating");
+    return SILERR_NOMEM;
+  }
+  for (y=0;y<layer->fb->height;y++) {
+    for (x=0;x<layer->fb->width;x++) {
+      sil_getPixelLayer(layer,x,y,&sr,&sg,&sb,&sa);
+      sil_putPixelFB(dest,y,(dest->height)-x-1,sr,sg,sb,sa);
+    }
+  }
+  sil_destroyFB(layer->fb);
+  layer->fb=dest;
+
+  return SILERR_ALLOK;
+}
+
+
+/*
+Function: sil_rotate180
+  Rotates layer 180 degrees
+
+Parameters:
+  layer - Layer to rotate
+
+Remark:
+  If compiled with SIL_NO_MATH option, this rotating function will still work
+*/
+UINT sil_rotate180(SILLYR *layer) {
+  SILFB *dest=NULL;
+  BYTE sr,sg,sb,sa; /* source */
+  UINT x,y;
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("resetView on layer that isn't initialized, or with uninitialized FB");
+    return SILERR_NOTINIT;
+  }
+#endif
+
+  dest=sil_initFB(layer->fb->width,layer->fb->height,layer->fb->type);
+  if (NULL==dest) {
+    log_info("WARN: can't get memory temporary buffer for rotating");
+    return SILERR_NOMEM;
+  }
+  for (y=0;y<layer->fb->height;y++) {
+    for (x=0;x<layer->fb->width;x++) {
+      sil_getPixelLayer(layer,x,y,&sr,&sg,&sb,&sa);
+      sil_putPixelFB(dest,(dest->width)-x-1,(dest->height)-y-1,sr,sg,sb,sa);
+    }
+  }
+  sil_destroyFB(layer->fb);
+  layer->fb=dest;
+
+  return SILERR_ALLOK;
+}
+
+
+/*
+Function: sil_rotate270
+  Rotates layer 270 degrees
+
+Parameters:
+  layer - Layer to rotate
+
+Remark:
+  This function might resize the layer, therefore view settings might
+  not be correct after this, use <sil_resetView()> if needed
+  If compiled with SIL_NO_MATH option, this rotating function will still work
+*/
+UINT sil_rotate270(SILLYR *layer) {
+  SILFB *dest=NULL;
+  BYTE sr,sg,sb,sa; /* source */
+  UINT x,y;
+
+  dest=sil_initFB(layer->fb->width,layer->fb->height,layer->fb->type);
+  if (NULL==dest) {
+    log_info("WARN: can't get memory temporary buffer for rotating");
+    return SILERR_NOMEM;
+  }
+  for (y=0;y<layer->fb->height;y++) {
+    for (x=0;x<layer->fb->width;x++) {
+      sil_getPixelLayer(layer,x,y,&sr,&sg,&sb,&sa);
+      sil_putPixelFB(dest,(dest->width)-y-1,x,sr,sg,sb,sa);
+    }
+  }
+  sil_destroyFB(layer->fb);
+  layer->fb=dest;
+  return SILERR_NOMEM;
+}
+
+#ifndef SIL_NO_MATH
+
+/* internal function for all rotating options between -45 and 45 degrees */
+/* called by sil_rotate , using triple shear algorithm                   */
+UINT sil_rotate45(SILLYR *layer, double angle) {
+  SILFB *dest=NULL;
+  SILFB *dest2=NULL;
+  UINT x,y;
+  UINT width,height,ow,oh;
+  double doffset,dshear,drad,dsin,dtan;
+  int ishear;
+
+  /* no rotation at all just copy framebuffer and call it quits */
+  if (0.0==angle) return SILERR_ALLOK;
+
+  drad=angle*SIL_PI/((double)(180.0));
+  dsin=sin(drad);
+  dtan=tan(drad/2.0);
+
+
+
+  //width=layer->fb->width;
+  //height=layer->fb->height;
+  ow=layer->fb->width;
+  oh=layer->fb->height;
+
+  /* first shear -------------------------------- */
+
+  /* calculate new size */
+  width=ow+(double)oh*fabs(dtan);
+  height=oh;
+  dest=sil_initFB(width,height,layer->fb->type);
+  if (NULL==dest) {
+    log_info("WARN: can't get memory temporary buffer for rotating");
+    return SILERR_NOMEM;
+  }
+  for (y=0;y<height;y++) {
+    if (dtan >= 0.0) {
+      /* positive angle */
+      dshear = (((double)(y))+0.5) * dtan;
+    } else {
+      /* negative angle */
+      dshear = ((double)y-(double)height+0.5)*dtan ;
+    }
+    ishear=(int)(floor(dshear));
+    HorizSkew(layer->fb,dest,y,ishear,dshear-((double)ishear));
+  }
+  sil_destroyFB(layer->fb);
+  layer->fb=dest;
+  //sil_cropAlphaFilter(layer);
+  dest=layer->fb;
+
+  /* second shear -------------------------------- */
+
+  width=dest->width;
+  height=((double)ow*fabs(dsin)+(double)oh*cos(drad))+1;
+
+  dest2=sil_initFB(2*width,2*height,layer->fb->type);
+  if (NULL==dest2) {
+    log_info("WARN: can't get memory temporary buffer for rotating");
+    return SILERR_NOMEM;
+  }
+
+  if (dsin>0.0) {
+    /* positive angle */
+    doffset=((double)ow-1.0)*dsin;
+  } else {
+    /* negative angle */
+    doffset=-1.0*dsin*((double)ow-(double)width);
+  }
+  for (x=0; x<width; x++) {
+    doffset-=dsin;
+    ishear=floor(doffset);
+    VertSkew(dest,dest2,x,ishear,doffset-((double)(ishear)));
+  }
+  sil_destroyFB(layer->fb);
+  layer->fb=dest2;
+  sil_cropAlphaFilter(layer);
+
+  /* third shear -------------------------------  */
+  
+  width=(UINT)((double)oh*fabs(dsin)+(double)ow*cos(drad))+1;
+  height=layer->fb->height;
+
+  dest=sil_initFB(2*width,height,layer->fb->type);
+  if (NULL==dest) {
+    log_info("WARN: can't get memory temporary buffer for rotating");
+    return SILERR_NOMEM;
+  }
+
+  if (dsin>=0.0) {
+    /* positive angle */
+    doffset=((double)oh-(double)1.0)*dsin*((double)-1.0)*dtan;
+  } else {
+    /* negative angle */
+    //doffset=dtan*((double)ow-(double)1.0)*(double)-1.0*dsin+((double)1.0-height);
+    doffset=dtan*((double)ow-(double)1.0)*(double)+1.0*dsin+height;
+  }
+  for (y=0;y<height;y++) {
+    doffset +=dtan;
+    ishear=floor(doffset);
+    HorizSkew(layer->fb,dest,y,ishear,doffset-(double)ishear);
+  }
+  sil_destroyFB(layer->fb);
+  layer->fb=dest;
+  sil_cropAlphaFilter(layer);
+  sil_resetView(layer);
+
+  return SILERR_ALLOK;
+}
+
+/*
+Function: sil_rotateLayer
+  Rotate layer with given angle
+
+Parameters:
+  layer - Layer to rotate
+  angle - Angle, 0..360  in degrees
+
+Remarks:
+  - It will use triple shear algorithm with basic anti-aliasing. Using this functions
+    multiple times on same layer will make the layer "blurry". Therefore, keep the original
+    layer info or picture at hand to redraw when doing another rotate is advisable
+  - Rotating layer with steps of 90 degrees doesn't alter the pixels itselves, 
+    therefore can be done without the risk of making images "blurry" 
+  - It has to resize the layer to fit rotated image into and in the end, the layer will
+    be cropped and view will be reset. It's therefore be advisable to re-examine 
+    position and views after each rotation and alter them if needed.
+
+*/
+UINT sil_rotateLayer(SILLYR *layer, double angle) {
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("rotate layer that isn't initialized, or with uninitialized FB");
+    return SILERR_NOTINIT;
+  }
+#endif
+
+  angle*=-1;
+
+  while(angle>=360.0) angle-=360.0;
+  while(angle<0.0) angle+=360.0;
+  if ((angle > 45.0)&&(angle <=135.0)) {
+    sil_rotate90(layer);
+    angle-=90.0;
+  } else {
+    if ((angle > 45.0)&&(angle <=225.0)) {
+      sil_rotate180(layer);
+      angle-=180.0;
+    } else {
+      if ((angle > 225.0)&&(angle <=315.0)) {
+        sil_rotate270(layer);
+        angle-=270.0;
+      }
+    }
+  }
+
+  /* angle should be in range of -45 .. +45 at this point */
+  sil_rotate45(layer,angle);
+
+  return SILERR_ALLOK;
+}
+#endif
+
+
 /*
 Function: sil_hide
   Hide the given layer.
@@ -1515,6 +1932,37 @@ void sil_getPixelLayer(SILLYR *layer, UINT x, UINT y, BYTE *red, BYTE *green, BY
   }
 }
 
+
+/*
+Function: sil_paintLayer
+  
+  Set all pixels within layer to given color
+
+Parameters:
+  Layer - Layer to paint
+  red   - Red color value of pixel
+  green - Green color value of pixel
+  blue  - Blue color value of pixel
+  alpha - Alpha color value of pixel
+
+*/
+void sil_paintLayer(SILLYR *layer, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
+
+#ifndef SIL_LIVEDANGEROUS
+  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
+    log_warn("painting a layer that isn't initialized or has unitialized framebuffer");
+    return;
+  }
+#endif
+
+  for (int x=0;x<layer->fb->width;x++) {
+    for (int y=0;y<layer->fb->height;y++) {
+      sil_putPixelLayer(layer,x,y,red,green,blue,alpha); 
+    }
+  }
+}
+
+
 /*****************************************************************************
 
   Internal function,draw all layers, from bottom till top, into a single 
@@ -1888,4 +2336,315 @@ void sil_setSprite(SILLYR *layer,UINT pos) {
     pos--;
   }
   sil_setView(layer,x,y,layer->sprite.width,layer->sprite.height);
+}
+/* Group: Grouping */
+
+/*
+Function: sil_createGroup
+  Creates a group
+
+Returns:
+  Pointer to group
+
+Remarks: 
+  - Creating groups will make it possible to do the same action, like hide,show 
+    or move to all layers in the group. 
+  - Layers are not "bounded", they can still be controlled seperately 
+  - Layers can be in multiple groups. 
+  - Use <sil_addLayerGroup()> to populate group
+
+*/
+SILGROUP *sil_createGroup() {
+  SILGROUP *group;
+
+  group=calloc(1,sizeof(SILGROUP));
+  if (NULL==group) {
+    log_warn("ERR: Can't allocate memory for createGroup");
+    return NULL;
+  }
+  group->layer=NULL;
+  group->next=NULL;
+  return group;
+}
+
+
+/*
+Function: sil_addLayerGroup
+  Add layer to group
+
+Parameters:
+  layer - Layer to add
+*/
+
+void sil_addLayerGroup(SILGROUP *group, SILLYR *layer) {
+  SILGROUP *new,*walk;
+
+  if (NULL==group) {
+    log_warn("adding layer to non-initialized group");
+    return;
+  }
+
+  new=sil_createGroup();
+  if (NULL==new) return; /* error already logged by createGroup */
+
+  walk=group;
+  while(walk->next) walk=walk->next;
+
+
+  walk->next=new;
+  new->layer=layer;
+
+}
+
+/*
+Function: sil_removeLayerGroup
+  Removes layer from group
+
+Parameters:
+  group - Group to use
+  layer - Layer to remove
+
+Remarks:
+  - Will ignore removing of layer if it isn't in given group
+  - You can add same layer multiple times to same group, however, this 
+    function will only remove first appearance.
+*/
+void sil_removeLayerGroup(SILGROUP *group, SILLYR *layer) {
+  SILGROUP *found;
+  SILGROUP *previous=NULL;
+
+  if (NULL==group) {
+    log_warn("removing layer from non-initialized group");
+    return;
+  }
+
+  if (NULL==layer) {
+    log_warn("removing non-existing layer from group");
+    return;
+  }
+ 
+  found=group;
+  while((found->layer!=layer)&&(found->next)) {
+    previous=found;
+    found=found->next;
+  }
+  if (found->layer==layer) {
+    if (previous) previous->next=found->next;
+    if (found) free(found);
+  }
+
+}
+
+
+
+/*
+Function: sil_destroyGroup
+  Removes group
+
+Parameters:
+  group - Group to remove
+*/
+void sil_destroyGroup(SILGROUP *group) {
+  SILGROUP *next;
+
+  if (NULL==group) return;
+  do {
+    next=group->next;
+    free(group);
+    group=next;
+  } while(next);
+}
+
+
+/*
+Function: sil_showGroup
+  calls <sil_show()> for all layers in group
+
+Parameters:
+  group - Group to use
+*/
+void sil_showGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_show(walk->layer);
+    walk=walk->next;
+  }
+}
+
+
+/*
+Function: sil_hideGroup
+  calls <sil_hide()> for all layers in group
+
+Parameters:
+  group - Group to use
+*/
+void sil_hideGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_hide(walk->layer);
+    walk=walk->next;
+  }
+}
+
+/*
+Function: sil_moveGroup
+  calls <sil_moveLayer()> for all layers in group
+
+Parameters:
+  group - Group to use
+  x     - Amount of pixels in x direction 
+  y     - Amount of pixels in y direction
+
+*/
+void sil_moveGroup(SILGROUP *group,int x, int y) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_moveLayer(walk->layer,x,y);
+    walk=walk->next;
+  }
+}
+
+
+/*
+Function: sil_nextSpriteGroup
+  calls <sil_nextSprite()> for all layers in group
+
+Parameters:
+  group - Group to use
+*/
+void sil_nextSpriteGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_nextSprite(walk->layer);
+    walk=walk->next;
+  }
+}
+
+/*
+Function: sil_prevSpriteGroup
+  calls <sil_prevSprite()> for all layers in group
+
+Parameters:
+  group - Group to use
+*/
+void sil_prevSpriteGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_prevSprite(walk->layer);
+    walk=walk->next;
+  }
+}
+
+/*
+Function: sil_setSpriteGroup
+  calls <sil_setSprite()> for all layers in group
+
+Parameters:
+  group - Group to use
+  num   - number of spirt
+*/
+void sil_setSpriteGroup(SILGROUP *group,UINT num) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_setSprite(walk->layer,num);
+    walk=walk->next;
+  }
+}
+
+/*
+Function: sil_checkLayerGroup
+  Checks for all occurrences of layer in group
+
+Parameters:
+  group - Group to use
+  layer - Layer to check
+
+Returns:
+  amount of occurrences of layer in this group
+*/
+UINT sil_checkLayerGroup(SILGROUP *group,SILLYR *layer) {
+  SILGROUP *walk;
+  UINT cnt=0;
+
+  if (NULL==group) return 0;
+  walk=group;
+  while(walk) {
+    if ((walk->layer) && (walk->layer==layer)) cnt++;
+    walk=walk->next;
+  }
+  return cnt;
+}
+
+/*
+Function: sil_resetViewGroup
+  calls <sil_resetView()> for all layers in group
+
+Parameters:
+  group - Group to use
+*/
+void sil_resetViewGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_resetView(walk->layer);
+    walk=walk->next;
+  }
+}
+
+
+/*
+Function: sil_topGroup
+  calls <sil_toTop()> for all layers in group
+
+Parameters:
+  group - Group to use
+*/
+void sil_topGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_toTop(walk->layer);
+    walk=walk->next;
+  }
+}
+
+/*
+Function: sil_bottomGroup
+  calls <sil_toBottom()> for all layers in group
+
+Parameters:
+  group - Group to use
+*/
+void sil_bottomGroup(SILGROUP *group) {
+  SILGROUP *walk;
+
+  if (NULL==group) return;
+  walk=group;
+  while(walk) {
+    if (walk->layer) sil_toBottom(walk->layer);
+    walk=walk->next;
+  }
 }

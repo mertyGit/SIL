@@ -11,6 +11,7 @@
 
 */
 
+#ifndef SIL_NO_FONT
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -487,3 +488,5 @@ void sil_destroyFont(SILFONT *font) {
     free(font);
   }
 }
+
+#endif

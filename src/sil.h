@@ -125,6 +125,8 @@ void sil_destroyFB(SILFB *);
 
 /* layer.c */
 
+#define SIL_PI (double)(3.1415926535897932384626433832795)
+
 
 /* bitmask for flags */
 
@@ -195,9 +197,15 @@ typedef struct _SILLYR {
   void *user;
 } SILLYR;
 
+typedef struct _SILGROUP {
+  SILLYR *layer;
+  struct _SILGROUP *next;
+} SILGROUP;
+
 /* this one is in sil.c, not layer.c but needs SILEVENT defined */
 void sil_setTimerHandler(UINT (*)(SILEVENT *));
 
+void sil_paintLayer(SILLYR *,BYTE,BYTE,BYTE,BYTE);
 SILLYR *sil_addLayer(int, int, UINT, UINT, BYTE);
 void sil_putPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
 void sil_blendPixelLayer(SILLYR *, UINT, UINT, BYTE, BYTE, BYTE, BYTE);
@@ -212,6 +220,10 @@ void sil_setAlphaLayer(SILLYR *,float);
 void sil_setView(SILLYR *,UINT,UINT,UINT,UINT);
 void sil_resetView(SILLYR *);
 UINT sil_resizeLayer(SILLYR *, int,int,UINT,UINT);
+UINT sil_rotate90(SILLYR *);
+UINT sil_rotate180(SILLYR *);
+UINT sil_rotate270(SILLYR *);
+UINT sil_rotateLayer(SILLYR *, double);
 void sil_moveLayer(SILLYR *,int, int);
 void sil_placeLayer(SILLYR *,int, int);
 SILLYR *sil_PNGtoNewLayer(char *,UINT,UINT);
@@ -233,12 +245,8 @@ void sil_show(SILLYR *);
 SILLYR *sil_addCopy(SILLYR *,int,int);
 SILLYR *sil_addInstance(SILLYR *,int,int);
 void sil_clearLayer(SILLYR *);
+void sil_shiftLayer(SILLYR *,int,int);
 
-/* group.c */
-typedef struct _SILGROUP {
-  SILLYR *layer;
-  struct _SILGROUP *next;
-} SILGROUP;
 
 SILGROUP *sil_createGroup();
 void sil_addLayerGroup(SILGROUP *,SILLYR *);
@@ -354,7 +362,6 @@ UINT sil_grayFilter(SILLYR *);
 
 void sil_initDraw();
 UINT sil_PNGintoLayer(SILLYR *,char *, UINT,UINT);
-void sil_paintLayer(SILLYR *,BYTE,BYTE,BYTE,BYTE);
 void sil_drawText(SILLYR *,SILFONT *, char *, UINT, UINT, BYTE);
 UINT sil_getTextWidth(SILFONT *, char *, BYTE);
 void sil_getBackgroundColor(BYTE *,BYTE *, BYTE *, BYTE *);

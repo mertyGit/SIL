@@ -7,6 +7,8 @@
 
 */
 
+#ifndef SIL_NO_DRAWING
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -218,7 +220,6 @@ UINT sil_getDrawWidth() {
   return gd.width;
 }
 
-
 /*****************************************************************************
   load a PNG on location relx, rely into existing layer.
   Will check"SILFLAG_NOBLEND" to see if it just has to overwrite (including
@@ -239,8 +240,6 @@ UINT sil_PNGintoLayer(SILLYR *layer,char * filename,UINT relx,UINT rely) {
   UINT maxwidth=0;
   UINT maxheight=0;
   BYTE red,green,blue,alpha;
-  float af,negaf;
-  BYTE mixred,mixgreen,mixblue,mixalpha;
 
 #ifndef SIL_LIVEDANGEROUS
   if (NULL==layer) {
@@ -321,29 +320,6 @@ UINT sil_PNGintoLayer(SILLYR *layer,char * filename,UINT relx,UINT rely) {
   if (image) free(image);
 
   return SILERR_ALLOK;
-}
-
-/*****************************************************************************
-  paintLayer with given color
-
-  In: Context of layer, color
-
- *****************************************************************************/
-
-void sil_paintLayer(SILLYR *layer, BYTE red, BYTE green, BYTE blue, BYTE alpha) {
-
-#ifndef SIL_LIVEDANGEROUS
-  if ((NULL==layer)||(NULL==layer->fb)||(0==layer->fb->size)) {
-    log_warn("painting a layer that isn't initialized or has unitialized framebuffer");
-    return;
-  }
-#endif
-
-  for (int x=0;x<layer->fb->width;x++) {
-    for (int y=0;y<layer->fb->height;y++) {
-      sil_putPixelLayer(layer,x,y,red,green,blue,alpha); 
-    }
-  }
 }
 
 /*****************************************************************************
@@ -1559,8 +1535,4 @@ void sil_rescale(SILLYR *layer, UINT newwidth,UINT newheight) {
   
 }
 
-
-
-
-
-
+#endif

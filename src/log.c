@@ -5,12 +5,14 @@
    used for multiple c projects
 
 */
+#include <stddef.h>
+#ifndef SIL_NO_LOG
+#include <sys/types.h>
 #include <sys/time.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
@@ -436,3 +438,21 @@ int log_close() {
 
   return LOG_OK;
 }
+#else
+  /* create dummy functions for logging to use with SIL */
+int log_box_off() {};
+int log_box_on() {};
+int log_close() {};
+int log_debug(const char *x, ...){};
+int log_dump(void *x,size_t t){};
+int log_err(const char *x, ...){};
+int log_div(){};
+int log_info(const char *x, ...){};
+int log_init(char *x, unsigned char c){};
+int log_set_f(unsigned char c){};
+int log_has_f(unsigned char c){};
+int log_verbose(const char *c, ...){};
+int log_warn(const char *c, ...){};
+void log_fatal(const char *c){};
+  
+#endif

@@ -130,7 +130,9 @@ UINT sil_initSIL(UINT width, UINT height, char *title, void *hInstance) {
   }
 
   /* initialize other globals */
+#ifndef SIL_NO_DRAWING
   sil_initDraw();
+#endif
   return ret;
 }
 
