@@ -400,6 +400,17 @@ void sil_rescale(SILLYR *, UINT,UINT);
 
 
 /* buttons for mouse clicks and mousewheel */
+/* group: Mouse codes 
+Button codes when clickhandler is called
+
+SIL_BTN_LEFT   - Left button of mouse
+SIL_BTN_MIDDLE - Middle button of mouse 
+                 (or mousewheel) click
+SIL_BTN_RIGHT  - Right button of mouse
+SIL_WHEEL_UP   - Wheel moves up
+SIL_WHEEL_DOWN - Wheel moves down
+*/
+
 #define SIL_BTN_LEFT     1
 #define SIL_BTN_MIDDLE   2
 #define SIL_BTN_RIGHT    4
@@ -424,12 +435,33 @@ void sil_setSysHandler(void (*)(SILEVENT *));
 
 
 /* bitmasks for keymodifiers/special keys */
+
+/* Group: Key modifiers 
+SILKM_SHIFT - Shift key
+SILKM_ALT   - Alt key
+SILKM_CTRL  - Control key
+SILKM_CAPS  - Capslock
+*/
 #define SILKM_SHIFT  1
 #define SILKM_ALT    2
 #define SILKM_CTRL   4
 #define SILKM_CAPS   8
 
 /* mouse cursor types */
+/* Group: Mouse cursors
+SILCUR_HAND      - A hand with a pointing finger
+SILCUR_ARROW     - An arrow
+SILCUR_WAIT      - Waiting symbol/hourglass
+SILCUR_HELP      - Question mark
+SILCUR_NO        - Cross 
+SILCUR_IBEAM     - Text cursor
+SILCUR_VERSIZE   - Size vertical arrows
+SILCUR_HORSIZE   - Size horizontal arrows
+SILCUR_DIAGRSIZE - Size diagonal arrows pointing right
+SILCUR_DIAGLSIZE - Size diagonal arrows pointing left
+SILCUR_SIZEALL   - Size all, all arrows
+*/
+
 #define SILCUR_HAND       1
 #define SILCUR_ARROW      2
 #define SILCUR_WAIT       3
@@ -441,6 +473,7 @@ void sil_setSysHandler(void (*)(SILEVENT *));
 #define SILCUR_DIAGRSIZE  9
 #define SILCUR_DIAGLSIZE 10
 #define SILCUR_SIZEALL   11 
+
 
 /* 
 Group: Keyboard codes 

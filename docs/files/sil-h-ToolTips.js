@@ -1,1 +1,1 @@
-﻿NDContentPage.OnToolTipsLoaded({});
+﻿NDContentPage.OnToolTipsLoaded({89:"<div class=\"NDToolTip TFunction LC\"><div id=\"NDPrototype89\" class=\"NDPrototype\"><div class=\"PSection PPlainSection\">UINT sil_getTypefromDisplay()</div></div><div class=\"TTSummary\">Retrieves the &quot;native&quot; RGB type for display.</div></div>"});

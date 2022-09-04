@@ -1,1 +1,1 @@
-﻿NDMenu.OnSectionLoaded("files.js",[[1,"layer.c"],[1,"sil.c"],[1,"sil.h"]]);
+﻿NDMenu.OnSectionLoaded("files.js",[[1,"display.c"],[1,"layer.c"],[1,"sil.c"],[1,"sil.h"]]);
