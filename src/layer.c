@@ -27,7 +27,7 @@ About: Using Layers
   (see layersexplanation.png)
 
   So, the layer concept is simple. Layers are like multiple images with different 
-  dimensions place on each other to form a stack. The image on top of the stack might
+  dimensions placed on each other to form a stack. The image on top of the stack might
   be covering the view on the image below, and that image does the same for the image
   below that image and so on. But there is a twist, layers are rectangular but pixels 
   within that layer can be made a bit transparant, where it will blend with the pixels
